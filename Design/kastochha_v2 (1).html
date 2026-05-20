@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KastoChha — Nepal ko Real Talk</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,700;1,9..144,900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0C0B09;
+  --paper:#F5F0E8;
+  --paper2:#EDE8DF;
+  --paper3:#E3DDD3;
+  --card:#FAF8F4;
+  --card2:#F0EDE6;
+  --red:#C8102E;
+  --red-pale:#F5E8EB;
+  --red-mid:rgba(200,16,46,.12);
+  --red-glow:rgba(200,16,46,.22);
+  --saffron:#E05C20;
+  --gold:#C9940A;
+  --green:#3B6D11;
+  --green-pale:#EAF3DE;
+  --muted:#7A7468;
+  --muted2:#9E988E;
+  --border:rgba(12,11,9,.1);
+  --border2:rgba(12,11,9,.18);
+  --border3:rgba(12,11,9,.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+
+/* grain */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;opacity:.25;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E")}
+
+/* ══ NAV ══ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  height:60px;display:flex;align-items:center;
+  padding:0 48px;
+  background:rgba(245,240,232,.94);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.logo{
+  font-family:'Fraunces',serif;font-size:1.45rem;font-weight:900;
+  color:var(--red);letter-spacing:-1px;text-decoration:none;margin-right:auto;
+}
+.logo em{font-style:italic;color:var(--saffron)}
+.nav-links{display:flex;align-items:center;gap:2px}
+.nav-link{
+  padding:6px 14px;border-radius:6px;
+  font-size:.8rem;font-weight:500;color:var(--muted);
+  text-decoration:none;transition:all .2s;white-space:nowrap;
+}
+.nav-link:hover{background:var(--card2);color:var(--ink)}
+.nav-actions{display:flex;align-items:center;gap:10px;margin-left:20px}
+.btn-outline{
+  padding:7px 16px;border-radius:6px;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;
+  font-size:.8rem;font-weight:500;cursor:pointer;transition:all .2s;
+}
+.btn-outline:hover{background:var(--card2);color:var(--ink)}
+.btn-red{
+  padding:7px 18px;border-radius:6px;
+  background:var(--red);border:none;color:#fff;
+  font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.btn-red:hover{background:#a80e26}
+
+/* ══ MARQUEE ══ */
+.marquee{background:var(--red);overflow:hidden;padding:8px 0;margin-top:60px}
+.m-track{display:inline-flex;animation:ticker 28s linear infinite;white-space:nowrap}
+.m-item{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:2px;text-transform:uppercase;padding:0 28px;color:rgba(255,255,255,.75)}
+.m-item strong{color:#fff}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ══ SHARED SECTION LAYOUT ══ */
+.section{padding:72px 48px 80px}
+.section-alt{background:var(--card)}
+.section-deep{background:var(--paper2)}
+.container{max-width:1100px;margin:0 auto}
+
+/* Section header */
+.sec-head{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding-bottom:32px;border-bottom:1px solid var(--border);margin-bottom:40px;
+}
+.sec-head-left{}
+.sec-eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sec-tag{
+  font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2.5px;
+  text-transform:uppercase;color:var(--saffron);
+  background:rgba(224,92,32,.1);border:1px solid rgba(224,92,32,.22);
+  padding:3px 9px;border-radius:4px;
+}
+.sec-rule{height:1px;flex:1;background:var(--border)}
+.sec-title{
+  font-family:'Fraunces',serif;font-weight:900;
+  font-size:clamp(1.8rem,3.5vw,2.8rem);letter-spacing:-1.5px;line-height:1.05;
+}
+.sec-title em{font-style:italic;color:var(--red)}
+.sec-sub{font-size:.875rem;color:var(--muted);margin-top:7px;line-height:1.65}
+.sec-all{
+  font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:1px;
+  color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:5px;
+  transition:color .2s;white-space:nowrap;flex-shrink:0;
+}
+.sec-all:hover{color:var(--ink)}
+
+/* ══ 1. HERO / SEARCH ══ */
+.hero{
+  min-height:88vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:100px 48px 80px;text-align:center;
+  position:relative;overflow:hidden;
+  background:var(--paper);
+}
+.hero-glow{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 40%,rgba(200,16,46,.06) 0%,transparent 70%),
+    radial-gradient(ellipse 30% 30% at 80% 20%,rgba(224,92,32,.05) 0%,transparent 60%);
+}
+.kicker{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(200,16,46,.08);border:1px solid rgba(200,16,46,.2);
+  border-radius:100px;padding:5px 16px;
+  font-family:'DM Mono',monospace;font-size:.62rem;font-weight:500;
+  letter-spacing:2px;text-transform:uppercase;color:var(--saffron);
+  margin-bottom:28px;
+}
+.kicker-dot{width:5px;height:5px;border-radius:50%;background:var(--saffron);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.hero h1{
+  font-family:'Fraunces',serif;
+  font-size:clamp(2.8rem,7vw,5.8rem);font-weight:900;letter-spacing:-3px;line-height:1.02;
+  margin-bottom:20px;
+}
+.hero h1 em{
+  font-style:italic;
+  color:var(--red);
+}
+.hero-sub{
+  font-size:.98rem;color:var(--muted);font-weight:400;
+  max-width:420px;margin:0 auto 44px;line-height:1.8;
+}
+
+/* Search bar */
+.search-wrap{width:100%;max-width:600px;margin:0 auto 14px;position:relative}
+.search-inner{
+  display:flex;align-items:center;
+  background:var(--card);border:1.5px solid var(--border2);
+  border-radius:100px;transition:border-color .25s,box-shadow .25s;
+}
+.search-inner:focus-within{
+  border-color:var(--red);
+  box-shadow:0 0 0 4px var(--red-mid);
+}
+.search-inner input{
+  flex:1;padding:16px 10px 16px 26px;background:transparent;border:none;outline:none;
+  color:var(--ink);font-family:'DM Sans',sans-serif;font-size:.96rem;
+}
+.search-inner input::placeholder{color:var(--muted2)}
+.s-btn{
+  margin:5px;width:42px;height:42px;border-radius:50%;
+  background:var(--red);border:none;
+  color:#fff;font-size:1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s,box-shadow .2s;flex-shrink:0;
+}
+.s-btn:hover{transform:scale(1.08);box-shadow:0 0 18px var(--red-glow)}
+
+/* Chips */
+.chips-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:32px}
+.chip{
+  padding:7px 16px;background:var(--card);border:1px solid var(--border2);
+  border-radius:100px;font-size:.8rem;color:var(--muted);cursor:pointer;
+  transition:all .2s;white-space:nowrap;font-weight:500;
+}
+.chip:hover,.chip.active{background:var(--red-pale);border-color:rgba(200,16,46,.3);color:var(--red)}
+
+/* Trending searches */
+.t-searches{}
+.t-searches p{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-bottom:10px}
+.t-searches ul{list-style:none;display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.t-searches ul li a{
+  text-decoration:none;color:var(--muted);font-size:.84rem;
+  display:flex;align-items:center;gap:5px;transition:color .2s;
+}
+.t-searches ul li a::before{content:'↗';font-size:.7rem;color:var(--muted2)}
+.t-searches ul li a:hover{color:var(--red)}
+
+/* ══ 2. TRENDING ══ */
+.feed-list{display:flex;flex-direction:column;gap:1px;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--border3)}
+.tr-card{
+  background:var(--card);padding:28px 32px;cursor:pointer;
+  transition:background .18s;position:relative;overflow:hidden;
+}
+.tr-card:hover{background:var(--card2)}
+.tr-rank{
+  position:absolute;right:30px;top:24px;
+  font-family:'Fraunces',serif;font-size:3.5rem;font-weight:900;
+  color:rgba(12,11,9,.05);letter-spacing:-3px;line-height:1;pointer-events:none;
+}
+.tr-num{
+  display:flex;align-items:center;gap:10px;
+  font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);
+  margin-bottom:12px;
+}
+.tr-num::after{content:'';display:inline-block;width:24px;height:1px;background:var(--border2)}
+.growth{display:inline-flex;align-items:center;gap:3px;font-family:'DM Mono',monospace;font-size:.62rem;font-weight:500;color:var(--green)}
+.growth.down{color:var(--red)}
+.tr-title{font-family:'Fraunces',serif;font-size:1.12rem;font-weight:700;letter-spacing:-.4px;line-height:1.3;margin-bottom:8px}
+.tr-desc{font-size:.875rem;color:var(--muted);line-height:1.65;margin-bottom:18px}
+.tr-footer{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.badge{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;padding:3px 9px;border-radius:4px}
+.badge-red{background:var(--red-pale);color:var(--red);border:1px solid rgba(200,16,46,.18)}
+.badge-green{background:var(--green-pale);color:var(--green);border:1px solid rgba(59,109,17,.2)}
+.badge-gold{background:#FEF4D3;color:var(--gold);border:1px solid rgba(201,148,10,.22)}
+.badge-neutral{background:var(--paper2);color:var(--muted);border:1px solid var(--border2)}
+.tr-meta{margin-left:auto;font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);display:flex;gap:14px}
+.vote-row{display:flex;align-items:center;gap:10px;margin-top:18px}
+.vbtn{
+  display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;
+  border:1px solid var(--border2);background:transparent;
+  font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:all .2s;color:var(--muted);
+}
+.vbtn.yes:hover,.vbtn.yes.voted{background:var(--green-pale);border-color:rgba(59,109,17,.3);color:var(--green)}
+.vbtn.no:hover,.vbtn.no.voted{background:var(--red-pale);border-color:rgba(200,16,46,.28);color:var(--red)}
+.vcnt{font-family:'DM Mono',monospace;font-size:.68rem;font-weight:500}
+.vote-total{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2)}
+.vote-bar{height:3px;background:var(--paper3);border-radius:2px;margin-top:12px;overflow:hidden}
+.vote-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--saffron));transition:width .5s ease}
+
+/* ══ 3. POPULAR ══ */
+.pop-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border3);border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
+.pop-card{
+  background:var(--card);padding:24px 26px;cursor:pointer;
+  transition:background .18s;display:flex;align-items:flex-start;gap:16px;
+}
+.pop-card:hover{background:var(--card2)}
+.pop-rank{
+  font-family:'Fraunces',serif;font-size:2.2rem;font-weight:900;
+  color:rgba(12,11,9,.08);letter-spacing:-1.5px;line-height:1;flex-shrink:0;padding-top:2px;
+}
+.pop-rank.hot{color:rgba(200,16,46,.15)}
+.pop-body{}
+.pop-cat{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--saffron);margin-bottom:6px}
+.pop-title{font-family:'Fraunces',serif;font-size:.96rem;font-weight:700;letter-spacing:-.3px;line-height:1.35;margin-bottom:10px}
+.pop-stats{display:flex;gap:12px}
+.pop-stat{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);display:flex;align-items:center;gap:4px}
+
+/* ══ 4. FEATURED ══ */
+.feat-grid{
+  display:grid;grid-template-columns:1.55fr 1fr;grid-template-rows:auto auto;
+  gap:1px;background:var(--border3);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;
+}
+.fc{background:var(--card);cursor:pointer;transition:background .18s;position:relative;overflow:hidden}
+.fc:hover{background:var(--card2)}
+.fc-main{grid-column:1;grid-row:1/3}
+.fc-b{grid-column:2;grid-row:1}
+.fc-c{grid-column:2;grid-row:2}
+.fc-visual{display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.fc-main .fc-visual{height:210px;background:linear-gradient(145deg,#F0E4E7,#EDD9D0)}
+.fc-b .fc-visual{height:130px;background:linear-gradient(145deg,#E5EEF5,#D8E8F2)}
+.fc-c .fc-visual{height:130px;background:linear-gradient(145deg,#E8F2E0,#D8EDD0)}
+.fc-emoji{font-size:2.8rem;opacity:.45}
+.fc-star{
+  position:absolute;top:12px;left:12px;
+  background:var(--red);color:#fff;
+  font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1.5px;
+  padding:3px 9px;border-radius:4px;text-transform:uppercase;
+}
+.fc-body{padding:26px}
+.fc-b .fc-body,.fc-c .fc-body{padding:20px}
+.fc-why{
+  font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--saffron);display:block;margin-bottom:9px;
+}
+.fc-title{font-family:'Fraunces',serif;font-weight:700;letter-spacing:-.3px;line-height:1.3;color:var(--ink);margin-bottom:10px}
+.fc-main .fc-title{font-size:1.45rem;margin-bottom:14px}
+.fc-b .fc-title,.fc-c .fc-title{font-size:.98rem}
+.fc-desc{font-size:.875rem;color:var(--muted);line-height:1.65;margin-bottom:18px}
+.fc-b .fc-desc,.fc-c .fc-desc{font-size:.82rem;margin-bottom:12px}
+.fc-read{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--red);text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:gap .2s}
+.fc-read:hover{gap:12px}
+
+/* ══ 5. BATTLE ══ */
+.battle-list{display:flex;flex-direction:column;gap:20px}
+.battle-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
+.battle-inner{padding:30px 36px;display:grid;grid-template-columns:1fr 80px 1fr;gap:0;align-items:center}
+.bside{}
+.bside.right{text-align:right}
+.bs-cat{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--saffron);margin-bottom:8px}
+.bs-name{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:900;letter-spacing:-.5px;margin-bottom:8px}
+.bs-desc{font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.bs-vcnt{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted2)}
+.bvs{
+  text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.bvs-line{width:1px;height:28px;background:var(--border2)}
+.bvs-badge{
+  font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:1.5px;
+  background:var(--paper2);border:1px solid var(--border2);
+  padding:5px 10px;border-radius:100px;color:var(--muted);
+}
+.battle-actions{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;
+  padding:0 36px 20px;
+}
+.b-vote-btn{
+  padding:11px 20px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;
+  font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;
+  cursor:pointer;transition:all .2s;color:var(--muted);
+}
+.b-vote-btn.a:hover,.b-vote-btn.a.voted{background:var(--red-pale);border-color:rgba(200,16,46,.3);color:var(--red)}
+.b-vote-btn.b:hover,.b-vote-btn.b.voted{background:var(--green-pale);border-color:rgba(59,109,17,.3);color:var(--green)}
+.bvs-or{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);text-align:center}
+.battle-result{padding:0 36px 26px}
+.result-wrap{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.rpct{font-family:'DM Mono',monospace;font-size:.7rem;font-weight:500;min-width:34px}
+.rpct.a{color:var(--red);text-align:left}
+.rpct.b{color:var(--green);text-align:right}
+.rtrack{flex:1;height:6px;background:var(--paper3);border-radius:4px;overflow:hidden;display:flex}
+.rfill-a{height:100%;background:var(--red);transition:width .6s ease}
+.rfill-b{height:100%;background:var(--green);transition:width .6s ease}
+.rtotal{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);text-align:center}
+
+/* ══ 6. EXPERIENCE WALL ══ */
+.exp-layout{display:grid;grid-template-columns:1.5fr 1fr;gap:48px;align-items:start}
+.wall-header{margin-bottom:24px}
+.wall-title{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}
+.wall-sub{font-size:.82rem;color:var(--muted)}
+.wall-feed{display:flex;flex-direction:column;gap:1px;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--border3)}
+.wcard{background:var(--card);padding:22px 24px;cursor:pointer;transition:background .18s}
+.wcard:hover{background:var(--card2)}
+.wcard-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.av{
+  width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;color:#fff;
+}
+.av1{background:linear-gradient(135deg,var(--red),var(--saffron))}
+.av2{background:linear-gradient(135deg,#185FA5,#378ADD)}
+.av3{background:linear-gradient(135deg,var(--green),#97C459)}
+.av4{background:linear-gradient(135deg,var(--gold),#EF9F27)}
+.wc-info{}
+.wc-name{font-size:.84rem;font-weight:600;color:var(--ink);margin-bottom:2px}
+.wc-topic{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--saffron)}
+.wc-verdict{
+  margin-left:auto;flex-shrink:0;
+  font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1px;
+  text-transform:uppercase;padding:3px 9px;border-radius:4px;font-weight:500;
+}
+.verd-good{background:var(--green-pale);color:var(--green);border:1px solid rgba(59,109,17,.18)}
+.verd-ok{background:#FEF4D3;color:var(--gold);border:1px solid rgba(201,148,10,.2)}
+.verd-bad{background:var(--red-pale);color:var(--red);border:1px solid rgba(200,16,46,.18)}
+.wc-text{font-size:.875rem;color:var(--muted);line-height:1.72;margin-bottom:14px}
+.wc-foot{display:flex;align-items:center;gap:12px}
+.wc-btn{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);background:none;border:none;cursor:pointer;transition:color .15s;display:flex;align-items:center;gap:4px;padding:0}
+.wc-btn:hover{color:var(--ink)}
+.wc-time{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2);margin-left:auto}
+
+/* Create panel (right side) */
+.create-panel{}
+.create-title{font-family:'Fraunces',serif;font-size:1.2rem;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}
+.create-sub{font-size:.82rem;color:var(--muted);margin-bottom:24px}
+.cta-card{
+  border:1.5px solid var(--border);border-radius:12px;padding:24px;
+  margin-bottom:14px;cursor:pointer;transition:all .2s;background:var(--card);
+  position:relative;overflow:hidden;
+}
+.cta-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.cta-card.ask::before{background:var(--red)}
+.cta-card.share::before{background:var(--saffron)}
+.cta-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.cta-icon{font-size:1.4rem;margin-bottom:12px;display:block}
+.cta-tag{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px}
+.cta-heading{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:700;letter-spacing:-.3px;margin-bottom:6px}
+.cta-desc{font-size:.82rem;color:var(--muted);line-height:1.62;margin-bottom:16px}
+.cta-btn{
+  width:100%;padding:10px;border-radius:7px;
+  font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:600;
+  cursor:pointer;transition:all .2s;border:none;
+}
+.cta-btn.ask-btn{background:var(--red);color:#fff}
+.cta-btn.ask-btn:hover{background:#a80e26}
+.cta-btn.share-btn{background:var(--saffron);color:#fff}
+.cta-btn.share-btn:hover{background:#c0501a}
+
+/* stats strip */
+.stat-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat-box{background:var(--paper2);border-radius:10px;padding:14px 12px;border:1px solid var(--border);text-align:center}
+.stat-val{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:900;letter-spacing:-1px;color:var(--ink);display:block}
+.stat-lbl{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2)}
+
+/* ══ MODAL ══ */
+.modal-bg{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(12,11,9,.35);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:var(--paper);border:1.5px solid var(--border2);
+  border-radius:16px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
+.modal-tabs{display:flex;gap:2px;background:var(--paper3);border-radius:8px;padding:3px}
+.mtab{
+  flex:1;padding:7px 14px;border-radius:6px;font-size:.82rem;font-weight:600;
+  border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .18s;
+  font-family:'DM Sans',sans-serif;
+}
+.mtab.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(12,11,9,.07)}
+.modal-x{
+  width:30px;height:30px;border-radius:7px;background:var(--paper3);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:.9rem;color:var(--muted);transition:all .15s;line-height:1;
+}
+.modal-x:hover{background:var(--red-pale);color:var(--red)}
+
+.mpanel{display:none;padding:20px 24px 26px}
+.mpanel.on{display:block}
+.flbl{
+  font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:7px;
+}
+.fstep{
+  width:15px;height:15px;border-radius:50%;background:var(--red);color:#fff;
+  font-size:.54rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.fg{margin-bottom:15px}
+.finp,.fta,.fsel{
+  width:100%;padding:10px 13px;background:var(--card);border:1.5px solid var(--border2);
+  border-radius:8px;color:var(--ink);font-family:'DM Sans',sans-serif;font-size:.9rem;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.finp:focus,.fta:focus,.fsel:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-mid)}
+.finp::placeholder,.fta::placeholder{color:var(--muted2)}
+.fta{resize:none;height:88px;line-height:1.58}
+.fsel{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239E988E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.fsel option{background:var(--paper)}
+.f2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vbtn-m{
+  padding:10px 4px;border-radius:8px;border:1.5px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;
+  font-size:.8rem;font-weight:600;cursor:pointer;transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.vbtn-m:hover{transform:translateY(-1px)}
+.vbtn-m.ramro.on{background:var(--green-pale);border-color:rgba(59,109,17,.35);color:var(--green)}
+.vbtn-m.thikai.on{background:#FEF4D3;border-color:rgba(201,148,10,.35);color:var(--gold)}
+.vbtn-m.naramro.on{background:var(--red-pale);border-color:rgba(200,16,46,.3);color:var(--red)}
+.vi{font-size:1rem}
+.trow{display:flex;flex-wrap:wrap;gap:6px}
+.tpill{
+  padding:5px 13px;border-radius:100px;border:1.5px solid var(--border2);
+  background:transparent;font-size:.78rem;font-weight:500;color:var(--muted);
+  cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif;
+}
+.tpill:hover{background:var(--card2);color:var(--ink)}
+.tpill.on{background:var(--red-pale);border-color:rgba(200,16,46,.28);color:var(--red)}
+.ex-chips{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.ex-c{
+  align-self:flex-start;padding:5px 13px;border-radius:100px;
+  border:1.5px solid var(--border2);background:transparent;
+  font-size:.78rem;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;
+}
+.ex-c:hover{border-color:rgba(200,16,46,.28);color:var(--red);background:var(--red-pale)}
+.prog{display:flex;gap:3px;margin-bottom:18px}
+.pseg{height:2px;flex:1;border-radius:2px;background:var(--paper3);transition:background .3s}
+.pseg.fill{background:var(--red)}
+.fsub{
+  width:100%;padding:12px;border-radius:8px;background:var(--red);border:none;
+  color:#fff;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.fsub:hover{background:#a80e26;transform:translateY(-1px)}
+.m-success{
+  display:none;padding:44px 24px;text-align:center;
+  flex-direction:column;align-items:center;gap:10px;
+}
+.msuc-ico{
+  width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+  margin-bottom:4px;animation:popIn .35s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes popIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.msuc-ico.g{background:var(--green-pale)}
+.msuc-ico.b{background:var(--red-pale)}
+.m-success h3{font-family:'Fraunces',serif;font-size:1.35rem;font-weight:700;letter-spacing:-.3px}
+.m-success p{font-size:.84rem;color:var(--muted);line-height:1.65}
+.msuc-btn{
+  margin-top:4px;padding:9px 22px;border-radius:8px;border:1.5px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;
+  font-size:.84rem;font-weight:600;cursor:pointer;transition:all .2s;
+}
+.msuc-btn:hover{background:var(--card2);color:var(--ink)}
+
+/* ══ FOOTER ══ */
+footer{background:#0C0B09;border-top:1px solid rgba(255,255,255,.06);padding:56px 48px 34px}
+.foot-inner{max-width:1100px;margin:0 auto}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:44px;margin-bottom:44px}
+.foot-logo{font-family:'Fraunces',serif;font-size:1.45rem;font-weight:900;color:var(--red);display:block;margin-bottom:12px;text-decoration:none}
+.foot-logo em{font-style:italic;color:var(--saffron)}
+.foot-tagline{color:rgba(255,255,255,.28);font-size:.82rem;line-height:1.75;max-width:220px}
+.foot-col h5{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.22);margin-bottom:16px}
+.foot-col ul{list-style:none}
+.foot-col ul li{margin-bottom:9px}
+.foot-col ul li a{text-decoration:none;color:rgba(255,255,255,.25);font-size:.82rem;transition:color .2s}
+.foot-col ul li a:hover{color:rgba(255,255,255,.7)}
+.foot-bottom{display:flex;align-items:center;justify-content:space-between;padding-top:26px;border-top:1px solid rgba(255,255,255,.06);font-family:'DM Mono',monospace;font-size:.62rem;color:rgba(255,255,255,.18)}
+
+/* ══ ANIMATIONS ══ */
+.fi{opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease}
+.fi.show{opacity:1;transform:none}
+.d1{transition-delay:.07s}.d2{transition-delay:.14s}.d3{transition-delay:.21s}.d4{transition-delay:.28s}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:860px){
+  nav{padding:0 20px}
+  .nav-links{display:none}
+  .section{padding:52px 20px 60px}
+  .feat-grid{grid-template-columns:1fr}
+  .fc-main,.fc-b,.fc-c{grid-column:1;grid-row:auto}
+  .pop-grid{grid-template-columns:1fr}
+  .exp-layout{grid-template-columns:1fr;gap:40px}
+  .battle-inner{grid-template-columns:1fr;gap:20px;text-align:center}
+  .bside.right{text-align:center}
+  .bvs{flex-direction:row;justify-content:center}
+  .bvs-line{width:24px;height:1px}
+  .battle-actions{grid-template-columns:1fr;gap:8px}
+  .foot-grid{grid-template-columns:1fr 1fr;gap:28px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══ -->
+<nav id="mainnav">
+  <a href="#hero" class="logo">Kasto<em>Chha</em></a>
+  <div class="nav-links">
+    <a href="#trending" class="nav-link">🔥 Trending</a>
+    <a href="#popular" class="nav-link">📊 Popular</a>
+    <a href="#featured" class="nav-link">⭐ Featured</a>
+    <a href="#battle" class="nav-link">⚔️ Battle</a>
+    <a href="#experience" class="nav-link">💬 Experience</a>
+  </div>
+  <div class="nav-actions">
+    <button class="btn-outline" onclick="openModal('ask')">Ask</button>
+    <button class="btn-red" onclick="openModal('share')">Share Experience</button>
+  </div>
+</nav>
+
+<!-- ══ MARQUEE ══ -->
+<div class="marquee">
+  <div class="m-track">
+    <span class="m-item">🔥 <strong>iPhone 17</strong> — 2.4k opinions</span>
+    <span class="m-item">⚡ <strong>Pathao vs InDrive</strong> — Live battle</span>
+    <span class="m-item">📈 <strong>SLC Pariksha</strong> — rising fast</span>
+    <span class="m-item">💬 <strong>Daraz Nepal</strong> — 1.8k reviews</span>
+    <span class="m-item">🎓 <strong>+2 Science vs Commerce</strong> — hotly debated</span>
+    <span class="m-item">🏠 <strong>Kathmandu Rent</strong> — 3.1k reactions</span>
+    <span class="m-item">🔥 <strong>iPhone 17</strong> — 2.4k opinions</span>
+    <span class="m-item">⚡ <strong>Pathao vs InDrive</strong> — Live battle</span>
+    <span class="m-item">📈 <strong>SLC Pariksha</strong> — rising fast</span>
+    <span class="m-item">💬 <strong>Daraz Nepal</strong> — 1.8k reviews</span>
+    <span class="m-item">🎓 <strong>+2 Science vs Commerce</strong> — hotly debated</span>
+    <span class="m-item">🏠 <strong>Kathmandu Rent</strong> — 3.1k reactions</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     HERO / SEARCH
+══════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="hero-glow"></div>
+  <div class="kicker"><span class="kicker-dot"></span>Nepal ko Real Talk Platform</div>
+  <h1>Nepal ma sabai kura…<br><em>KastoChha?</em></h1>
+  <p class="hero-sub">Authentic opinions, real experiences, honest answers — no filter, no sponsored posts.</p>
+
+  <div class="search-wrap">
+    <div class="search-inner">
+      <input id="srch" type="text" placeholder="Search anything… (e.g. iPhone kasto chha?)" autocomplete="off"/>
+      <button class="s-btn">⌕</button>
+    </div>
+  </div>
+
+  <div class="chips-row">
+    <div class="chip" onclick="fillSearch(this)">📱 iPhone 17</div>
+    <div class="chip" onclick="fillSearch(this)">🛵 Pathao Job</div>
+    <div class="chip" onclick="fillSearch(this)">🎓 +2 Science</div>
+    <div class="chip" onclick="fillSearch(this)">🏠 Kathmandu Hostel</div>
+    <div class="chip" onclick="fillSearch(this)">💸 eSewa vs Khalti</div>
+    <div class="chip" onclick="fillSearch(this)">🛍️ Daraz Nepal</div>
+  </div>
+
+  <div class="t-searches">
+    <p>Trending searches</p>
+    <ul>
+      <li><a href="#">MBA Nepal</a></li>
+      <li><a href="#">Civil Service Prep</a></li>
+      <li><a href="#">Freelancing Nepal</a></li>
+      <li><a href="#">Kathmandu rent 2025</a></li>
+      <li><a href="#">TU vs KU</a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════════════════════
+     1. TRENDING
+══════════════════════════════ -->
+<section class="section" id="trending">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-head-left">
+        <div class="sec-eyebrow">
+          <span class="sec-tag">LIVE</span>
+          <div class="sec-rule"></div>
+        </div>
+        <h2 class="sec-title">🔥 Trending <em>KastoChha</em></h2>
+        <p class="sec-sub">What Nepal is talking about right now</p>
+      </div>
+      <a href="#" class="sec-all">View all →</a>
+    </div>
+
+    <div class="feed-list">
+
+      <div class="tr-card fi show" id="tr1">
+        <div class="tr-rank">01</div>
+        <div class="tr-num"><span>01</span><span>TECHNOLOGY</span><span class="growth">↑ 48% today</span></div>
+        <div class="tr-title">iPhone 17 Nepal ma kasto chha?</div>
+        <div class="tr-desc">Price, camera quality, battery life — Nepali users ko real experiences. Daraz delivery bata kinam ki authorized dealer bata? Community le sabai angle cover gareko chha.</div>
+        <div class="tr-footer">
+          <span class="badge badge-red">🔥 Hot</span>
+          <span class="badge badge-neutral">Technology</span>
+          <div class="tr-meta"><span>👍 1,247</span><span>💬 384</span><span>⏱ 2h ago</span></div>
+        </div>
+        <div class="vote-row">
+          <button class="vbtn yes" onclick="castVote('tr1','yes',812,435)">👍 Ramro <span class="vcnt" id="tr1-y">812</span></button>
+          <button class="vbtn no" onclick="castVote('tr1','no',812,435)">👎 Naramro <span class="vcnt" id="tr1-n">435</span></button>
+          <span class="vote-total">1,247 total votes</span>
+        </div>
+        <div class="vote-bar"><div class="vote-fill" id="tr1-bar" style="width:65%"></div></div>
+      </div>
+
+      <div class="tr-card fi show d1" id="tr2">
+        <div class="tr-rank">02</div>
+        <div class="tr-num"><span>02</span><span>CAREER</span><span class="growth">↑ 31% today</span></div>
+        <div class="tr-title">Pathao delivery job kasto chha?</div>
+        <div class="tr-desc">Monthly income, working hours, insurance, bike wear — Pathao rider hunu ramro decision ho? Real riders le share gareko honest opinions.</div>
+        <div class="tr-footer">
+          <span class="badge badge-gold">↑ Rising</span>
+          <span class="badge badge-neutral">Career</span>
+          <div class="tr-meta"><span>👍 934</span><span>💬 211</span><span>⏱ 5h ago</span></div>
+        </div>
+        <div class="vote-row">
+          <button class="vbtn yes" onclick="castVote('tr2','yes',556,378)">👍 Ramro <span class="vcnt" id="tr2-y">556</span></button>
+          <button class="vbtn no" onclick="castVote('tr2','no',556,378)">👎 Naramro <span class="vcnt" id="tr2-n">378</span></button>
+          <span class="vote-total">934 total votes</span>
+        </div>
+        <div class="vote-bar"><div class="vote-fill" id="tr2-bar" style="width:60%"></div></div>
+      </div>
+
+      <div class="tr-card fi show d2" id="tr3">
+        <div class="tr-rank">03</div>
+        <div class="tr-num"><span>03</span><span>EDUCATION</span><span class="growth">↑ 22% today</span></div>
+        <div class="tr-title">+2 Science liye pachi k garne best?</div>
+        <div class="tr-desc">Engineering, MBBS, IT, Banking — +2 science pachi Nepal ma kon career path wise chha? Community ko honest opinions. Seniors ko real experience sunnus.</div>
+        <div class="tr-footer">
+          <span class="badge badge-green">Trending</span>
+          <span class="badge badge-neutral">Education</span>
+          <div class="tr-meta"><span>👍 678</span><span>💬 167</span><span>⏱ 8h ago</span></div>
+        </div>
+        <div class="vote-row">
+          <button class="vbtn yes" onclick="castVote('tr3','yes',430,248)">👍 Ramro <span class="vcnt" id="tr3-y">430</span></button>
+          <button class="vbtn no" onclick="castVote('tr3','no',430,248)">👎 Naramro <span class="vcnt" id="tr3-n">248</span></button>
+          <span class="vote-total">678 total votes</span>
+        </div>
+        <div class="vote-bar"><div class="vote-fill" id="tr3-bar" style="width:63%"></div></div>
+      </div>
+
+      <div class="tr-card fi show d3" id="tr4">
+        <div class="tr-rank">04</div>
+        <div class="tr-num"><span>04</span><span>HOUSING</span><span class="growth down">↓ 5% today</span></div>
+        <div class="tr-title">Kathmandu ma kotha bhaada kati appropriate chha?</div>
+        <div class="tr-desc">Rent hike, location value, landlord behavior — Valley ma thik bhaada kati ho? Tenants ra landlords duitai ko perspectives.</div>
+        <div class="tr-footer">
+          <span class="badge badge-neutral">Housing</span>
+          <div class="tr-meta"><span>👍 521</span><span>💬 142</span><span>⏱ 12h ago</span></div>
+        </div>
+        <div class="vote-row">
+          <button class="vbtn yes" onclick="castVote('tr4','yes',295,226)">👍 Theek chha <span class="vcnt" id="tr4-y">295</span></button>
+          <button class="vbtn no" onclick="castVote('tr4','no',295,226)">👎 Bahut mahango <span class="vcnt" id="tr4-n">226</span></button>
+          <span class="vote-total">521 total votes</span>
+        </div>
+        <div class="vote-bar"><div class="vote-fill" id="tr4-bar" style="width:57%"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════
+     2. POPULAR
+══════════════════════════════ -->
+<section class="section section-alt" id="popular">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-head-left">
+        <div class="sec-eyebrow">
+          <span class="sec-tag">ALL TIME</span>
+          <div class="sec-rule"></div>
+        </div>
+        <h2 class="sec-title">📊 Popular <em>KastoChha</em></h2>
+        <p class="sec-sub">Most engaged topics of all time</p>
+      </div>
+      <a href="#" class="sec-all">View all →</a>
+    </div>
+
+    <div class="pop-grid">
+      <div class="pop-card fi show">
+        <div class="pop-rank hot">01</div>
+        <div class="pop-body">
+          <div class="pop-cat">Technology</div>
+          <div class="pop-title">Daraz Nepal delivery experience kasto chha?</div>
+          <div class="pop-stats">
+            <span class="pop-stat">❤️ 3.1k likes</span>
+            <span class="pop-stat">💬 847 comments</span>
+            <span class="pop-stat" style="color:var(--green)">↑ 78% positive</span>
+          </div>
+        </div>
+      </div>
+      <div class="pop-card fi show d1">
+        <div class="pop-rank hot">02</div>
+        <div class="pop-body">
+          <div class="pop-cat">Finance</div>
+          <div class="pop-title">eSewa vs Khalti — kun digital wallet better chha Nepal ma?</div>
+          <div class="pop-stats">
+            <span class="pop-stat">❤️ 2.8k likes</span>
+            <span class="pop-stat">💬 612 comments</span>
+            <span class="pop-stat" style="color:var(--green)">↑ 65% positive</span>
+          </div>
+        </div>
+      </div>
+      <div class="pop-card fi show d2">
+        <div class="pop-rank hot">03</div>
+        <div class="pop-body">
+          <div class="pop-cat">Lifestyle</div>
+          <div class="pop-title">Kathmandu food delivery — Foodmandu vs Bhoj kasto chha?</div>
+          <div class="pop-stats">
+            <span class="pop-stat">❤️ 2.2k likes</span>
+            <span class="pop-stat">💬 498 comments</span>
+            <span class="pop-stat" style="color:var(--green)">↑ 58% positive</span>
+          </div>
+        </div>
+      </div>
+      <div class="pop-card fi show d3">
+        <div class="pop-rank">04</div>
+        <div class="pop-body">
+          <div class="pop-cat">Education</div>
+          <div class="pop-title">Tribhuvan University education quality kasto chha?</div>
+          <div class="pop-stats">
+            <span class="pop-stat">❤️ 1.9k likes</span>
+            <span class="pop-stat">💬 441 comments</span>
+            <span class="pop-stat" style="color:var(--gold)">↑ 44% positive</span>
+          </div>
+        </div>
+      </div>
+      <div class="pop-card fi show d4">
+        <div class="pop-rank">05</div>
+        <div class="pop-body">
+          <div class="pop-cat">Career</div>
+          <div class="pop-title">Nepal Civil Service preparation worth chha ki hoina?</div>
+          <div class="pop-stats">
+            <span class="pop-stat">❤️ 1.7k likes</span>
+            <span class="pop-stat">💬 389 comments</span>
+            <span class="pop-stat" style="color:var(--gold)">↑ 37% positive</span>
+          </div>
+        </div>
+      </div>
+      <div class="pop-card fi show" style="transition-delay:.32s">
+        <div class="pop-rank">06</div>
+        <div class="pop-body">
+          <div class="pop-cat">Housing</div>
+          <div class="pop-title">Bhaktapur vs Lalitpur — kun place better for living?</div>
+          <div class="pop-stats">
+            <span class="pop-stat">❤️ 1.4k likes</span>
+            <span class="pop-stat">💬 312 comments</span>
+            <span class="pop-stat" style="color:var(--muted2)">→ stable</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════
+     3. FEATURED
+══════════════════════════════ -->
+<section class="section" id="featured">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-head-left">
+        <div class="sec-eyebrow">
+          <span class="sec-tag">EDITOR'S PICK</span>
+          <div class="sec-rule"></div>
+        </div>
+        <h2 class="sec-title">⭐ Featured <em>KastoChha</em></h2>
+        <p class="sec-sub">Curated stories worth your attention</p>
+      </div>
+    </div>
+
+    <div class="feat-grid fi show">
+      <div class="fc fc-main">
+        <div class="fc-visual">
+          <div class="fc-star">⭐ Editor's Pick</div>
+          <div class="fc-emoji">🎓</div>
+        </div>
+        <div class="fc-body">
+          <span class="fc-why">Why featured — Deep community analysis</span>
+          <div class="fc-title">Nepal ma MBA garnu worth chha? 200+ graduates ko honest opinions</div>
+          <div class="fc-desc">Salary expectations, job market reality, college quality, ROI — MBA garnu thik chha ki time waste? Pokhara University, KU, TU bata graduates le share gareko real data ra experiences.</div>
+          <a href="#" class="fc-read">Read full story →</a>
+        </div>
+      </div>
+      <div class="fc fc-b">
+        <div class="fc-visual">
+          <div class="fc-emoji">🏠</div>
+        </div>
+        <div class="fc-body">
+          <span class="fc-why">Why featured — High impact for students</span>
+          <div class="fc-title">Kathmandu hostel life kasto chha?</div>
+          <div class="fc-desc">Safety, cost, food quality — 500+ students ko review bata real picture.</div>
+          <a href="#" class="fc-read">Read →</a>
+        </div>
+      </div>
+      <div class="fc fc-c">
+        <div class="fc-visual">
+          <div class="fc-emoji">💻</div>
+        </div>
+        <div class="fc-body">
+          <span class="fc-why">Why featured — Trending career topic</span>
+          <div class="fc-title">Nepal ma freelancing — realistic income expectations</div>
+          <div class="fc-desc">Toptal, Upwork, Fiverr bata Nepali freelancers ko real income journey.</div>
+          <a href="#" class="fc-read">Read →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════
+     4. BATTLE
+══════════════════════════════ -->
+<section class="section section-alt" id="battle">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-head-left">
+        <div class="sec-eyebrow">
+          <span class="sec-tag">VOTE NOW</span>
+          <div class="sec-rule"></div>
+        </div>
+        <h2 class="sec-title">⚔️ KastoChha <em>Battle</em></h2>
+        <p class="sec-sub">Vote and decide — Nepal le decide garcha</p>
+      </div>
+      <a href="#" class="sec-all">All battles →</a>
+    </div>
+
+    <div class="battle-list">
+
+      <!-- Battle 1 -->
+      <div class="battle-card fi show">
+        <div class="battle-inner">
+          <div class="bside">
+            <div class="bs-cat">Ride Sharing</div>
+            <div class="bs-name">Pathao</div>
+            <div class="bs-desc">Established brand, wider coverage, loyalty points program</div>
+            <div class="bs-vcnt" id="b1-av">3,847 votes</div>
+          </div>
+          <div class="bvs">
+            <div class="bvs-line"></div>
+            <div class="bvs-badge">VS</div>
+            <div class="bvs-line"></div>
+          </div>
+          <div class="bside right">
+            <div class="bs-cat">Ride Sharing</div>
+            <div class="bs-name">InDrive</div>
+            <div class="bs-desc">Price negotiation, newer platform, cheaper rates overall</div>
+            <div class="bs-vcnt" id="b1-bv">2,611 votes</div>
+          </div>
+        </div>
+        <div class="battle-actions">
+          <button class="b-vote-btn a" onclick="castBattle('b1',3847,2611,'a')">👍 Pathao ramro chha</button>
+          <div class="bvs-or">or</div>
+          <button class="b-vote-btn b" onclick="castBattle('b1',3847,2611,'b')">👍 InDrive ramro chha</button>
+        </div>
+        <div class="battle-result">
+          <div class="result-wrap">
+            <span class="rpct a" id="b1-apct">60%</span>
+            <div class="rtrack">
+              <div class="rfill-a" id="b1-fa" style="width:60%"></div>
+              <div class="rfill-b" id="b1-fb" style="width:40%"></div>
+            </div>
+            <span class="rpct b" id="b1-bpct">40%</span>
+          </div>
+          <div class="rtotal" id="b1-tot">6,458 total votes</div>
+        </div>
+      </div>
+
+      <!-- Battle 2 -->
+      <div class="battle-card fi show d1">
+        <div class="battle-inner">
+          <div class="bside">
+            <div class="bs-cat">Digital Wallet</div>
+            <div class="bs-name">eSewa</div>
+            <div class="bs-desc">More merchants, trusted brand, QR pay everywhere in Nepal</div>
+            <div class="bs-vcnt" id="b2-av">5,102 votes</div>
+          </div>
+          <div class="bvs">
+            <div class="bvs-line"></div>
+            <div class="bvs-badge">VS</div>
+            <div class="bvs-line"></div>
+          </div>
+          <div class="bside right">
+            <div class="bs-cat">Digital Wallet</div>
+            <div class="bs-name">Khalti</div>
+            <div class="bs-desc">Better UI, faster transfers, growing merchant base</div>
+            <div class="bs-vcnt" id="b2-bv">3,298 votes</div>
+          </div>
+        </div>
+        <div class="battle-actions">
+          <button class="b-vote-btn a" onclick="castBattle('b2',5102,3298,'a')">👍 eSewa ramro chha</button>
+          <div class="bvs-or">or</div>
+          <button class="b-vote-btn b" onclick="castBattle('b2',5102,3298,'b')">👍 Khalti ramro chha</button>
+        </div>
+        <div class="battle-result">
+          <div class="result-wrap">
+            <span class="rpct a" id="b2-apct">61%</span>
+            <div class="rtrack">
+              <div class="rfill-a" id="b2-fa" style="width:61%"></div>
+              <div class="rfill-b" id="b2-fb" style="width:39%"></div>
+            </div>
+            <span class="rpct b" id="b2-bpct">39%</span>
+          </div>
+          <div class="rtotal" id="b2-tot">8,400 total votes</div>
+        </div>
+      </div>
+
+      <!-- Battle 3 -->
+      <div class="battle-card fi show d2">
+        <div class="battle-inner">
+          <div class="bside">
+            <div class="bs-cat">Education</div>
+            <div class="bs-name">+2 Science</div>
+            <div class="bs-desc">Medical, Engineering path, high competition, job security</div>
+            <div class="bs-vcnt" id="b3-av">4,211 votes</div>
+          </div>
+          <div class="bvs">
+            <div class="bvs-line"></div>
+            <div class="bvs-badge">VS</div>
+            <div class="bvs-line"></div>
+          </div>
+          <div class="bside right">
+            <div class="bs-cat">Education</div>
+            <div class="bs-name">+2 Commerce</div>
+            <div class="bs-desc">BBA, Banking, CA path, business opportunities, flexibility</div>
+            <div class="bs-vcnt" id="b3-bv">3,189 votes</div>
+          </div>
+        </div>
+        <div class="battle-actions">
+          <button class="b-vote-btn a" onclick="castBattle('b3',4211,3189,'a')">👍 Science ramro chha</button>
+          <div class="bvs-or">or</div>
+          <button class="b-vote-btn b" onclick="castBattle('b3',3211,3189,'b')">👍 Commerce ramro chha</button>
+        </div>
+        <div class="battle-result">
+          <div class="result-wrap">
+            <span class="rpct a" id="b3-apct">57%</span>
+            <div class="rtrack">
+              <div class="rfill-a" id="b3-fa" style="width:57%"></div>
+              <div class="rfill-b" id="b3-fb" style="width:43%"></div>
+            </div>
+            <span class="rpct b" id="b3-bpct">43%</span>
+          </div>
+          <div class="rtotal" id="b3-tot">7,400 total votes</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════
+     5. EXPERIENCE
+══════════════════════════════ -->
+<section class="section section-deep" id="experience">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-head-left">
+        <div class="sec-eyebrow">
+          <span class="sec-tag">COMMUNITY</span>
+          <div class="sec-rule"></div>
+        </div>
+        <h2 class="sec-title">💬 KastoChha <em>Experience</em></h2>
+        <p class="sec-sub">Real opinions from real people across Nepal</p>
+      </div>
+    </div>
+
+    <div class="exp-layout">
+
+      <!-- Wall -->
+      <div>
+        <div class="wall-header">
+          <div class="wall-title">📜 KastoChha Wall</div>
+          <div class="wall-sub">Latest experiences shared by the community</div>
+        </div>
+        <div class="wall-feed">
+
+          <div class="wcard fi show">
+            <div class="wcard-top">
+              <div class="av av1">RK</div>
+              <div class="wc-info">
+                <div class="wc-name">Rajesh K.</div>
+                <div class="wc-topic">iPhone 17 Nepal</div>
+              </div>
+              <div class="wc-verdict verd-good">Ramro ✓</div>
+            </div>
+            <div class="wc-text">"Camera honestly mast chha — especially low light ma. But price Rs 1.8 lakh bhayepachi insurance ni linu parcha. Daraz bata kineko, delivery thik samayama ayo. Warranty ko laagi authorized reseller bata kine better huncha."</div>
+            <div class="wc-foot">
+              <button class="wc-btn">❤️ 48</button>
+              <button class="wc-btn">💬 Reply</button>
+              <span class="wc-time">3h ago</span>
+            </div>
+          </div>
+
+          <div class="wcard fi show d1">
+            <div class="wcard-top">
+              <div class="av av2">SM</div>
+              <div class="wc-info">
+                <div class="wc-name">Sita M.</div>
+                <div class="wc-topic">Pathao Job</div>
+              </div>
+              <div class="wc-verdict verd-ok">Thikai</div>
+            </div>
+            <div class="wc-text">"Monthly Rs 35–45k earn garcha depending on hours. Rain bela garo huncha, safety gear dina parthyo. Fuel cost badeko chha so margin thoda kam chha. Side income ko laagi thik chha but main income ma depend nagarne."</div>
+            <div class="wc-foot">
+              <button class="wc-btn">❤️ 31</button>
+              <button class="wc-btn">💬 Reply</button>
+              <span class="wc-time">6h ago</span>
+            </div>
+          </div>
+
+          <div class="wcard fi show d2">
+            <div class="wcard-top">
+              <div class="av av3">AP</div>
+              <div class="wc-info">
+                <div class="wc-name">Anita P.</div>
+                <div class="wc-topic">TU MBA Program</div>
+              </div>
+              <div class="wc-verdict verd-bad">Naramro ✗</div>
+            </div>
+            <div class="wc-text">"2 years ra Rs 3 lakh invest gare. Job placement cell practically nonexistent chha. Faculty quality mixed. Private college bata MBA garnu better lagcha honestly. TU ko naam le job market ma zyada farak pardaina aajkal."</div>
+            <div class="wc-foot">
+              <button class="wc-btn">❤️ 62</button>
+              <button class="wc-btn">💬 Reply</button>
+              <span class="wc-time">1d ago</span>
+            </div>
+          </div>
+
+          <div class="wcard fi show d3">
+            <div class="wcard-top">
+              <div class="av av4">BT</div>
+              <div class="wc-info">
+                <div class="wc-name">Bibek T.</div>
+                <div class="wc-topic">Kathmandu Hostel Life</div>
+              </div>
+              <div class="wc-verdict verd-ok">Thikai</div>
+            </div>
+            <div class="wc-text">"Rs 8,000–12,000 ma decent room paucha Kirtipur area ma. Wifi mostly sano speed chha. Khana ghar ko khana jasta hudaina but manage huncha. Location wise campus najik bhaye time bachcha commuting bata."</div>
+            <div class="wc-foot">
+              <button class="wc-btn">❤️ 27</button>
+              <button class="wc-btn">💬 Reply</button>
+              <span class="wc-time">2d ago</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Create sidebar -->
+      <div class="create-panel">
+        <div class="create-title">✍️ Your Voice Matters</div>
+        <div class="create-sub">Your honest opinion helps thousands of Nepalis make better decisions every day.</div>
+
+        <div class="cta-card ask" onclick="openModal('ask')">
+          <span class="cta-icon">🙋</span>
+          <div class="cta-tag">Community Q&A</div>
+          <div class="cta-heading">Ask a KastoChha</div>
+          <div class="cta-desc">Kuch jannu chha? Community lai sodhnus — thousands of Nepalis will answer honestly.</div>
+          <button class="cta-btn ask-btn">Ask Now →</button>
+        </div>
+
+        <div class="cta-card share" onclick="openModal('share')">
+          <span class="cta-icon">📝</span>
+          <div class="cta-tag">Real Experiences</div>
+          <div class="cta-heading">Share Your Experience</div>
+          <div class="cta-desc">Tapai ko experience share gare अरूलाई maddat huncha. No filters, no sponsors, just truth.</div>
+          <button class="cta-btn share-btn">Share Now →</button>
+        </div>
+
+        <div class="stat-strip">
+          <div class="stat-box">
+            <span class="stat-val">48k</span>
+            <div class="stat-lbl">Experiences</div>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val">12k</span>
+            <div class="stat-lbl">Questions</div>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val">200k</span>
+            <div class="stat-lbl">Votes</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="foot-inner">
+    <div class="foot-grid">
+      <div>
+        <a href="#" class="foot-logo">Kasto<em>Chha</em></a>
+        <p class="foot-tagline">Nepal ko real talk platform. Authentic opinions, zero filter. Built for Nepalis, by Nepalis.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Explore</h5>
+        <ul>
+          <li><a href="#trending">Trending</a></li>
+          <li><a href="#popular">Popular</a></li>
+          <li><a href="#featured">Featured</a></li>
+          <li><a href="#battle">Battle</a></li>
+          <li><a href="#experience">Experience</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Topics</h5>
+        <ul>
+          <li><a href="#">Technology</a></li>
+          <li><a href="#">Career</a></li>
+          <li><a href="#">Education</a></li>
+          <li><a href="#">Housing</a></li>
+          <li><a href="#">Finance</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>About</h5>
+        <ul>
+          <li><a href="#">About Us</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2025 KastoChha. Nepal ko real talk.</span>
+      <span>Made with ❤️ in Kathmandu</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ══ MODAL ══ -->
+<div class="modal-bg" id="modal-bg" onclick="closeBg(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-tabs">
+        <button class="mtab on" id="tab-share" onclick="switchMTab('share')">Share Experience</button>
+        <button class="mtab" id="tab-ask" onclick="switchMTab('ask')">Ask a Question</button>
+      </div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- Share Panel -->
+    <div class="mpanel on" id="mp-share">
+      <div class="prog" style="margin-top:18px">
+        <div class="pseg" id="sp1"></div><div class="pseg" id="sp2"></div>
+        <div class="pseg" id="sp3"></div><div class="pseg" id="sp4"></div><div class="pseg" id="sp5"></div>
+      </div>
+      <div class="fg">
+        <div class="flbl"><span class="fstep">1</span>Topic</div>
+        <input class="finp" id="sh-topic" type="text" placeholder="e.g. Daraz Nepal delivery experience" oninput="calcProg()"/>
+      </div>
+      <div class="fg">
+        <div class="flbl"><span class="fstep">2</span>Verdict</div>
+        <div class="vgrid">
+          <button class="vbtn-m ramro" id="vr" onclick="pickV('ramro')"><span class="vi">✅</span>Ramro chha</button>
+          <button class="vbtn-m thikai" id="vt" onclick="pickV('thikai')"><span class="vi">🤏</span>Thikai chha</button>
+          <button class="vbtn-m naramro" id="vn" onclick="pickV('naramro')"><span class="vi">❌</span>Naramro chha</button>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="flbl"><span class="fstep">3</span>Category</div>
+        <div class="trow">
+          <div class="tpill" onclick="toggleT(this)">Technology</div>
+          <div class="tpill" onclick="toggleT(this)">Career</div>
+          <div class="tpill" onclick="toggleT(this)">Food</div>
+          <div class="tpill" onclick="toggleT(this)">Education</div>
+          <div class="tpill" onclick="toggleT(this)">Finance</div>
+          <div class="tpill" onclick="toggleT(this)">Housing</div>
+          <div class="tpill" onclick="toggleT(this)">Lifestyle</div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="flbl"><span class="fstep">4</span>Your Experience</div>
+        <textarea class="fta" id="sh-exp" placeholder="Tapai ko real experience share garnus… honest ra helpful hunu important chha." oninput="calcProg()"></textarea>
+      </div>
+      <div class="fg">
+        <div class="flbl"><span class="fstep">5</span>Context <span style="font-size:.55rem;color:var(--muted2);margin-left:4px">OPTIONAL</span></div>
+        <div class="f2col">
+          <select class="fsel"><option value="">Location</option><option>Kathmandu</option><option>Lalitpur</option><option>Bhaktapur</option><option>Pokhara</option><option>Other</option></select>
+          <select class="fsel"><option value="">User Type</option><option>Student</option><option>Professional</option><option>Business Owner</option><option>Homemaker</option></select>
+        </div>
+      </div>
+      <button class="fsub" onclick="submitForm('share')">Share Experience →</button>
+    </div>
+
+    <!-- Ask Panel -->
+    <div class="mpanel" id="mp-ask">
+      <div style="margin-top:18px" class="fg">
+        <div class="flbl">Your Question</div>
+        <textarea class="fta" id="ask-q" placeholder="Tapai ko question type garnus… (e.g. iPhone 17 kasto chha?)"></textarea>
+        <div class="ex-chips">
+          <div class="ex-c" onclick="fillAsk(this)">iPhone 17 kasto chha?</div>
+          <div class="ex-c" onclick="fillAsk(this)">Pathao job kasto chha?</div>
+          <div class="ex-c" onclick="fillAsk(this)">+2 pachi k garne best ho?</div>
+          <div class="ex-c" onclick="fillAsk(this)">Kathmandu hostel life kasto chha?</div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="flbl">Category</div>
+        <select class="fsel"><option value="">Select category…</option><option>Food</option><option>Career</option><option>Housing</option><option>Education</option><option>Technology</option><option>Finance</option><option>Lifestyle</option></select>
+      </div>
+      <button class="fsub" style="margin-top:6px" onclick="submitForm('ask')">Post Question →</button>
+    </div>
+
+    <!-- Success states -->
+    <div class="m-success" id="suc-share">
+      <div class="msuc-ico g">✓</div>
+      <h3>Experience Shared!</h3>
+      <p>Tapai ko experience live cha.<br>Community le chhadai padhcha — dhanyabad!</p>
+      <button class="msuc-btn" onclick="resetModal()">Share Another →</button>
+    </div>
+    <div class="m-success" id="suc-ask">
+      <div class="msuc-ico b">🙏</div>
+      <h3>Question Posted!</h3>
+      <p>Tapai ko question live cha.<br>Community le chhadai jawab dincha!</p>
+      <button class="msuc-btn" onclick="resetModal()">Ask Another →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* scroll observer */
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if(e.isIntersecting){e.target.classList.add('show');io.unobserve(e.target)} });
+},{threshold:.06,rootMargin:'0px 0px -28px 0px'});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* nav scroll tint */
+window.addEventListener('scroll',()=>{
+  document.getElementById('mainnav').style.boxShadow = window.scrollY>20?'0 1px 0 var(--border)':'none';
+});
+
+/* search chips */
+function fillSearch(el){
+  const txt = el.textContent.replace(/^[^\s]+\s/,'').trim();
+  document.getElementById('srch').value = txt;
+  document.getElementById('srch').focus();
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* trending votes */
+const voted={};
+function castVote(id,side,yS,nS){
+  if(voted[id])return;voted[id]=side;
+  let y=yS,n=nS;if(side==='yes')y++;else n++;
+  document.getElementById(id+'-y').textContent=y;
+  document.getElementById(id+'-n').textContent=n;
+  const pct=Math.round(y/(y+n)*100);
+  document.getElementById(id+'-bar').style.width=pct+'%';
+  const card=document.getElementById(id);
+  card.querySelector('.vbtn.yes').classList.toggle('voted',side==='yes');
+  card.querySelector('.vbtn.no').classList.toggle('voted',side==='no');
+}
+
+/* battle votes */
+const bvoted={};
+function castBattle(id,aS,bS,side){
+  if(bvoted[id])return;bvoted[id]=side;
+  let a=aS,b=bS;if(side==='a')a++;else b++;
+  const tot=a+b;
+  const ap=Math.round(a/tot*100),bp=100-ap;
+  document.getElementById(id+'-fa').style.width=ap+'%';
+  document.getElementById(id+'-fb').style.width=bp+'%';
+  document.getElementById(id+'-apct').textContent=ap+'%';
+  document.getElementById(id+'-bpct').textContent=bp+'%';
+  document.getElementById(id+'-tot').textContent=tot.toLocaleString()+' total votes';
+  document.getElementById(id+'-av').textContent=(side==='a'?a:aS).toLocaleString()+' votes';
+  document.getElementById(id+'-bv').textContent=(side==='b'?b:bS).toLocaleString()+' votes';
+}
+
+/* modal */
+let activeTab='share',verdict=null;
+function openModal(tab){
+  document.getElementById('modal-bg').classList.add('open');
+  document.body.style.overflow='hidden';
+  switchMTab(tab);
+}
+function closeModal(){
+  document.getElementById('modal-bg').classList.remove('open');
+  document.body.style.overflow='';
+}
+function closeBg(e){if(e.target===document.getElementById('modal-bg'))closeModal();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+function switchMTab(tab){
+  activeTab=tab;
+  ['share','ask'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('on',t===tab);
+    document.getElementById('mp-'+t).classList.toggle('on',t===tab);
+    document.getElementById('suc-'+t).style.display='none';
+  });
+}
+function pickV(v){
+  verdict=v;
+  ['vr','vt','vn'].forEach(id=>document.getElementById(id).classList.remove('on'));
+  const map={ramro:'vr',thikai:'vt',naramro:'vn'};
+  document.getElementById(map[v]).classList.add('on');
+  calcProg();
+}
+function toggleT(el){el.classList.toggle('on');calcProg();}
+function calcProg(){
+  const t=(document.getElementById('sh-topic')||{}).value||'';
+  const tg=document.querySelectorAll('.tpill.on').length;
+  const ex=(document.getElementById('sh-exp')||{}).value||'';
+  const f=[t.length>0,verdict!==null,tg>0,ex.length>10,false];
+  [1,2,3,4,5].forEach(i=>document.getElementById('sp'+i).classList.toggle('fill',f[i-1]));
+}
+function fillAsk(el){document.getElementById('ask-q').value=el.textContent;document.getElementById('ask-q').focus();}
+function submitForm(type){
+  document.getElementById('mp-'+type).style.display='none';
+  const s=document.getElementById('suc-'+type);s.style.display='flex';
+  document.querySelector('.modal-tabs').style.opacity='0';
+}
+function resetModal(){
+  verdict=null;
+  document.querySelectorAll('.vbtn-m').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.tpill').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.pseg').forEach(s=>s.classList.remove('fill'));
+  ['sh-topic','sh-exp','ask-q'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('suc-share').style.display='none';
+  document.getElementById('suc-ask').style.display='none';
+  document.getElementById('mp-share').style.display='';
+  document.getElementById('mp-ask').style.display='';
+  document.querySelector('.modal-tabs').style.opacity='1';
+  switchMTab(activeTab);
+}
+</script>
+</body>
+</html>
