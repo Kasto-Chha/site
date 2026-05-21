@@ -2,6 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import {
+  IconBook,
+  IconBriefcase,
+  IconChat,
+  IconCheck,
+  IconHome,
+  IconPen,
+  IconQuestion
+} from "./components/icons";
 
 export default function HomePage() {
   const verdictRef = useRef(null);
@@ -650,7 +659,7 @@ export default function HomePage() {
             <div className="fc fc-main bento-card">
               <div className="fc-visual">
                 <div className="fc-star">Editor pick</div>
-                <div className="fc-emoji">EDU</div>
+                <div className="fc-emoji"><IconBook className="icon" /></div>
               </div>
               <div className="fc-body">
                 <span className="fc-why">Why featured - Deep community analysis</span>
@@ -663,7 +672,7 @@ export default function HomePage() {
             </div>
             <div className="fc fc-b bento-card">
               <div className="fc-visual">
-                <div className="fc-emoji">HOME</div>
+                <div className="fc-emoji"><IconHome className="icon" /></div>
               </div>
               <div className="fc-body">
                 <span className="fc-why">Why featured - High impact for students</span>
@@ -674,7 +683,7 @@ export default function HomePage() {
             </div>
             <div className="fc fc-c bento-card">
               <div className="fc-visual">
-                <div className="fc-emoji">WORK</div>
+                <div className="fc-emoji"><IconBriefcase className="icon" /></div>
               </div>
               <div className="fc-body">
                 <span className="fc-why">Why featured - Trending career topic</span>
@@ -861,7 +870,7 @@ export default function HomePage() {
                     <div className="wc-verdict verd-good">Ramro</div>
                   </div>
                   <div className="wc-text">
-                    "Camera honestly mast chha - especially low light ma. But price Rs 1.8 lakh bhayepachi insurance ni linu parcha. Daraz bata kineko, delivery thik samayama ayo. Warranty ko laagi authorized reseller bata kine better huncha."
+                    &ldquo;Camera honestly mast chha - especially low light ma. But price Rs 1.8 lakh bhayepachi insurance ni linu parcha. Daraz bata kineko, delivery thik samayama ayo. Warranty ko laagi authorized reseller bata kine better huncha.&rdquo;
                   </div>
                   <div className="wc-foot">
                     <button type="button" className="wc-btn">Love 48</button>
@@ -880,7 +889,7 @@ export default function HomePage() {
                     <div className="wc-verdict verd-ok">Thikai</div>
                   </div>
                   <div className="wc-text">
-                    "Monthly Rs 35-45k earn garcha depending on hours. Rain bela garo huncha, safety gear dina parthyo. Fuel cost badeko chha so margin thoda kam chha. Side income ko laagi thik chha but main income ma depend nagarne."
+                    &ldquo;Monthly Rs 35-45k earn garcha depending on hours. Rain bela garo huncha, safety gear dina parthyo. Fuel cost badeko chha so margin thoda kam chha. Side income ko laagi thik chha but main income ma depend nagarne.&rdquo;
                   </div>
                   <div className="wc-foot">
                     <button type="button" className="wc-btn">Love 31</button>
@@ -899,7 +908,7 @@ export default function HomePage() {
                     <div className="wc-verdict verd-bad">Naramro</div>
                   </div>
                   <div className="wc-text">
-                    "2 years ra Rs 3 lakh invest gare. Job placement cell practically nonexistent chha. Faculty quality mixed. Private college bata MBA garnu better lagcha honestly. TU ko naam le job market ma zyada farak pardaina aajkal."
+                    &ldquo;2 years ra Rs 3 lakh invest gare. Job placement cell practically nonexistent chha. Faculty quality mixed. Private college bata MBA garnu better lagcha honestly. TU ko naam le job market ma zyada farak pardaina aajkal.&rdquo;
                   </div>
                   <div className="wc-foot">
                     <button type="button" className="wc-btn">Love 62</button>
@@ -918,7 +927,7 @@ export default function HomePage() {
                     <div className="wc-verdict verd-ok">Thikai</div>
                   </div>
                   <div className="wc-text">
-                    "Rs 8,000-12,000 ma decent room paucha Kirtipur area ma. Wifi mostly sano speed chha. Khana ghar ko khana jasta hudaina but manage huncha. Location wise campus najik bhaye time bachcha commuting bata."
+                    &ldquo;Rs 8,000-12,000 ma decent room paucha Kirtipur area ma. Wifi mostly sano speed chha. Khana ghar ko khana jasta hudaina but manage huncha. Location wise campus najik bhaye time bachcha commuting bata.&rdquo;
                   </div>
                   <div className="wc-foot">
                     <button type="button" className="wc-btn">Love 27</button>
@@ -934,7 +943,7 @@ export default function HomePage() {
               <div className="create-sub">Your honest opinion helps thousands of Nepalis make better decisions every day.</div>
 
               <div className="cta-card ask" onClick={() => openModal("ask")}>
-                <span className="cta-icon">ASK</span>
+                <span className="cta-icon"><IconQuestion className="icon" /></span>
                 <div className="cta-tag">Community Q and A</div>
                 <div className="cta-heading">Ask a KastoChha</div>
                 <div className="cta-desc">Kuch jannu chha? Community lai sodhnus - thousands of Nepalis will answer honestly.</div>
@@ -942,7 +951,7 @@ export default function HomePage() {
               </div>
 
               <div className="cta-card share" onClick={() => openModal("share")}>
-                <span className="cta-icon">SHARE</span>
+                <span className="cta-icon"><IconPen className="icon" /></span>
                 <div className="cta-tag">Real Experiences</div>
                 <div className="cta-heading">Share Your Experience</div>
                 <div className="cta-desc">Tapai ko experience share gare aru lai maddat huncha. No filters, no sponsors, just truth.</div>
@@ -1115,13 +1124,13 @@ export default function HomePage() {
           </div>
 
           <div className="m-success" id="suc-share">
-            <div className="msuc-ico g">OK</div>
+            <div className="msuc-ico g"><IconCheck className="icon" /></div>
             <h3>Experience Shared!</h3>
             <p>Tapai ko experience live cha.<br />Community le chhadai padhcha - dhanyabad!</p>
             <button type="button" className="msuc-btn" onClick={resetModal}>Share Another -&gt;</button>
           </div>
           <div className="m-success" id="suc-ask">
-            <div className="msuc-ico b">TY</div>
+            <div className="msuc-ico b"><IconChat className="icon" /></div>
             <h3>Question Posted!</h3>
             <p>Tapai ko question live cha.<br />Community le chhadai jawab dincha!</p>
             <button type="button" className="msuc-btn" onClick={resetModal}>Ask Another -&gt;</button>

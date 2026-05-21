@@ -1,3 +1,5 @@
+import { IconBook, IconBriefcase, IconHome } from "../components/icons";
+
 export default function FeaturedPage() {
   return (
     <>
@@ -41,7 +43,7 @@ export default function FeaturedPage() {
             <div className="fc fc-main bento-card">
               <div className="fc-visual">
                 <div className="fc-star">Editor Pick</div>
-                <div className="fc-emoji">EDU</div>
+                <div className="fc-emoji"><IconBook className="icon" /></div>
               </div>
               <div className="fc-body">
                 <span className="fc-why">Why featured - Deep community analysis</span>
@@ -52,7 +54,7 @@ export default function FeaturedPage() {
             </div>
             <div className="fc fc-b bento-card">
               <div className="fc-visual">
-                <div className="fc-emoji">HOME</div>
+                <div className="fc-emoji"><IconHome className="icon" /></div>
               </div>
               <div className="fc-body">
                 <span className="fc-why">Why featured - High impact for students</span>
@@ -63,7 +65,7 @@ export default function FeaturedPage() {
             </div>
             <div className="fc fc-c bento-card">
               <div className="fc-visual">
-                <div className="fc-emoji">WORK</div>
+                <div className="fc-emoji"><IconBriefcase className="icon" /></div>
               </div>
               <div className="fc-body">
                 <span className="fc-why">Why featured - Trending career topic</span>

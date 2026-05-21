@@ -1,3 +1,5 @@
+import { IconArrowDown, IconArrowUp } from "../components/icons";
+
 export default function ExperiencePage() {
   return (
     <>
@@ -51,9 +53,13 @@ export default function ExperiencePage() {
               <div className="review-feed">
                 <div className="review-card">
                   <div className="review-vote">
-                    <button type="button" className="vote-btn">Up</button>
+                    <button type="button" className="vote-btn" aria-label="Upvote">
+                      <IconArrowUp className="icon" />
+                    </button>
                     <span className="vote-count">1.2k</span>
-                    <button type="button" className="vote-btn">Down</button>
+                    <button type="button" className="vote-btn" aria-label="Downvote">
+                      <IconArrowDown className="icon" />
+                    </button>
                   </div>
                   <div className="review-body">
                     <div className="review-topic">Technology / Phones</div>
@@ -74,9 +80,13 @@ export default function ExperiencePage() {
 
                 <div className="review-card">
                   <div className="review-vote">
-                    <button type="button" className="vote-btn">Up</button>
+                    <button type="button" className="vote-btn" aria-label="Upvote">
+                      <IconArrowUp className="icon" />
+                    </button>
                     <span className="vote-count">860</span>
-                    <button type="button" className="vote-btn">Down</button>
+                    <button type="button" className="vote-btn" aria-label="Downvote">
+                      <IconArrowDown className="icon" />
+                    </button>
                   </div>
                   <div className="review-body">
                     <div className="review-topic">Career / Delivery</div>
@@ -97,9 +107,13 @@ export default function ExperiencePage() {
 
                 <div className="review-card">
                   <div className="review-vote">
-                    <button type="button" className="vote-btn">Up</button>
+                    <button type="button" className="vote-btn" aria-label="Upvote">
+                      <IconArrowUp className="icon" />
+                    </button>
                     <span className="vote-count">740</span>
-                    <button type="button" className="vote-btn">Down</button>
+                    <button type="button" className="vote-btn" aria-label="Downvote">
+                      <IconArrowDown className="icon" />
+                    </button>
                   </div>
                   <div className="review-body">
                     <div className="review-topic">Education / MBA</div>
@@ -120,9 +134,13 @@ export default function ExperiencePage() {
 
                 <div className="review-card">
                   <div className="review-vote">
-                    <button type="button" className="vote-btn">Up</button>
+                    <button type="button" className="vote-btn" aria-label="Upvote">
+                      <IconArrowUp className="icon" />
+                    </button>
                     <span className="vote-count">612</span>
-                    <button type="button" className="vote-btn">Down</button>
+                    <button type="button" className="vote-btn" aria-label="Downvote">
+                      <IconArrowDown className="icon" />
+                    </button>
                   </div>
                   <div className="review-body">
                     <div className="review-topic">Housing / Hostel</div>
