@@ -2,115 +2,258 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export default function ChatClient() {
+const SUGGESTIONS = [
+  "Ncell vs NTC — kun ramro?",
+  "Is the iPhone 16 worth it in Nepal?",
+  "Best banks for a savings account",
+  "Tips before renting a flat in Kathmandu"
+];
+
+export default function ChatClient({ recent = [], prompts = [] }) {
   const searchParams = useSearchParams();
-  const rawQuery = searchParams.get("q") || "";
-  const query = rawQuery.trim() || "Ask anything";
-  const [showHistory, setShowHistory] = useState(false);
+  const initialQuery = (searchParams.get("q") || "").trim();
+
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+
+  const idRef = useRef(0);
+  const startedRef = useRef(false);
+  const scrollRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  const nextId = () => {
+    idRef.current += 1;
+    return `m${idRef.current}`;
+  };
+
+  const updateMessage = (id, content) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, content } : m))
+    );
+  };
+
+  const send = async (text) => {
+    const content = (text || "").trim();
+    if (!content || streaming) return;
+
+    const userMsg = { id: nextId(), role: "user", content };
+    const assistantMsg = { id: nextId(), role: "assistant", content: "" };
+    const base = [...messages, userMsg];
+
+    setMessages([...base, assistantMsg]);
+    setInput("");
+    setStreaming(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          messages: base.map(({ role, content }) => ({ role, content }))
+        })
+      });
+
+      if (!response.ok || !response.body) {
+        const data = await response.json().catch(() => ({}));
+        updateMessage(
+          assistantMsg.id,
+          data?.error || "Sorry, something went wrong. Please try again."
+        );
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        updateMessage(assistantMsg.id, acc);
+      }
+    } catch (error) {
+      updateMessage(
+        assistantMsg.id,
+        "Network error reaching the assistant. Please try again."
+      );
+    } finally {
+      setStreaming(false);
+    }
+  };
+
+  // Auto-send the search-box query once on load.
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    if (initialQuery) send(initialQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the conversation scrolled to the latest message.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    send(input);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      send(input);
+    }
+  };
+
+  const newChat = () => {
+    if (streaming) return;
+    setMessages([]);
+    setInput("");
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", "/chat");
+    }
+    textareaRef.current?.focus();
+  };
+
+  const railPrompts = Array.from(new Set([...prompts, ...recent]))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const isEmpty = messages.length === 0;
 
   return (
-    <div className="chat-page">
-      <div className="chat-shell">
-        <aside className="chat-rail">
-          <div className="chat-rail-head">
-            <Link className="chat-back" href="/">Back to home</Link>
-            <div className="chat-brand">KastoChha AI</div>
-            <p className="chat-rail-sub">Quick answers and community signals.</p>
-            <div className="chat-rail-actions">
-              <button
-                type="button"
-                className="chat-history-toggle"
-                onClick={() => setShowHistory((prev) => !prev)}
-              >
-                {showHistory ? "Hide history" : "Show history"}
-              </button>
-            </div>
-          </div>
-          {showHistory && (
-            <div className="chat-rail-block">
-              <div className="chat-rail-title">History</div>
-              <ul className="chat-history-list">
-                <li>Daraz Nepal delivery experience</li>
-                <li>iPhone 17 camera reviews</li>
-                <li>Pathao vs InDrive earnings</li>
-                <li>Hostel life near TU</li>
-              </ul>
-            </div>
-          )}
-          <div className="chat-rail-block">
-            <div className="chat-rail-title">Recent searches</div>
-            <ul className="chat-rail-list">
-              <li>iPhone 17 Nepal</li>
-              <li>Pathao job reviews</li>
-              <li>Kathmandu hostel</li>
-              <li>eSewa vs Khalti</li>
+    <div className="chat-app">
+      <aside className="chat-sidebar">
+        <div className="chat-side-top">
+          <Link href="/" className="chat-logo">
+            Kasto<em>Chha</em>
+          </Link>
+          <button
+            type="button"
+            className="chat-newbtn"
+            onClick={newChat}
+            disabled={streaming}
+          >
+            + New chat
+          </button>
+        </div>
+
+        {railPrompts.length > 0 ? (
+          <div className="chat-side-block">
+            <div className="chat-side-label">Community is asking</div>
+            <ul className="chat-side-list">
+              {railPrompts.map((item) => (
+                <li key={item}>
+                  <button type="button" onClick={() => send(item)} disabled={streaming}>
+                    {item}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="chat-rail-block">
-            <div className="chat-rail-title">Popular prompts</div>
-            <div className="chat-chip-row">
-              <button type="button" className="chat-chip">Price and value</button>
-              <button type="button" className="chat-chip">Best alternatives</button>
-              <button type="button" className="chat-chip">Local experience</button>
-              <button type="button" className="chat-chip">Where to buy</button>
-            </div>
+        ) : null}
+
+        <div className="chat-side-foot">
+          <Link href="/" className="chat-side-home">← Back to KastoChha</Link>
+        </div>
+      </aside>
+
+      <main className="chat-main" id="main">
+        <header className="chat-topbar">
+          <div className="chat-topbar-title">
+            <span className="chat-spark" aria-hidden="true">✦</span>
+            KastoChha Assist
           </div>
-        </aside>
+          <div className="chat-topbar-badge">Powered by AI · Nepal-first</div>
+        </header>
 
-        <main className="chat-main">
-          <div className="chat-header">
-            <div>
-              <div className="chat-title">AI summary</div>
-              <div className="chat-subtitle">Search results for community and local signals</div>
-            </div>
-            <div className="chat-tag">KastoChha AI</div>
-          </div>
-
-          <div className="chat-thread">
-            <div className="msg msg-user">
-              <div className="msg-label">You</div>
-              <div className="msg-bubble">{query}</div>
-            </div>
-
-            <div className="msg msg-assistant">
-              <div className="msg-label">KastoChha AI</div>
-              <div className="msg-bubble">
-                <p className="msg-text">Here is a quick readout based on similar questions and recent activity.</p>
-                <div className="msg-grid">
-                  <div className="msg-card">
-                    <div className="msg-card-title">Community sentiment</div>
-                    <div className="msg-card-value">Mostly positive</div>
-                    <div className="msg-card-sub">High engagement and steady replies.</div>
-                  </div>
-                  <div className="msg-card">
-                    <div className="msg-card-title">Common concerns</div>
-                    <div className="msg-card-value">Price and after sales</div>
-                    <div className="msg-card-sub">People ask about value and support.</div>
-                  </div>
-                  <div className="msg-card">
-                    <div className="msg-card-title">Quick advice</div>
-                    <div className="msg-card-value">Compare before buying</div>
-                    <div className="msg-card-sub">Check local stores and recent reviews.</div>
-                  </div>
-                </div>
-                <div className="msg-foot">
-                  Want deeper answers? Ask a follow up question below.
+        <div className="chat-scroll" ref={scrollRef}>
+          <div className="chat-inner">
+            {isEmpty ? (
+              <div className="chat-welcome">
+                <div className="chat-welcome-spark" aria-hidden="true">✦</div>
+                <h1 className="chat-welcome-title">
+                  Namaste! <em>Kasto chha?</em>
+                </h1>
+                <p className="chat-welcome-sub">
+                  Ask anything about products, places, careers, or life in Nepal.
+                  Answers are grounded in real community experiences.
+                </p>
+                <div className="chat-suggests">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className="chat-suggest"
+                      onClick={() => send(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
+            ) : (
+              messages.map((message) => {
+                const isUser = message.role === "user";
+                const pending = !isUser && !message.content && streaming;
+                return (
+                  <div
+                    key={message.id}
+                    className={`chat-msg ${isUser ? "is-user" : "is-assistant"}`}
+                  >
+                    <div className="chat-avatar" aria-hidden="true">
+                      {isUser ? "You" : "KC"}
+                    </div>
+                    <div className="chat-bubble">
+                      {pending ? (
+                        <span className="chat-typing">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </span>
+                      ) : (
+                        message.content
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
+        </div>
 
-          <div className="chat-composer">
-            <div className="composer-inner">
-              <input type="text" placeholder="Ask a follow up..." />
-              <button type="button">Send</button>
-            </div>
-            <div className="composer-note">Responses are mocked for now.</div>
+        <div className="chat-composer">
+          <form className="chat-composer-form" onSubmit={handleSubmit}>
+            <textarea
+              ref={textareaRef}
+              className="chat-input"
+              rows={1}
+              placeholder="Ask KastoChha Assist anything..."
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button
+              type="submit"
+              className="chat-send"
+              disabled={streaming || !input.trim()}
+              aria-label="Send"
+            >
+              {streaming ? "…" : "↑"}
+            </button>
+          </form>
+          <div className="chat-disclaimer">
+            KastoChha Assist can make mistakes. Verify important details.
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

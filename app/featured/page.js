@@ -1,6 +1,19 @@
 import { IconBook, IconBriefcase, IconHome } from "../components/icons";
+import NavAuth from "../components/NavAuth";
 
-export default function FeaturedPage() {
+import { getFeaturedStories } from "../../lib/supabase/queries";
+
+function FeaturedIcon({ type }) {
+  if (type === "home") return <IconHome className="icon" />;
+  if (type === "briefcase") return <IconBriefcase className="icon" />;
+  return <IconBook className="icon" />;
+}
+
+export default async function FeaturedPage() {
+  const stories = await getFeaturedStories();
+  const mainStory = stories.find((item) => item.slot === "main");
+  const sideStories = stories.filter((item) => item.slot !== "main").slice(0, 2);
+
   return (
     <>
       <nav id="mainnav">
@@ -15,8 +28,9 @@ export default function FeaturedPage() {
           <a href="/experience" className="nav-link">Experience</a>
         </div>
         <div className="nav-actions">
-          <a className="btn-outline" href="/chat">Ask AI</a>
-          <a className="btn-red" href="/experience">Share Review</a>
+          <a className="btn-outline" href="/chat">Ask community</a>
+          <a className="btn-red" href="/experience">Share review</a>
+          <NavAuth />
         </div>
       </nav>
 
@@ -30,8 +44,8 @@ export default function FeaturedPage() {
               <p className="page-sub">Curated stories with deep community insights.</p>
             </div>
             <div className="page-actions">
-              <a className="btn-outline" href="/chat">Ask AI</a>
-              <a className="btn-red" href="/experience">Share Review</a>
+              <a className="btn-outline" href="/chat">Ask community</a>
+              <a className="btn-red" href="/experience">Share review</a>
             </div>
           </div>
         </div>
@@ -39,42 +53,50 @@ export default function FeaturedPage() {
 
       <section className="section">
         <div className="container">
-          <div className="feat-grid bento-grid">
-            <div className="fc fc-main bento-card">
-              <div className="fc-visual">
-                <div className="fc-star">Editor Pick</div>
-                <div className="fc-emoji"><IconBook className="icon" /></div>
-              </div>
-              <div className="fc-body">
-                <span className="fc-why">Why featured - Deep community analysis</span>
-                <div className="fc-title">Nepal ma MBA garnu worth chha? 200+ graduates ko opinions</div>
-                <div className="fc-desc">Salary expectations, job market reality, college quality, ROI and campus culture.</div>
-                <a href="#" className="fc-read">Read full story -&gt;</a>
-              </div>
+          {stories.length === 0 ? (
+            <div className="bento-card empty-card" style={{ padding: "24px" }}>
+              <div className="fc-title">No featured stories yet</div>
+              <div className="fc-desc">Add featured stories in Supabase to populate this page.</div>
             </div>
-            <div className="fc fc-b bento-card">
-              <div className="fc-visual">
-                <div className="fc-emoji"><IconHome className="icon" /></div>
-              </div>
-              <div className="fc-body">
-                <span className="fc-why">Why featured - High impact for students</span>
-                <div className="fc-title">Kathmandu hostel life kasto chha?</div>
-                <div className="fc-desc">Safety, cost, food quality and commute realities.</div>
-                <a href="#" className="fc-read">Read -&gt;</a>
-              </div>
+          ) : (
+            <div className="feat-grid bento-grid">
+              {mainStory ? (
+                <div className="fc fc-main bento-card">
+                  <div className="fc-visual">
+                    <div className="fc-star">Editor pick</div>
+                    <div className="fc-emoji"><FeaturedIcon type={mainStory.icon} /></div>
+                  </div>
+                  <div className="fc-body">
+                    <span className="fc-why">{mainStory.why_text}</span>
+                    <div className="fc-title">{mainStory.title}</div>
+                    <div className="fc-desc">{mainStory.description}</div>
+                    {mainStory.link_url ? (
+                      <a href={mainStory.link_url} className="fc-read">Read full story -&gt;</a>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {sideStories.map((story, index) => (
+                <div
+                  className={`fc ${index === 0 ? "fc-b" : "fc-c"} bento-card`}
+                  key={story.id}
+                >
+                  <div className="fc-visual">
+                    <div className="fc-emoji"><FeaturedIcon type={story.icon} /></div>
+                  </div>
+                  <div className="fc-body">
+                    <span className="fc-why">{story.why_text}</span>
+                    <div className="fc-title">{story.title}</div>
+                    <div className="fc-desc">{story.description}</div>
+                    {story.link_url ? (
+                      <a href={story.link_url} className="fc-read">Read -&gt;</a>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="fc fc-c bento-card">
-              <div className="fc-visual">
-                <div className="fc-emoji"><IconBriefcase className="icon" /></div>
-              </div>
-              <div className="fc-body">
-                <span className="fc-why">Why featured - Trending career topic</span>
-                <div className="fc-title">Nepal ma freelancing - realistic income expectations</div>
-                <div className="fc-desc">Toptal, Upwork, Fiverr bata Nepali freelancers ko journey.</div>
-                <a href="#" className="fc-read">Read -&gt;</a>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
     </>
