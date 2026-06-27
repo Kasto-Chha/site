@@ -4,6 +4,12 @@ import { useState } from "react";
 
 import { IconCheck, IconFacebook, IconLink, IconWhatsApp, IconXLogo } from "./icons";
 
+// Canonical production origin. Using this (instead of window.location.origin)
+// keeps shared links pointing at the real site even when the author is browsing
+// a password-protected Vercel preview deployment — otherwise social crawlers hit
+// the preview's auth wall and show "Dashboard — Vercel" instead of the post.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
+
 // Reusable "SHARE · copy f X wa" row. `url` is the item's permalink (a path like
 // "/trending/<id>" or an absolute URL); it's resolved to an absolute URL at
 // click/copy time so the right page is shared, not whatever page hosts the card.
@@ -11,10 +17,17 @@ export default function ShareRow({ text = "", url, label = "Share" }) {
   const [copied, setCopied] = useState(false);
 
   const absoluteUrl = () => {
-    if (typeof window === "undefined") return url || "https://kastochha.com";
-    if (!url) return window.location.href;
-    if (/^https?:\/\//i.test(url)) return url;
-    return window.location.origin + (url.startsWith("/") ? url : `/${url}`);
+    if (url && /^https?:\/\//i.test(url)) return url; // already absolute
+    const origin =
+      SITE_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    if (!url) {
+      const path =
+        typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : "";
+      return origin + path;
+    }
+    return origin + (url.startsWith("/") ? url : `/${url}`);
   };
 
   const open = (href) => {
