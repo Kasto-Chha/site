@@ -29,6 +29,34 @@ export function IconPen({ className = "" }) {
   );
 }
 
+export function IconTrash({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M3.5 6h17" />
+      <path d="M8.5 6V4.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5V6" />
+      <path d="M18.5 6v13a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V6" />
+      <path d="M10 10.5v6M14 10.5v6" />
+    </svg>
+  );
+}
+
+export function IconMail({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="m3.2 7.2 8.8 6 8.8-6" />
+    </svg>
+  );
+}
+
+export function IconPhone({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2.1z" />
+    </svg>
+  );
+}
+
 export function IconBook({ className = "" }) {
   return (
     <svg {...baseProps} className={className}>

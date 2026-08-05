@@ -1,7 +1,9 @@
+import { auth } from "@clerk/nextjs/server";
+
 import SiteNav from "../../components/SiteNav";
 import TrendingCards from "../../components/TrendingCards";
 import SharePanel from "../../components/SharePanel";
-import { getTrendingTopicById } from "../../../lib/supabase/queries";
+import { getTrendingTopicById, getUserVotes } from "../../../lib/supabase/queries";
 import { shareMetadata } from "../../../lib/share";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +27,11 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function TrendingPermalink({ params }) {
-  const topic = await getTrendingTopicById(params.id);
+  const { userId } = await auth();
+  const [topic, myVotes] = await Promise.all([
+    getTrendingTopicById(params.id),
+    getUserVotes(userId, "trending")
+  ]);
 
   if (!topic) {
     return (
@@ -56,7 +62,7 @@ export default async function TrendingPermalink({ params }) {
 
       <section className="section">
         <div className="permalink-single" style={{ maxWidth: 560 }}>
-          <TrendingCards topics={[topic]} />
+          <TrendingCards topics={[topic]} myVotes={myVotes} />
           <SharePanel url={`/trending/${topic.id}`} text={topic.title} heading="Share this poll" />
         </div>
       </section>

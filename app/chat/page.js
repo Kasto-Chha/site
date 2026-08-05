@@ -1,12 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
 
 import ChatClient from "./ChatClient";
+import { TRIAL_LIMIT, trialRemaining } from "../../lib/chatTrial";
 import {
   getRecentChatQueries,
   getReviews,
   getTrendingTopics,
   getUserChatQueries
 } from "../../lib/supabase/queries";
+
+export const dynamic = "force-dynamic";
 
 function uniqueStrings(values) {
   return Array.from(new Set(values.filter(Boolean)));
@@ -75,6 +78,10 @@ export default async function ChatPage() {
       recent={recent}
       prompts={prompts}
       assistantFallback={assistantFallback}
+      trialLimit={TRIAL_LIMIT}
+      // Rendered on the server so the counter is right on first paint instead
+      // of only after the first answer comes back.
+      initialTrialLeft={userId ? null : trialRemaining()}
     />
   );
 }

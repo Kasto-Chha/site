@@ -1,20 +1,97 @@
 "use client";
 
-import { useRef } from "react";
-
 import ShareRow from "./ShareRow";
-import { castTrendingVote } from "./voteActions";
+import useCardVotes from "./useCardVotes";
+import useRevealOnce from "./useRevealOnce";
 import { catTone, delayClass, formatTimeAgo } from "./sectionHelpers";
 import { IconMeh, IconThumb, IconThumbDown } from "./icons";
 
 // Trending poll grid. Each card asks a "kasto chha?" question and collects a
-// three-way verdict: Thik Chha / Thikai Chha / Thik Chhaina. Optimistic voting
-// is handled by castTrendingVote against the #tr-<id>-* nodes below.
-export default function TrendingCards({ topics = [] }) {
-  const votedRef = useRef({});
-  const vote = (id, side) => castTrendingVote(votedRef, id, side);
+// three-way verdict: Thik Chha / Thikai Chha / Thik Chhaina.
+//
+// `myVotes` is the signed-in user's existing votes ({ topicId: side }), read on
+// the server, so a reload shows which option they already picked instead of
+// offering three fresh-looking buttons that all bounce off a duplicate check.
+// Clicking the picked option again withdraws the vote.
+const VOTE_CONFIG = {
+  endpoint: "/api/votes/trending",
+  resultKey: "topic",
+  columns: { yes: "votes_yes", mid: "votes_mid", no: "votes_no" }
+};
 
-  if (topics.length === 0) {
+const fmt = (n) => (n || 0).toLocaleString("en-US");
+
+// One card, so it can own its own reveal state (see useRevealOnce for why that
+// can't be a class added from outside once the card re-renders).
+function TrendingCard({ topic, index, myVote, busy, error, onVote }) {
+  const [revealRef, revealed] = useRevealOnce();
+
+  const yes = topic.votes_yes || 0;
+  const mid = topic.votes_mid || 0;
+  const no = topic.votes_no || 0;
+  const total = yes + mid + no;
+  const time = formatTimeAgo(topic.created_at);
+  const tone = catTone(topic.category);
+
+  const option = (side, count, label, Icon) => (
+    <button
+      type="button"
+      className={`tpoll ${side} ${myVote === side ? "voted" : ""}`}
+      aria-pressed={myVote === side}
+      title={myVote === side ? "Click again to remove your vote" : undefined}
+      disabled={busy}
+      onClick={() => onVote(topic.id, side)}
+    >
+      <span className="tpoll-ico"><Icon className="icon" /></span>
+      {label}
+      <b className="tpoll-n">{fmt(count)}</b>
+    </button>
+  );
+
+  return (
+    <article
+      ref={revealRef}
+      className={`tcard bento-card ${delayClass(index)} ${revealed ? "show" : ""} ${
+        myVote ? "is-voted" : ""
+      }`}
+      id={`tr-${topic.id}`}
+    >
+      <div className="tcard-cat" style={{ color: tone }}>
+        <span className="tcard-glyph" style={{ background: tone }} aria-hidden />
+        {topic.category}
+      </div>
+
+      <h3 className="tcard-title">{topic.title}</h3>
+      {topic.description ? <p className="tcard-quote">&ldquo;{topic.description}&rdquo;</p> : null}
+
+      <div className="tcard-divider" />
+
+      <div className="tcard-poll">
+        <div className="tcard-polls">
+          {option("yes", yes, topic.yes_label || "Thik Chha", IconThumb)}
+          {option("mid", mid, topic.mid_label || "Thikai Chha", IconMeh)}
+          {option("no", no, topic.no_label || "Thik Chhaina", IconThumbDown)}
+        </div>
+        <span className="tcard-meta">
+          {fmt(total)} votes{time ? ` · ${time}` : ""}
+        </span>
+      </div>
+
+      {error ? <p className="vote-error" role="status">{error}</p> : null}
+
+      <ShareRow text={topic.title} url={`/trending/${topic.id}`} label="Share" />
+    </article>
+  );
+}
+
+export default function TrendingCards({ topics = [], myVotes = {} }) {
+  const { rows, cast, voteOf, isPending, errorFor } = useCardVotes(
+    topics,
+    myVotes,
+    VOTE_CONFIG
+  );
+
+  if (rows.length === 0) {
     return (
       <div className="tcard-grid">
         <article className="tcard empty-card">
@@ -27,53 +104,17 @@ export default function TrendingCards({ topics = [] }) {
 
   return (
     <div className="tcard-grid">
-      {topics.map((topic, index) => {
-        const yes = topic.votes_yes || 0;
-        const mid = topic.votes_mid || 0;
-        const no = topic.votes_no || 0;
-        const total = yes + mid + no;
-        const time = formatTimeAgo(topic.created_at);
-        const tone = catTone(topic.category);
-
-        return (
-          <article className={`tcard bento-card ${delayClass(index)}`} key={topic.id} id={`tr-${topic.id}`}>
-            <div className="tcard-cat" style={{ color: tone }}>
-              <span className="tcard-glyph" style={{ background: tone }} aria-hidden />
-              {topic.category}
-            </div>
-
-            <h3 className="tcard-title">{topic.title}</h3>
-            {topic.description ? <p className="tcard-quote">&ldquo;{topic.description}&rdquo;</p> : null}
-
-            <div className="tcard-divider" />
-
-            <div className="tcard-poll">
-              <div className="tcard-polls">
-                <button type="button" className="tpoll yes" onClick={() => vote(topic.id, "yes")}>
-                  <span className="tpoll-ico"><IconThumb className="icon" /></span>
-                  {topic.yes_label || "Thik Chha"}
-                  <b className="tpoll-n" id={`tr-${topic.id}-y`} data-count={yes}>{yes}</b>
-                </button>
-                <button type="button" className="tpoll mid" onClick={() => vote(topic.id, "mid")}>
-                  <span className="tpoll-ico"><IconMeh className="icon" /></span>
-                  {topic.mid_label || "Thikai Chha"}
-                  <b className="tpoll-n" id={`tr-${topic.id}-m`} data-count={mid}>{mid}</b>
-                </button>
-                <button type="button" className="tpoll no" onClick={() => vote(topic.id, "no")}>
-                  <span className="tpoll-ico"><IconThumbDown className="icon" /></span>
-                  {topic.no_label || "Thik Chhaina"}
-                  <b className="tpoll-n" id={`tr-${topic.id}-n`} data-count={no}>{no}</b>
-                </button>
-              </div>
-              <span className="tcard-meta" id={`tr-${topic.id}-meta`} data-time={time}>
-                {total.toLocaleString("en-US")} votes{time ? ` · ${time}` : ""}
-              </span>
-            </div>
-
-            <ShareRow text={topic.title} url={`/trending/${topic.id}`} label="Share" />
-          </article>
-        );
-      })}
+      {rows.map((topic, index) => (
+        <TrendingCard
+          key={topic.id}
+          topic={topic}
+          index={index}
+          myVote={voteOf(topic.id)}
+          busy={isPending(topic.id)}
+          error={errorFor(topic.id)}
+          onVote={cast}
+        />
+      ))}
     </div>
   );
 }

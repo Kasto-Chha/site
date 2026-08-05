@@ -1,7 +1,9 @@
+import { auth } from "@clerk/nextjs/server";
+
 import SiteNav from "../../components/SiteNav";
 import BattleSplit from "../../components/BattleSplit";
 import SharePanel from "../../components/SharePanel";
-import { getBattleById } from "../../../lib/supabase/queries";
+import { getBattleById, getUserVotes } from "../../../lib/supabase/queries";
 import { shareMetadata } from "../../../lib/share";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,11 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function BattlePermalink({ params }) {
-  const battle = await getBattleById(params.id);
+  const { userId } = await auth();
+  const [battle, myVotes] = await Promise.all([
+    getBattleById(params.id),
+    getUserVotes(userId, "battle")
+  ]);
 
   if (!battle) {
     return (
@@ -58,7 +64,7 @@ export default async function BattlePermalink({ params }) {
 
       <section className="section">
         <div className="permalink-single" style={{ maxWidth: 900 }}>
-          <BattleSplit battles={[battle]} />
+          <BattleSplit battles={[battle]} myVotes={myVotes} />
           <SharePanel
             url={`/battle/${battle.id}`}
             text={`${battle.left_title} vs ${battle.right_title}`}

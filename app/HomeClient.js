@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import SiteNav from "./components/SiteNav";
@@ -10,6 +10,7 @@ import DiscussionsGrid from "./components/DiscussionsGrid";
 import ReelsRail from "./components/ReelsRail";
 import ShareRow from "./components/ShareRow";
 import useScrollReveal from "./components/useScrollReveal";
+import useTypedPlaceholder from "./components/useTypedPlaceholder";
 import {
   IconBook,
   IconBriefcase,
@@ -17,6 +18,11 @@ import {
   IconChat,
   IconHome
 } from "./components/icons";
+
+// Typed one at a time into the hero search bar, so the first thing a visitor
+// sees is the shape of a real query. Module scope keeps the array identity
+// stable across renders.
+const SEARCH_EXAMPLES = ["iPhone 17", "BYD ko Atto 3", "MacBook Air M5"];
 
 // Maps the modal's verdict keys onto the canonical labels the reviews/Experience
 // feed groups and colours by.
@@ -70,9 +76,10 @@ const FOOTER_COLUMNS = [
   {
     title: "Company",
     links: [
-      { label: "About Us", href: "/blog" },
+      { label: "About Us", href: "/about" },
       { label: "Blog", href: "/blog" },
-      { label: "Contact Us", href: "/chat" },
+      { label: "Contact Us", href: "/contact" },
+      { label: "Community Guidelines", href: "/guidelines" },
       { label: "Privacy Policy", href: "#" },
       { label: "Terms", href: "#" }
     ]
@@ -91,11 +98,23 @@ export default function HomeClient({
   battles = [],
   reviews = [],
   stats = [],
-  reels = []
+  reels = [],
+  trendingVotes = {},
+  battleVotes = {}
 }) {
   const verdictRef = useRef(null);
   const activeTabRef = useRef("share");
   const router = useRouter();
+  // Stop the typing animation the moment there's something in the box — the
+  // placeholder is hidden then, so there is nothing left to animate.
+  const [hasQuery, setHasQuery] = useState(false);
+
+  const searchPlaceholder = useTypedPlaceholder(SEARCH_EXAMPLES, {
+    prefix: "Type ",
+    suffix: " and find out KastoChha",
+    shortSuffix: "",
+    paused: hasQuery
+  });
 
   useScrollReveal();
 
@@ -134,6 +153,9 @@ export default function HomeClient({
       input.value = text;
       input.focus();
     }
+    // Setting .value in code doesn't fire onInput, so tell the placeholder
+    // animation to stand down here too.
+    setHasQuery(Boolean(text.trim()));
     document.querySelectorAll(".chip").forEach((chip) => chip.classList.remove("active"));
     if (el) {
       el.classList.add("active");
@@ -384,9 +406,12 @@ export default function HomeClient({
             <input
               id="srch"
               type="text"
-              placeholder="Explore your curiosity..."
+              placeholder={searchPlaceholder}
               autoComplete="off"
               onKeyDown={handleSearchKey}
+              onInput={(event) =>
+                setHasQuery(event.currentTarget.value.trim().length > 0)
+              }
             />
             <button type="button" className="s-btn" onClick={submitSearch}>Go</button>
           </div>
@@ -434,7 +459,7 @@ export default function HomeClient({
             <a href="/trending" className="sec-all">View all -&gt;</a>
           </div>
 
-          <TrendingCards topics={trending} />
+          <TrendingCards topics={trending} myVotes={trendingVotes} />
         </div>
       </section>
 
@@ -451,7 +476,7 @@ export default function HomeClient({
             <a href="/battle" className="sec-all">All battles -&gt;</a>
           </div>
 
-          <BattleSplit battles={battles} />
+          <BattleSplit battles={battles} myVotes={battleVotes} />
         </div>
       </section>
 

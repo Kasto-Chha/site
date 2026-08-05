@@ -52,5 +52,8 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ comment: data });
+  // The page strips commenter ids before they reach the browser; do the same
+  // here so the freshly posted comment matches the shape of the rest.
+  const { author_user_id: _omit, ...safe } = data || {};
+  return NextResponse.json({ comment: safe });
 }

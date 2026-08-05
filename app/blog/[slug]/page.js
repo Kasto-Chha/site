@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 
 import BlogComments from "../BlogComments";
 import SiteNav from "../../components/SiteNav";
 import { getBlogComments, getBlogPostBySlug } from "../../../lib/supabase/queries";
+import { getUserRole, hasRole, ROLE } from "../../../lib/auth/roles";
 import { sanitizeRichText } from "../../../lib/sanitize";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +22,16 @@ export default async function BlogPostPage({ params }) {
 		notFound();
 	}
 
-	const comments = await getBlogComments(post.id);
+	// Work out who may edit/delete each comment here rather than shipping every
+	// commenter's Clerk id to the browser for the client to compare. The API
+	// re-checks ownership on every write; these flags only decide what shows.
+	const { userId } = await auth();
+	const isAdmin = userId ? hasRole(await getUserRole(userId), ROLE.ADMIN) : false;
+	const rawComments = await getBlogComments(post.id);
+	const comments = rawComments.map(({ author_user_id: authorId, ...comment }) => {
+		const isAuthor = Boolean(userId) && authorId === userId;
+		return { ...comment, canEdit: isAuthor, canDelete: isAuthor || isAdmin };
+	});
 
 	const published = post.published_at || post.created_at;
 	const dateLabel = published
@@ -39,7 +50,7 @@ export default async function BlogPostPage({ params }) {
 			<SiteNav />
 			<main className="blog-main">
 				<div className="blog-shell">
-					<article className="bento-card blog-article">
+					<article className="blog-article">
 						<header className="blog-head">
 							<div className="blog-kicker">Blog</div>
 							<h1 className="blog-title">{post.title}</h1>

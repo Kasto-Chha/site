@@ -4,7 +4,7 @@ import SiteNav from "../components/SiteNav";
 import TrendingCards from "../components/TrendingCards";
 import useScrollReveal from "../components/useScrollReveal";
 
-export default function TrendingClient({ topics = [] }) {
+export default function TrendingClient({ topics = [], myVotes = {} }) {
   useScrollReveal();
 
   return (
@@ -30,7 +30,7 @@ export default function TrendingClient({ topics = [] }) {
 
       <section className="section">
         <div className="container">
-          <TrendingCards topics={topics} />
+          <TrendingCards topics={topics} myVotes={myVotes} />
         </div>
       </section>
     </>

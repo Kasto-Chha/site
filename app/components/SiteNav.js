@@ -37,6 +37,12 @@ export default function SiteNav({
     ? <button type="button" className="btn-red" onClick={onShare}>{shareLabel}</button>
     : <a className="btn-red" href={shareHref}>{shareLabel}</a>;
 
+  // Same action mirrored inside the mobile menu sheet, so the top bar can drop
+  // the button on narrow screens instead of cramming (and wrapping) it.
+  const sheetShare = onShare
+    ? <button type="button" className="btn-red" onClick={() => { setOpen(false); onShare(); }}>{shareLabel}</button>
+    : <a className="btn-red" href={shareHref} onClick={() => setOpen(false)}>{shareLabel}</a>;
+
   return (
     <nav id="mainnav" className={open ? "nav-open" : ""}>
       <a href="/" className="logo" aria-label="KastoChha home">
@@ -82,6 +88,9 @@ export default function SiteNav({
             {link.label}
           </a>
         ))}
+        <div className="nav-sheet-actions">
+          {sheetShare}
+        </div>
       </div>
     </nav>
   );

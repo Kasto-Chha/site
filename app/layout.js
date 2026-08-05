@@ -3,6 +3,8 @@ import "react-quill/dist/quill.snow.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 
+import TermsGate from "./components/TermsGate";
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 // Editorial serif used for the wordmark, headings, and italics. Exposed as
@@ -47,6 +49,12 @@ export const metadata = {
   }
 };
 
+export const viewport = {
+  themeColor: "#F5F0E8",
+  width: "device-width",
+  initialScale: 1
+};
+
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
@@ -61,6 +69,8 @@ export default function RootLayout({ children }) {
             "description": "Community powered opinions from across Nepal."
           }) }} />
           {children}
+          {/* Renders nothing unless the signed-in user still owes consent. */}
+          <TermsGate />
         </body>
       </html>
     </ClerkProvider>

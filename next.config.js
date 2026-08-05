@@ -34,6 +34,12 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Defaults to ".next" for dev and for real deploys. Set NEXT_DIST_DIR to send
+  // a throwaway verification build somewhere else — a `next build` that writes
+  // into the same .next a `next dev` is serving leaves the dev server loading
+  // chunk files that no longer exist ("Cannot find module './8948.js'").
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+
   async headers() {
     return [
       {

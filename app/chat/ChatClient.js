@@ -1,27 +1,48 @@
 "use client";
 
 import Link from "next/link";
+import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { formatTimeAgo } from "../../lib/topics";
 
+// Starter topics, not full questions — the empty state tells people to name a
+// thing and the assistant gives the verdict. The chip shows the bare topic but
+// sends it as a "kasto chha?" question, so the model reliably answers in the
+// verdict-first house style instead of writing an encyclopedia entry.
 const SUGGESTIONS = [
-  "Ncell vs NTC — kun ramro?",
-  "Is the iPhone 16 worth it in Nepal?",
-  "Best banks for a savings account",
-  "Tips before renting a flat in Kathmandu"
+  "CBR 600 RR",
+  "Sandaar ko Momo",
+  "iPhone 17 Pro Max",
+  "Hilux Gaadi"
 ];
 
-export default function ChatClient({ history = [], recent = [], prompts = [] }) {
+const asQuestion = (topic) => `${topic} kasto chha?`;
+
+export default function ChatClient({
+  history = [],
+  recent = [],
+  prompts = [],
+  trialLimit = 3,
+  initialTrialLeft = null
+}) {
   const searchParams = useSearchParams();
   const initialQuery = (searchParams.get("q") || "").trim();
+  const { isSignedIn } = useUser();
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [historyItems, setHistoryItems] = useState(history);
   const [clearing, setClearing] = useState(false);
+  // null while signed in (no trial applies). The server is the authority — this
+  // is refreshed from a response header after every answer.
+  const [trialLeft, setTrialLeft] = useState(initialTrialLeft);
+  const [signUpRequired, setSignUpRequired] = useState(false);
+
+  const onTrial = !isSignedIn && trialLeft !== null;
+  const locked = signUpRequired || (onTrial && trialLeft <= 0);
 
   const idRef = useRef(0);
   const startedRef = useRef(false);
@@ -41,7 +62,7 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
 
   const send = async (text) => {
     const content = (text || "").trim();
-    if (!content || streaming) return;
+    if (!content || streaming || locked) return;
 
     const userMsg = { id: nextId(), role: "user", content };
     const assistantMsg = { id: nextId(), role: "assistant", content: "" };
@@ -61,8 +82,13 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
         })
       });
 
+      // The server owns the trial count; mirror whatever it reports.
+      const remaining = response.headers.get("X-Chat-Trial-Remaining");
+      if (remaining !== null) setTrialLeft(Number(remaining) || 0);
+
       if (!response.ok || !response.body) {
         const data = await response.json().catch(() => ({}));
+        if (data?.signUpRequired) setSignUpRequired(true);
         updateMessage(
           assistantMsg.id,
           data?.error || "Sorry, something went wrong. Please try again."
@@ -106,6 +132,14 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
     if (initialQuery) send(initialQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Signing in from the gate (Clerk's modal, so the page never reloads) has to
+  // release the lock and retire the trial counter.
+  useEffect(() => {
+    if (!isSignedIn) return;
+    setSignUpRequired(false);
+    setTrialLeft(null);
+  }, [isSignedIn]);
 
   // Keep the conversation scrolled to the latest message.
   useEffect(() => {
@@ -181,8 +215,9 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
     <div className="chat-app">
       <aside className="chat-sidebar">
         <div className="chat-side-top">
-          <Link href="/" className="chat-logo">
-            Kasto<em>Chha</em>
+          <Link href="/" className="chat-logo" aria-label="KastoChha home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/kastochha-logo.svg" alt="KastoChha" />
           </Link>
           <button
             type="button"
@@ -195,6 +230,26 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
         </div>
 
         <div className="chat-side-scroll">
+          {!isSignedIn ? (
+            <div className="chat-side-block">
+              <div className="chat-signin-card">
+                <div className="chat-signin-title">Sign in to KastoChha</div>
+                <p className="chat-signin-body">
+                  Keep your chat history, ask without limits, and join the
+                  community.
+                </p>
+                <SignInButton mode="modal">
+                  <button type="button" className="btn-red">Sign in</button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button type="button" className="chat-signin-alt">
+                    Create a free account
+                  </button>
+                </SignUpButton>
+              </div>
+            </div>
+          ) : null}
+
           {historyItems.length > 0 ? (
             <div className="chat-side-block">
               <div className="chat-side-head">
@@ -263,11 +318,13 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
 
       <main className="chat-main" id="main">
         <header className="chat-topbar">
-          <div className="chat-topbar-title">
-            <span className="chat-spark" aria-hidden="true">✦</span>
-            KastoChha Assist
-          </div>
-          <div className="chat-topbar-badge">Powered by AI · Nepal-first</div>
+          {/* Doubles as the way home: the sidebar (with its own back link) is
+              hidden below 860px, so on mobile this is the only exit. */}
+          <Link href="/" className="chat-topbar-title" aria-label="KastoChha home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/kastochha-logo.svg" alt="KastoChha" className="chat-topbar-logo" />
+            <span className="chat-topbar-tag">Assist</span>
+          </Link>
         </header>
 
         <div className="chat-scroll" ref={scrollRef}>
@@ -276,21 +333,21 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
               <div className="chat-welcome">
                 <div className="chat-welcome-spark" aria-hidden="true">✦</div>
                 <h1 className="chat-welcome-title">
-                  Namaste! <em>Kasto chha?</em>
+                  Namaste! Aaja Tapailai <em>KastoChha?</em>
                 </h1>
                 <p className="chat-welcome-sub">
-                  Ask anything about products, places, careers, or life in Nepal.
-                  Answers are grounded in real community experiences.
+                  Type a topic, find out KastoChha — then ask follow-ups about
+                  it too.
                 </p>
                 <div className="chat-suggests">
-                  {SUGGESTIONS.map((s) => (
+                  {SUGGESTIONS.map((topic) => (
                     <button
-                      key={s}
+                      key={topic}
                       type="button"
                       className="chat-suggest"
-                      onClick={() => send(s)}
+                      onClick={() => send(asQuestion(topic))}
                     >
-                      {s}
+                      {topic}
                     </button>
                   ))}
                 </div>
@@ -326,20 +383,60 @@ export default function ChatClient({ history = [], recent = [], prompts = [] }) 
         </div>
 
         <div className="chat-composer">
+          {locked ? (
+            // Trial spent. The composer stays visible but inert, so it's clear
+            // what signing up unlocks.
+            <div className="chat-gate">
+              <div className="chat-gate-title">
+                You&apos;ve used your {trialLimit} free questions
+              </div>
+              <p className="chat-gate-body">
+                Create a free account to keep asking — and to save your chat
+                history, vote, and share your own experiences.
+              </p>
+              <div className="chat-gate-actions">
+                <SignUpButton mode="modal">
+                  <button type="button" className="btn-red">Sign up free</button>
+                </SignUpButton>
+                <SignInButton mode="modal">
+                  <button type="button" className="btn-outline">
+                    I already have an account
+                  </button>
+                </SignInButton>
+              </div>
+            </div>
+          ) : onTrial ? (
+            <div className="chat-trial">
+              <span className="chat-trial-count">
+                {trialLeft} free question{trialLeft === 1 ? "" : "s"} left
+              </span>
+              <SignInButton mode="modal">
+                <button type="button" className="chat-trial-link">
+                  Sign in for unlimited
+                </button>
+              </SignInButton>
+            </div>
+          ) : null}
+
           <form className="chat-composer-form" onSubmit={handleSubmit}>
             <textarea
               ref={textareaRef}
               className="chat-input"
               rows={1}
-              placeholder="Ask KastoChha Assist anything..."
+              placeholder={
+                locked
+                  ? "Sign up to keep chatting..."
+                  : "Ask KastoChha Assist anything “KastoChha”"
+              }
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
+              disabled={locked}
             />
             <button
               type="submit"
               className="chat-send"
-              disabled={streaming || !input.trim()}
+              disabled={streaming || locked || !input.trim()}
               aria-label="Send"
             >
               {streaming ? "…" : "↑"}

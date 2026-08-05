@@ -4,7 +4,7 @@ import SiteNav from "../components/SiteNav";
 import BattleSplit from "../components/BattleSplit";
 import useScrollReveal from "../components/useScrollReveal";
 
-export default function BattleClient({ battles = [] }) {
+export default function BattleClient({ battles = [], myVotes = {} }) {
   useScrollReveal();
 
   return (
@@ -30,7 +30,7 @@ export default function BattleClient({ battles = [] }) {
 
       <section className="section">
         <div className="container">
-          <BattleSplit battles={battles} />
+          <BattleSplit battles={battles} myVotes={myVotes} />
         </div>
       </section>
     </>

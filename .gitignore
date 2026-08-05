@@ -1,5 +1,7 @@
 node_modules
 .next
+# Throwaway build dirs from NEXT_DIST_DIR (see next.config.js)
+.next-*
 out
 .DS_Store
 *.log

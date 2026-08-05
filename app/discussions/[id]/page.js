@@ -1,7 +1,9 @@
+import { auth } from "@clerk/nextjs/server";
+
 import SiteNav from "../../components/SiteNav";
 import SharePanel from "../../components/SharePanel";
 import ThreadClient from "./ThreadClient";
-import { getReviewById, getReviews } from "../../../lib/supabase/queries";
+import { getReviewById, getReviews, getUserVotes } from "../../../lib/supabase/queries";
 import { topicSlug } from "../../../lib/slug";
 import { shareMetadata } from "../../../lib/share";
 
@@ -40,7 +42,11 @@ export default async function DiscussionThreadPage({ params }) {
   }
 
   // Pull the whole thread: every experience sharing this review's topic slug.
-  const pool = await getReviews(200);
+  const { userId } = await auth();
+  const [pool, myVotes] = await Promise.all([
+    getReviews(200),
+    getUserVotes(userId, "review")
+  ]);
   const slug = slugOf(review);
   const thread = pool.filter((item) => slugOf(item) === slug);
   if (!thread.some((item) => item.id === review.id)) {
@@ -71,7 +77,7 @@ export default async function DiscussionThreadPage({ params }) {
 
       <section className="section">
         <div className="permalink-single" style={{ maxWidth: 760 }}>
-          <ThreadClient reviews={thread} threadSlug={slug} />
+          <ThreadClient reviews={thread} threadSlug={slug} myVotes={myVotes} />
           <SharePanel
             url={`/discussions/${review.id}`}
             text={review.topic || review.title || "KastoChha discussion"}

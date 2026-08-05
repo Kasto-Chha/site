@@ -129,6 +129,8 @@ create table if not exists user_votes (
 );
 
 create index if not exists idx_user_votes_target on user_votes(target_type, target_id);
+-- Every page load asks "what has this user already voted on?".
+create index if not exists idx_user_votes_user on user_votes(user_id, target_type);
 
 create index if not exists idx_trending_rank on trending_topics(rank);
 create index if not exists idx_featured_slot on featured_stories(slot);
@@ -198,8 +200,12 @@ create table if not exists blog_comments (
   author_name text,
   body text not null,
   status text not null default 'published',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Stamped when the author edits their comment; null means never edited.
+  updated_at timestamptz
 );
+
+alter table blog_comments add column if not exists updated_at timestamptz;
 
 create index if not exists idx_blog_posts_status on blog_posts(status);
 create index if not exists idx_blog_posts_published on blog_posts(published_at desc);
@@ -248,47 +254,57 @@ alter table public.author_profiles enable row level security;
 alter table public.chat_queries    enable row level security;
 alter table public.user_votes      enable row level security;
 
--- Atomic vote counters (see migration 0002 for details). Execute is granted only
--- to the service role so the anon key cannot call them over /rest/v1/rpc.
-create or replace function public.increment_trending_vote(p_id uuid, p_side text)
+-- Atomic vote counters (see migration 0003 for details). p_old is the user's
+-- previous choice and p_new their new one, so a single statement can move both
+-- counters when a vote is changed, and only decrement when one is withdrawn
+-- (p_new = ''). Execute is granted only to the service role so the anon key
+-- cannot call them over /rest/v1/rpc.
+create or replace function public.apply_trending_vote(p_id uuid, p_old text, p_new text)
 returns public.trending_topics
 language sql
 as $$
   update public.trending_topics set
-    votes_yes  = votes_yes + (p_side = 'yes')::int,
-    votes_mid  = votes_mid + (p_side = 'mid')::int,
-    votes_no   = votes_no  + (p_side = 'no')::int,
+    votes_yes = greatest(0, votes_yes
+      + (coalesce(p_new, '') = 'yes')::int - (coalesce(p_old, '') = 'yes')::int),
+    votes_mid = greatest(0, votes_mid
+      + (coalesce(p_new, '') = 'mid')::int - (coalesce(p_old, '') = 'mid')::int),
+    votes_no  = greatest(0, votes_no
+      + (coalesce(p_new, '') = 'no')::int  - (coalesce(p_old, '') = 'no')::int),
     updated_at = now()
   where id = p_id
   returning *;
 $$;
 
-create or replace function public.increment_battle_vote(p_id uuid, p_side text)
+create or replace function public.apply_battle_vote(p_id uuid, p_old text, p_new text)
 returns public.battles
 language sql
 as $$
   update public.battles set
-    left_votes  = left_votes  + (p_side = 'a')::int,
-    right_votes = right_votes + (p_side = 'b')::int
+    left_votes = greatest(0, left_votes
+      + (coalesce(p_new, '') = 'a')::int - (coalesce(p_old, '') = 'a')::int),
+    right_votes = greatest(0, right_votes
+      + (coalesce(p_new, '') = 'b')::int - (coalesce(p_old, '') = 'b')::int)
   where id = p_id
   returning *;
 $$;
 
-create or replace function public.increment_review_vote(p_id uuid, p_direction text)
+create or replace function public.apply_review_vote(p_id uuid, p_old text, p_new text)
 returns public.reviews
 language sql
 as $$
   update public.reviews set
-    upvotes   = upvotes   + (p_direction = 'up')::int,
-    downvotes = downvotes + (p_direction = 'down')::int
+    upvotes = greatest(0, upvotes
+      + (coalesce(p_new, '') = 'up')::int - (coalesce(p_old, '') = 'up')::int),
+    downvotes = greatest(0, downvotes
+      + (coalesce(p_new, '') = 'down')::int - (coalesce(p_old, '') = 'down')::int)
   where id = p_id
   returning *;
 $$;
 
-revoke all on function public.increment_trending_vote(uuid, text) from public;
-revoke all on function public.increment_battle_vote(uuid, text)   from public;
-revoke all on function public.increment_review_vote(uuid, text)   from public;
+revoke all on function public.apply_trending_vote(uuid, text, text) from public;
+revoke all on function public.apply_battle_vote(uuid, text, text)   from public;
+revoke all on function public.apply_review_vote(uuid, text, text)   from public;
 
-grant execute on function public.increment_trending_vote(uuid, text) to service_role;
-grant execute on function public.increment_battle_vote(uuid, text)   to service_role;
-grant execute on function public.increment_review_vote(uuid, text)   to service_role;
+grant execute on function public.apply_trending_vote(uuid, text, text) to service_role;
+grant execute on function public.apply_battle_vote(uuid, text, text)   to service_role;
+grant execute on function public.apply_review_vote(uuid, text, text)   to service_role;

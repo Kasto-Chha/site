@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import SiteNav from "../components/SiteNav";
 import TopicThread from "../components/TopicThread";
 import useReviewVotes from "../components/useReviewVotes";
+import useExperienceEdits from "../components/useExperienceEdits";
 import { topicSlug } from "../../lib/slug";
 import { buildTopics } from "../../lib/topics";
 
@@ -18,8 +19,13 @@ const CATEGORY_OPTIONS = [
   "Lifestyle"
 ];
 
-export default function ExperienceClient({ reviews = [] }) {
-  const { items, setItems, voted, handleVote, voteOf } = useReviewVotes(reviews);
+export default function ExperienceClient({ reviews = [], myVotes = {} }) {
+  const { items, setItems, handleVote, voteOf, isPending, errorFor } = useReviewVotes(
+    reviews,
+    myVotes
+  );
+  const { editExperience, removeExperience, isEditBusy, editErrorFor } =
+    useExperienceEdits(setItems);
   const [submitting, setSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortMode, setSortMode] = useState("discussed");
@@ -259,9 +265,14 @@ export default function ExperienceClient({ reviews = [] }) {
                       isOpen={expanded.has(topicItem.slug)}
                       onToggle={toggleTopic}
                       onVote={handleVote}
-                      voted={voted}
                       voteOf={voteOf}
+                      isPending={isPending}
+                      errorFor={errorFor}
                       onReply={submitInlineReply}
+                      onEdit={editExperience}
+                      onDelete={removeExperience}
+                      isEditBusy={isEditBusy}
+                      editErrorFor={editErrorFor}
                     />
                   ))
                 )}

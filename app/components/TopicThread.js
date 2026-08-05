@@ -1,8 +1,17 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 
-import { IconArrowDown, IconArrowUp, IconChat, IconLink, IconReply } from "./icons";
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconChat,
+  IconLink,
+  IconPen,
+  IconReply,
+  IconTrash
+} from "./icons";
 import { formatTimeAgo, scoreOf, verdictTone } from "../../lib/topics";
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
@@ -11,9 +20,23 @@ const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 // and top comment, expanding to the full list of experiences with up/down votes,
 // reply/share actions, and an inline composer (when onReply is provided).
 // Shared by the homepage wall and the dedicated Experience page.
-export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, voteOf, onReply }) {
+export default function TopicThread({
+  topic,
+  isOpen,
+  onToggle,
+  onVote,
+  voteOf,
+  isPending,
+  errorFor,
+  onReply,
+  onEdit,
+  onDelete,
+  isEditBusy,
+  editErrorFor
+}) {
   const total = topic.verdicts.pos + topic.verdicts.neu + topic.verdicts.neg;
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
+  const { user } = useUser();
 
   const [replyText, setReplyText] = useState("");
   const [replyVerdict, setReplyVerdict] = useState("");
@@ -21,6 +44,36 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, vo
   const [replyError, setReplyError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const composerRef = useRef(null);
+
+  // Inline editor state for whichever of my own experiences is open.
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [editVerdict, setEditVerdict] = useState("");
+  const [confirmingId, setConfirmingId] = useState(null);
+
+  // Only the author sees edit/delete. The API checks this again on every write.
+  const isMine = (exp) => Boolean(user?.id) && exp.user_id === user.id;
+
+  const startEdit = (exp) => {
+    setEditingId(exp.id);
+    setEditText(exp.summary || "");
+    setEditVerdict(exp.verdict || "");
+    setConfirmingId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
+    setEditVerdict("");
+  };
+
+  const saveEdit = async (exp) => {
+    const result = await onEdit(exp.id, {
+      summary: editText,
+      verdict: editVerdict
+    });
+    if (result?.ok) cancelEdit();
+  };
 
   // Reddit-style "best" ordering, frozen while the thread stays open: the id
   // order only recomputes when the thread is (re)opened or a comment is added,
@@ -192,15 +245,21 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, vo
           {ordered.map((exp) => {
             const tone = verdictTone(exp.verdict);
             const timeLabel = formatTimeAgo(exp.created_at);
+            const myVote = voteOf?.(exp.id) || null;
+            const busy = Boolean(isPending?.(exp.id));
+            const voteError = errorFor?.(exp.id) || "";
+            const mine = isMine(exp);
+            const editBusy = Boolean(isEditBusy?.(exp.id));
+            const editError = editErrorFor?.(exp.id) || "";
             return (
               <div className="exp-item" key={exp.id}>
                 <div className="review-vote">
                   <button
                     type="button"
-                    className={`vote-btn ${voteOf?.(exp.id) === "up" ? "voted" : ""}`}
-                    aria-label="Upvote"
-                    aria-pressed={voteOf?.(exp.id) === "up"}
-                    disabled={voted?.has(exp.id)}
+                    className={`vote-btn ${myVote === "up" ? "voted" : ""}`}
+                    aria-label={myVote === "up" ? "Remove your upvote" : "Upvote"}
+                    aria-pressed={myVote === "up"}
+                    disabled={busy}
                     onClick={() => onVote(exp.id, "up")}
                   >
                     <IconArrowUp className="icon" />
@@ -208,10 +267,10 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, vo
                   <span className="vote-count">{scoreOf(exp)}</span>
                   <button
                     type="button"
-                    className={`vote-btn ${voteOf?.(exp.id) === "down" ? "voted" : ""}`}
-                    aria-label="Downvote"
-                    aria-pressed={voteOf?.(exp.id) === "down"}
-                    disabled={voted?.has(exp.id)}
+                    className={`vote-btn ${myVote === "down" ? "voted" : ""}`}
+                    aria-label={myVote === "down" ? "Remove your downvote" : "Downvote"}
+                    aria-pressed={myVote === "down"}
+                    disabled={busy}
                     onClick={() => onVote(exp.id, "down")}
                   >
                     <IconArrowDown className="icon" />
@@ -228,27 +287,136 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, vo
                       <span className={`exp-verdict ${tone}`}>{exp.verdict}</span>
                     ) : null}
                   </div>
-                  <p className="exp-text">{exp.summary}</p>
-                  <div className="exp-actions">
-                    {onReply ? (
+                  {editingId === exp.id ? (
+                    <form
+                      className="exp-editor"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        saveEdit(exp);
+                      }}
+                    >
+                      <textarea
+                        className="thread-composer-input"
+                        value={editText}
+                        onChange={(event) => setEditText(event.target.value)}
+                        rows={3}
+                        autoFocus
+                      />
+                      <div className="thread-composer-row">
+                        <div className="thread-verdicts">
+                          {VERDICT_OPTIONS.map((option) => (
+                            <button
+                              type="button"
+                              key={option}
+                              className={`thread-verdict ${verdictTone(option)} ${
+                                editVerdict === option ? "on" : ""
+                              }`}
+                              onClick={() =>
+                                setEditVerdict((prev) => (prev === option ? "" : option))
+                              }
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="exp-editor-actions">
+                          <button
+                            type="submit"
+                            className="thread-composer-send"
+                            disabled={editBusy}
+                          >
+                            {editBusy ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            className="exp-action"
+                            onClick={cancelEdit}
+                            disabled={editBusy}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="exp-text">{exp.summary}</p>
+                  )}
+
+                  {voteError ? (
+                    <p className="vote-error" role="status">{voteError}</p>
+                  ) : null}
+                  {editError ? (
+                    <p className="vote-error" role="status">{editError}</p>
+                  ) : null}
+
+                  {editingId === exp.id ? null : (
+                    <div className="exp-actions">
+                      {onReply ? (
+                        <button
+                          type="button"
+                          className="exp-action"
+                          onClick={() => focusComposer(exp.author_name || "Anonymous")}
+                        >
+                          <IconReply className="icon" />
+                          Reply
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="exp-action"
-                        onClick={() => focusComposer(exp.author_name || "Anonymous")}
+                        onClick={() => copyLink(exp)}
                       >
-                        <IconReply className="icon" />
-                        Reply
+                        <IconLink className="icon" />
+                        {copiedId === exp.id ? "Copied!" : "Share"}
                       </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="exp-action"
-                      onClick={() => copyLink(exp)}
-                    >
-                      <IconLink className="icon" />
-                      {copiedId === exp.id ? "Copied!" : "Share"}
-                    </button>
-                  </div>
+
+                      {mine && onEdit ? (
+                        <button
+                          type="button"
+                          className="exp-action"
+                          onClick={() => startEdit(exp)}
+                          disabled={editBusy}
+                        >
+                          <IconPen className="icon" />
+                          Edit
+                        </button>
+                      ) : null}
+
+                      {mine && onDelete ? (
+                        confirmingId === exp.id ? (
+                          <>
+                            <span className="exp-confirm">Delete this?</span>
+                            <button
+                              type="button"
+                              className="exp-action is-danger"
+                              onClick={() => onDelete(exp.id)}
+                              disabled={editBusy}
+                            >
+                              {editBusy ? "Deleting..." : "Yes, delete"}
+                            </button>
+                            <button
+                              type="button"
+                              className="exp-action"
+                              onClick={() => setConfirmingId(null)}
+                              disabled={editBusy}
+                            >
+                              Keep
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="exp-action is-danger"
+                            onClick={() => setConfirmingId(exp.id)}
+                            disabled={editBusy}
+                          >
+                            <IconTrash className="icon" />
+                            Delete
+                          </button>
+                        )
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
             );

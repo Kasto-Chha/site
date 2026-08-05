@@ -4,13 +4,19 @@ import { useMemo, useState } from "react";
 
 import TopicThread from "../../components/TopicThread";
 import useReviewVotes from "../../components/useReviewVotes";
+import useExperienceEdits from "../../components/useExperienceEdits";
 import { buildTopics } from "../../../lib/topics";
 
 // Dedicated thread view for one discussion: the experience list starts
 // expanded, voting works like on the Experience page, and the composer posts
 // into the same reviews pool so replies join this thread's topic slug.
-export default function ThreadClient({ reviews = [], threadSlug }) {
-  const { items, setItems, voted, handleVote, voteOf } = useReviewVotes(reviews);
+export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} }) {
+  const { items, setItems, handleVote, voteOf, isPending, errorFor } = useReviewVotes(
+    reviews,
+    myVotes
+  );
+  const { editExperience, removeExperience, isEditBusy, editErrorFor } =
+    useExperienceEdits(setItems);
   const [isOpen, setIsOpen] = useState(true);
 
   const topic = useMemo(() => {
@@ -60,9 +66,14 @@ export default function ThreadClient({ reviews = [], threadSlug }) {
       isOpen={isOpen}
       onToggle={() => setIsOpen((open) => !open)}
       onVote={handleVote}
-      voted={voted}
       voteOf={voteOf}
+      isPending={isPending}
+      errorFor={errorFor}
       onReply={submitReply}
+      onEdit={editExperience}
+      onDelete={removeExperience}
+      isEditBusy={isEditBusy}
+      editErrorFor={editErrorFor}
     />
   );
 }

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { geminiConfigured, geminiStream } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
+import { TRIAL_LIMIT, readTrialCount, trialCookieHeader } from "../../../lib/chatTrial";
 
 function jsonResponse(body, status, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
@@ -104,17 +105,31 @@ export async function POST(request) {
     return jsonResponse({ error: "AI is not configured. Set GEMINI_API_KEY." }, 503);
   }
 
-  // Require a signed-in user. The assistant drives a paid LLM, so leaving it open
-  // lets anyone burn quota anonymously.
+  // Signed-in users chat freely. Anonymous visitors get TRIAL_LIMIT questions
+  // so they can try the assistant before signing up; after that they're asked
+  // to create an account. The assistant drives a paid LLM, so the trial is
+  // deliberately small and also rate limited per IP below.
   const { userId } = await auth();
-  if (!userId) {
+  const trialUsed = userId ? 0 : readTrialCount();
+
+  if (!userId && trialUsed >= TRIAL_LIMIT) {
     return jsonResponse(
-      { error: "Sign in to chat with KastoChha Assist." },
-      401
+      {
+        error: `That's your ${TRIAL_LIMIT} free questions. Sign up — it's free — to keep asking.`,
+        signUpRequired: true,
+        trialLimit: TRIAL_LIMIT
+      },
+      401,
+      { "X-Chat-Trial-Remaining": "0" }
     );
   }
 
-  const rl = await checkRateLimit("chat", userId);
+  // Anonymous callers share no user id, so bucket them by client IP.
+  const clientIp =
+    (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = await checkRateLimit("chat", userId || `anon:${clientIp}`);
   if (!rl.ok) {
     return jsonResponse(
       { error: "Dami! Ek chin pachi feri sodhnus — too many messages right now." },
@@ -134,16 +149,18 @@ export async function POST(request) {
   const query = lastUser?.content || "";
 
   // Log the query (best-effort, non-blocking). Capture the row id so the client
-  // can add it to the user's history list without a full refetch.
+  // can add it to the user's history list without a full refetch — trial
+  // visitors have no history to add to, so the id is only returned when signed
+  // in.
   let queryId = "";
   try {
     const supabase = createServerSupabase();
     const { data } = await supabase
       .from("chat_queries")
-      .insert({ query, user_id: userId })
+      .insert({ query, user_id: userId || null })
       .select("id")
       .single();
-    queryId = data?.id || "";
+    if (userId) queryId = data?.id || "";
   } catch {
     // Logging failures must not break the chat.
   }
@@ -179,11 +196,21 @@ export async function POST(request) {
     }
   });
 
+  // Spend one trial question. Counted here, as the answer starts streaming, so
+  // a request rejected above (bad payload, rate limit) never costs the visitor.
+  const trialHeaders = userId
+    ? {}
+    : {
+        "Set-Cookie": trialCookieHeader(trialUsed + 1),
+        "X-Chat-Trial-Remaining": String(Math.max(0, TRIAL_LIMIT - (trialUsed + 1)))
+      };
+
   return new Response(stream, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       "X-Accel-Buffering": "no",
+      ...trialHeaders,
       ...(queryId ? { "X-Chat-Query-Id": queryId } : {})
     }
   });

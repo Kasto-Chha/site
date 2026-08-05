@@ -4,12 +4,18 @@ import { useMemo, useState } from "react";
 
 import TopicThread from "./TopicThread";
 import useReviewVotes from "./useReviewVotes";
+import useExperienceEdits from "./useExperienceEdits";
 import { buildTopics } from "../../lib/topics";
 
 // Compact Reddit-style wall used on the homepage. Reuses the same topic grouping
 // and thread rendering as the Experience page, limited to the most active topics.
-export default function ExperienceWall({ reviews = [], topicLimit = 5 }) {
-  const { items, voted, handleVote, voteOf } = useReviewVotes(reviews);
+export default function ExperienceWall({ reviews = [], myVotes = {}, topicLimit = 5 }) {
+  const { items, setItems, handleVote, voteOf, isPending, errorFor } = useReviewVotes(
+    reviews,
+    myVotes
+  );
+  const { editExperience, removeExperience, isEditBusy, editErrorFor } =
+    useExperienceEdits(setItems);
   const [expanded, setExpanded] = useState(() => new Set());
 
   const topics = useMemo(() => {
@@ -47,8 +53,13 @@ export default function ExperienceWall({ reviews = [], topicLimit = 5 }) {
             isOpen={expanded.has(topic.slug)}
             onToggle={toggleTopic}
             onVote={handleVote}
-            voted={voted}
             voteOf={voteOf}
+            isPending={isPending}
+            errorFor={errorFor}
+            onEdit={editExperience}
+            onDelete={removeExperience}
+            isEditBusy={isEditBusy}
+            editErrorFor={editErrorFor}
           />
         ))
       )}

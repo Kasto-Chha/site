@@ -1,8 +1,14 @@
+import { auth } from "@clerk/nextjs/server";
+
 import TrendingClient from "./TrendingClient";
 
-import { getTrendingTopics } from "../../lib/supabase/queries";
+import { getTrendingTopics, getUserVotes } from "../../lib/supabase/queries";
 
 export default async function TrendingPage() {
-  const topics = await getTrendingTopics();
-  return <TrendingClient topics={topics} />;
+  const { userId } = await auth();
+  const [topics, myVotes] = await Promise.all([
+    getTrendingTopics(),
+    getUserVotes(userId, "trending")
+  ]);
+  return <TrendingClient topics={topics} myVotes={myVotes} />;
 }
