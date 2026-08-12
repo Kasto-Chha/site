@@ -62,13 +62,13 @@ export default function ContactPage() {
   return (
     <>
       <SiteNav />
-      <main className="blog-main">
-        <div className="blog-shell">
-          <article className="blog-article">
-            <header className="blog-head">
-              <div className="blog-kicker">Contact</div>
-              <h1 className="blog-title">Contact Us</h1>
-              <p className="blog-lede">
+      <main className="article-main">
+        <div className="article-shell">
+          <article className="article-body">
+            <header className="article-head">
+              <div className="article-kicker">Contact</div>
+              <h1 className="article-title">Contact Us</h1>
+              <p className="article-lede">
                 Whether you have a question, feedback, a feature suggestion, need
                 support, or are interested in collaborating with KastoChha,
                 we&apos;d love to hear from you.
@@ -95,7 +95,7 @@ export default function ContactPage() {
               })}
             </ul>
 
-            <div className="blog-content">
+            <div className="article-content">
               <h2>Follow our communities</h2>
               <p>
                 You can also connect with us through our social communities and

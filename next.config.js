@@ -47,6 +47,15 @@ const nextConfig = {
         headers: securityHeaders
       }
     ];
+  },
+
+  // The blog was removed. Its URLs were in the sitemap, so anything still
+  // pointing at them lands on the front page instead of a 404.
+  async redirects() {
+    return [
+      { source: "/blog", destination: "/", permanent: true },
+      { source: "/blog/:path*", destination: "/", permanent: true }
+    ];
   }
 };
 

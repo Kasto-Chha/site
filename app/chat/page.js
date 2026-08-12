@@ -3,10 +3,10 @@ import { auth } from "@clerk/nextjs/server";
 import ChatClient from "./ChatClient";
 import { TRIAL_LIMIT, trialRemaining } from "../../lib/chatTrial";
 import {
-  getRecentChatQueries,
+  getRecentChatTopics,
   getReviews,
   getTrendingTopics,
-  getUserChatQueries
+  getUserChatTopics
 } from "../../lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
@@ -18,18 +18,24 @@ function uniqueStrings(values) {
 export default async function ChatPage() {
   const { userId } = await auth();
 
-  const [trending, reviews, recentQueries, historyQueries] = await Promise.all([
+  const [trending, reviews, recentTopics, userTopics] = await Promise.all([
     getTrendingTopics(),
     getReviews(8),
-    getRecentChatQueries(8),
-    getUserChatQueries(userId, 30)
+    getRecentChatTopics(8),
+    getUserChatTopics(userId, 40)
   ]);
 
-  const recent = uniqueStrings(recentQueries.map((item) => item.query));
-  // Full rows (id + query + created_at) so the client can delete/organize them.
-  const history = historyQueries
-    .filter((item) => item?.id && item?.query)
-    .map((item) => ({ id: item.id, query: item.query, created_at: item.created_at }));
+  const recent = uniqueStrings(recentTopics.map((item) => item.title));
+  // The user's own conversations, newest activity first. Full rows so the
+  // sidebar can group them by date, reopen, rename and delete them.
+  const topics = userTopics
+    .filter((item) => item?.id && item?.title)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      message_count: item.message_count || 0,
+      last_message_at: item.last_message_at || item.created_at
+    }));
   const prompts = uniqueStrings([
     ...trending.map((topic) => topic.title),
     ...reviews.map((review) => review.topic || review.title)
@@ -74,7 +80,7 @@ export default async function ChatPage() {
 
   return (
     <ChatClient
-      history={history}
+      topics={topics}
       recent={recent}
       prompts={prompts}
       assistantFallback={assistantFallback}

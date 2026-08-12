@@ -4,6 +4,7 @@ import { createServerSupabase } from "../../../lib/supabase/server";
 import { geminiConfigured, geminiStream } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 import { TRIAL_LIMIT, readTrialCount, trialCookieHeader } from "../../../lib/chatTrial";
+import { topicTitle } from "../../../lib/chatTopics";
 
 function jsonResponse(body, status, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
@@ -29,6 +30,7 @@ WHEN ANSWERING "kasto chha?" QUESTIONS:
 
 FORMAT:
 - Short ra conversational. Tight paragraph or a few bullets.
+- Plain sentences ra simple "-" bullets. Ekdam jaruri bhaye matra **bold** use garnus. NO markdown headings (#), tables, or nested lists — chat bubble ma tyo raamro dekhidaina.
 - Community context tala diyeko cha bhane, tyo use garera "community ko bichar" pani share garnus.
 - Sidha answer dinus — no meta-commentary, question na dohoryaunus.
 
@@ -100,6 +102,35 @@ function normalizeMessages(raw) {
   return cleaned;
 }
 
+// Find the conversation this message belongs to, or start one.
+//
+// The ownership check is what stops a caller appending to somebody else's
+// thread by passing its id: a signed-in user may only continue a topic carrying
+// their own user_id. Guest topics have no owner to check against, so a guest is
+// only allowed to continue an ownerless one — grouping, not a security
+// boundary; the trial cap and per-IP rate limit are what bound guest writes.
+// Anything that fails the check silently starts a fresh topic instead.
+async function resolveTopic(supabase, { topicId, userId, title }) {
+  if (topicId) {
+    const { data } = await supabase
+      .from("chat_topics")
+      .select("id, user_id")
+      .eq("id", topicId)
+      .maybeSingle();
+
+    const owned = userId ? data?.user_id === userId : data && data.user_id === null;
+    if (owned) return data.id;
+  }
+
+  const { data } = await supabase
+    .from("chat_topics")
+    .insert({ user_id: userId || null, title })
+    .select("id")
+    .single();
+
+  return data?.id || "";
+}
+
 export async function POST(request) {
   if (!geminiConfigured()) {
     return jsonResponse({ error: "AI is not configured. Set GEMINI_API_KEY." }, 503);
@@ -140,6 +171,7 @@ export async function POST(request) {
 
   const payload = await request.json().catch(() => ({}));
   const messages = normalizeMessages(payload.messages);
+  const requestedTopicId = (payload.topicId || "").toString().trim();
 
   if (!messages.length) {
     return jsonResponse({ error: "No message provided." }, 400);
@@ -148,21 +180,26 @@ export async function POST(request) {
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const query = lastUser?.content || "";
 
-  // Log the query (best-effort, non-blocking). Capture the row id so the client
-  // can add it to the user's history list without a full refetch — trial
-  // visitors have no history to add to, so the id is only returned when signed
-  // in.
-  let queryId = "";
+  // File the question under a conversation (best effort — a storage failure
+  // must never cost the visitor their answer). The id goes back in a header so
+  // the client can keep sending follow-ups to the same thread, and so a brand
+  // new conversation appears in the sidebar without a refetch.
+  let topicId = "";
   try {
     const supabase = createServerSupabase();
-    const { data } = await supabase
-      .from("chat_queries")
-      .insert({ query, user_id: userId || null })
-      .select("id")
-      .single();
-    if (userId) queryId = data?.id || "";
+    topicId = await resolveTopic(supabase, {
+      topicId: requestedTopicId,
+      userId,
+      title: topicTitle(query)
+    });
+    if (topicId) {
+      await supabase
+        .from("chat_messages")
+        .insert({ topic_id: topicId, user_id: userId || null, role: "user", content: query });
+    }
   } catch {
     // Logging failures must not break the chat.
+    topicId = "";
   }
 
   const context = await getCommunityContext(query);
@@ -174,6 +211,10 @@ export async function POST(request) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Collected as it streams so the answer can be stored next to the
+      // question it answers — that pair is what makes a conversation
+      // reopenable later.
+      let answer = "";
       try {
         for await (const chunk of geminiStream({
           system,
@@ -181,6 +222,7 @@ export async function POST(request) {
           temperature: 0.8,
           maxOutputTokens: 1024
         })) {
+          answer += chunk;
           controller.enqueue(encoder.encode(chunk));
         }
       } catch (error) {
@@ -191,6 +233,20 @@ export async function POST(request) {
           )
         );
       } finally {
+        // A half-written answer is still worth keeping; an empty one is not.
+        if (topicId && answer.trim()) {
+          try {
+            const supabase = createServerSupabase();
+            await supabase.from("chat_messages").insert({
+              topic_id: topicId,
+              user_id: userId || null,
+              role: "assistant",
+              content: answer
+            });
+          } catch {
+            // Same rule as the question above: storage must not break chat.
+          }
+        }
         controller.close();
       }
     }
@@ -211,7 +267,9 @@ export async function POST(request) {
       "Cache-Control": "no-cache, no-transform",
       "X-Accel-Buffering": "no",
       ...trialHeaders,
-      ...(queryId ? { "X-Chat-Query-Id": queryId } : {})
+      // Guests get this too: it is how their follow-ups stay in one thread for
+      // the session, even though they have no sidebar to see it in.
+      ...(topicId ? { "X-Chat-Topic-Id": topicId } : {})
     }
   });
 }

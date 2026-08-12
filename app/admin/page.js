@@ -48,10 +48,6 @@ export default async function AdminHome() {
           <h3>Reels</h3>
           <p>Embedded video reels — link only, no storage.</p>
         </a>
-        <a className="admin-card" href="/admin/posts">
-          <h3>Blog posts</h3>
-          <p>Create, edit, and publish blog stories.</p>
-        </a>
         <a className="admin-card" href="/admin/roles">
           <h3>User roles</h3>
           <p>

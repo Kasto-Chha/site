@@ -60,7 +60,7 @@ const seedData = {
       title: 'How to save on mobile',
       description: 'Saving tips for Nepali users',
       why_text: 'Important tips and tricks',
-      link_url: '/blog/welcome',
+      link_url: '/trending',
       icon: 'star',
     },
   ],
@@ -192,26 +192,30 @@ const seedData = {
     { id: '77777777-7777-4777-8777-777777777772', order: 2, label: 'Questions answered', value: '1,100+' },
     { id: '77777777-7777-4777-8777-777777777773', order: 3, label: 'Votes cast', value: '38K+' },
   ],
-  blog_posts: [
-    {
-      id: '88888888-8888-4888-8888-888888888888',
-      slug: 'welcome',
-      title: 'Welcome to KastoChha',
-      excerpt: 'Intro to the community',
-      content: 'Welcome to KastoChha — share real experiences.',
-      status: 'published',
-      author_user_id: 'system',
-      author_name: 'KastoChha',
-      reading_time: 1,
-      published_at: new Date().toISOString(),
-    },
-  ],
-  chat_queries: [
+  // One guest conversation and its two turns. chat_topics must come before
+  // chat_messages here — seeding walks these keys in order and the messages
+  // carry a foreign key to the topic.
+  chat_topics: [
     {
       id: '99999999-9999-4999-8999-999999999999',
-      query: 'phone battery',
-      response: 'Try lowering screen brightness and background refresh.',
       user_id: null,
+      title: 'phone battery',
+    },
+  ],
+  chat_messages: [
+    {
+      id: '99999999-9999-4999-8999-99999999990a',
+      topic_id: '99999999-9999-4999-8999-999999999999',
+      user_id: null,
+      role: 'user',
+      content: 'phone battery',
+    },
+    {
+      id: '99999999-9999-4999-8999-99999999990b',
+      topic_id: '99999999-9999-4999-8999-999999999999',
+      user_id: null,
+      role: 'assistant',
+      content: 'Try lowering screen brightness and background refresh.',
     },
   ],
 };

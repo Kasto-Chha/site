@@ -1,5 +1,4 @@
 import "./globals.css";
-import "react-quill/dist/quill.snow.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 

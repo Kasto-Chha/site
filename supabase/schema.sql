@@ -101,13 +101,66 @@ create table if not exists questions (
   created_at timestamptz not null default now()
 );
 
-create table if not exists chat_queries (
+-- Chat is a two-level tree: a user owns conversations (chat_topics) and every
+-- turn (chat_messages) hangs off one conversation. A null user_id on a topic
+-- means an anonymous trial visitor — still threaded, just unowned. See
+-- supabase/migrations/0004_chat_topics.sql for the full rationale.
+create table if not exists chat_topics (
   id uuid primary key default gen_random_uuid(),
-  query text not null,
-  response text,
   user_id text,
+  title text not null,
+  message_count int not null default 0,
+  last_message_at timestamptz not null default now(),
+  archived_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  topic_id uuid not null references chat_topics(id) on delete cascade,
+  -- Copied from the parent so per-user sweeps never need a join.
+  user_id text,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
   created_at timestamptz not null default now()
 );
+
+create index if not exists idx_chat_topics_user on chat_topics(user_id, last_message_at desc);
+create index if not exists idx_chat_topics_created on chat_topics(created_at desc);
+create index if not exists idx_chat_messages_topic on chat_messages(topic_id, created_at);
+create index if not exists idx_chat_messages_user on chat_messages(user_id, created_at desc);
+
+-- Indexed title search for the sidebar; falls back to a scan without pg_trgm.
+do $$
+begin
+  create extension if not exists pg_trgm;
+  create index if not exists idx_chat_topics_title_trgm
+    on public.chat_topics using gin (title gin_trgm_ops);
+exception when others then
+  raise notice 'pg_trgm unavailable — chat title search falls back to a scan';
+end $$;
+
+-- Keeps message_count / last_message_at on the parent correct. Messages are
+-- only deleted with their topic (cascade), so insert is the only event.
+create or replace function public.touch_chat_topic()
+returns trigger
+language plpgsql
+as $$
+begin
+  update public.chat_topics set
+    message_count = message_count + 1,
+    last_message_at = greatest(last_message_at, new.created_at),
+    updated_at = now()
+  where id = new.topic_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_chat_messages_touch_topic on public.chat_messages;
+create trigger trg_chat_messages_touch_topic
+  after insert on public.chat_messages
+  for each row execute function public.touch_chat_topic();
 
 create table if not exists site_stats (
   id uuid primary key default gen_random_uuid(),
@@ -150,82 +203,11 @@ create table if not exists author_profiles (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists blog_posts (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique,
-  title text not null,
-  excerpt text,
-  content text not null,
-  status text not null default 'draft',
-  cover_image_url text,
-  author_user_id text not null,
-  author_name text,
-  reading_time int,
-  seo_title text,
-  seo_description text,
-  seo_image_url text,
-  published_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists blog_tags (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  slug text not null unique
-);
-
-create table if not exists blog_categories (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  slug text not null unique
-);
-
-create table if not exists blog_post_tags (
-  post_id uuid references blog_posts(id) on delete cascade,
-  tag_id uuid references blog_tags(id) on delete cascade,
-  primary key (post_id, tag_id)
-);
-
-create table if not exists blog_post_categories (
-  post_id uuid references blog_posts(id) on delete cascade,
-  category_id uuid references blog_categories(id) on delete cascade,
-  primary key (post_id, category_id)
-);
-
-create table if not exists blog_comments (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid references blog_posts(id) on delete cascade,
-  author_user_id text not null,
-  author_name text,
-  body text not null,
-  status text not null default 'published',
-  created_at timestamptz not null default now(),
-  -- Stamped when the author edits their comment; null means never edited.
-  updated_at timestamptz
-);
-
-alter table blog_comments add column if not exists updated_at timestamptz;
-
-create index if not exists idx_blog_posts_status on blog_posts(status);
-create index if not exists idx_blog_posts_published on blog_posts(published_at desc);
-create index if not exists idx_blog_posts_author on blog_posts(author_user_id);
-create index if not exists idx_blog_comments_post on blog_comments(post_id);
-
-alter table blog_posts enable row level security;
-alter table blog_comments enable row level security;
-
-create policy "public read published posts" on blog_posts
-  for select
-  using (status = 'published');
-
-create policy "public read published comments" on blog_comments
-  for select
-  using (status = 'published');
-
-create policy "authenticated insert comments" on blog_comments
-  for insert
-  with check (auth.role() = 'authenticated');
+-- The blog (blog_posts, blog_comments, blog_tags, blog_categories and their
+-- join tables) was removed from KastoChha. Existing databases keep whatever
+-- rows they had — nothing in the app reads or writes them any more — but a new
+-- database is no longer given the tables. Drop them when you no longer want the
+-- data.
 
 -- Row Level Security for the rest of the schema. The app reads/writes everything
 -- through the server (service-role key, which bypasses RLS); this only blocks
@@ -237,8 +219,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'trending_topics','battles','reels','featured_stories','site_stats',
-    'blog_tags','blog_categories','blog_post_tags','blog_post_categories'
+    'trending_topics','battles','reels','featured_stories','site_stats'
   ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "public read" on public.%I', t);
@@ -251,7 +232,8 @@ end $$;
 alter table public.reviews         enable row level security;
 alter table public.questions       enable row level security;
 alter table public.author_profiles enable row level security;
-alter table public.chat_queries    enable row level security;
+alter table public.chat_topics     enable row level security;
+alter table public.chat_messages   enable row level security;
 alter table public.user_votes      enable row level security;
 
 -- Atomic vote counters (see migration 0003 for details). p_old is the user's

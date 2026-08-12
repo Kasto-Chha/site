@@ -1,7 +1,7 @@
 import SiteNav from "../components/SiteNav";
 
-// Static About page. Reuses the article typography from the blog so the long
-// copy matches the rest of the site without a stylesheet of its own.
+// Static About page. Uses the shared long-form article typography so the copy
+// matches the other written pages without a stylesheet of its own.
 const DESCRIPTION =
   "KastoChha is Nepal's Curious Community Network — ask anything, share honest experiences, and discover the ground reality together.";
 
@@ -27,20 +27,20 @@ export default function AboutPage() {
   return (
     <>
       <SiteNav />
-      <main className="blog-main">
-        <div className="blog-shell">
-          <article className="blog-article">
-            <header className="blog-head">
-              <div className="blog-kicker">About</div>
-              <h1 className="blog-title">About KastoChha</h1>
-              <p className="blog-lede">
+      <main className="article-main">
+        <div className="article-shell">
+          <article className="article-body">
+            <header className="article-head">
+              <div className="article-kicker">About</div>
+              <h1 className="article-title">About KastoChha</h1>
+              <p className="article-lede">
                 Welcome to KastoChha, Nepal&apos;s Curious Community Network—a place
                 where curiosity sparks conversations, experiences become knowledge,
                 and people help one another make better decisions.
               </p>
             </header>
 
-            <div className="blog-content">
+            <div className="article-content">
               <p>
                 Inspired by one of Nepal&apos;s most familiar phrases,{" "}
                 <strong>&ldquo;Kasto Chha?&rdquo;</strong> (कस्तो छ?), meaning

@@ -13,6 +13,8 @@
 --    already shows publicly), but there is NO insert/update/delete policy, so
 --    writes are only possible via the server (service role).
 -- ---------------------------------------------------------------------------
+-- The blog_* entries are legacy: the blog was removed from the app and newer
+-- databases never get those tables, so each name is skipped when absent.
 do $$
 declare t text;
 begin
@@ -20,6 +22,9 @@ begin
     'trending_topics','battles','reels','featured_stories','site_stats',
     'blog_tags','blog_categories','blog_post_tags','blog_post_categories'
   ] loop
+    if to_regclass(format('public.%I', t)) is null then
+      continue;
+    end if;
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "public read" on public.%I', t);
     execute format('create policy "public read" on public.%I for select using (true)', t);
@@ -38,8 +43,17 @@ end $$;
 alter table public.reviews         enable row level security;
 alter table public.questions       enable row level security;
 alter table public.author_profiles enable row level security;
-alter table public.chat_queries    enable row level security;
 alter table public.user_votes      enable row level security;
+
+-- chat_queries was replaced by chat_topics/chat_messages in 0004, which locks
+-- the replacements down the same way. Guarded so this migration still replays
+-- on a database built from the current schema.sql, where it never existed.
+do $$
+begin
+  if to_regclass('public.chat_queries') is not null then
+    execute 'alter table public.chat_queries enable row level security';
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- 3. Atomic vote counters. The old routes did read-modify-write, which loses

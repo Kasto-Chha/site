@@ -5,7 +5,9 @@ import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import ChatText from "./ChatText";
 import { formatTimeAgo } from "../../lib/topics";
+import { TOPIC_TITLE_MAX, topicTitle } from "../../lib/chatTopics";
 
 // Starter topics, not full questions — the empty state tells people to name a
 // thing and the assistant gives the verdict. The chip shows the bare topic but
@@ -20,8 +22,58 @@ const SUGGESTIONS = [
 
 const asQuestion = (topic) => `${topic} kasto chha?`;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Conversations are stored per user and listed newest-active first; the sidebar
+// splits that one ordered list into the usual date buckets so a long history
+// stays scannable.
+function groupByDate(items) {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const buckets = [
+    { label: "Today", items: [] },
+    { label: "Yesterday", items: [] },
+    { label: "Previous 7 days", items: [] },
+    { label: "Older", items: [] }
+  ];
+
+  for (const item of items) {
+    const at = new Date(item.last_message_at || 0).getTime();
+    if (!at || Number.isNaN(at)) buckets[3].items.push(item);
+    else if (at >= startOfToday) buckets[0].items.push(item);
+    else if (at >= startOfToday - DAY_MS) buckets[1].items.push(item);
+    else if (at >= startOfToday - 7 * DAY_MS) buckets[2].items.push(item);
+    else buckets[3].items.push(item);
+  }
+
+  return buckets.filter((bucket) => bucket.items.length);
+}
+
+// Union by id, newest activity first. Search can surface conversations older
+// than the page's first slice, so results are folded into the same list rather
+// than kept in a second one that rename/delete would have to stay in sync with.
+function mergeTopics(current, incoming) {
+  const byId = new Map(current.map((topic) => [topic.id, topic]));
+  for (const row of incoming) {
+    if (!row?.id) continue;
+    byId.set(row.id, { ...byId.get(row.id), ...row });
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
+  );
+}
+
+function describeTopic(topic) {
+  const parts = [];
+  if (topic.last_message_at) parts.push(formatTimeAgo(topic.last_message_at));
+  if (topic.message_count) {
+    parts.push(`${topic.message_count} message${topic.message_count === 1 ? "" : "s"}`);
+  }
+  return parts.join(" · ");
+}
+
 export default function ChatClient({
-  history = [],
+  topics: initialTopics = [],
   recent = [],
   prompts = [],
   trialLimit = 3,
@@ -34,7 +86,17 @@ export default function ChatClient({
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [historyItems, setHistoryItems] = useState(history);
+  // The user's conversations, and which one the thread on screen belongs to.
+  // Empty activeId = a new conversation that the server hasn't filed yet.
+  const [topics, setTopics] = useState(initialTopics);
+  const [activeId, setActiveId] = useState("");
+  const [openingId, setOpeningId] = useState("");
+  const [search, setSearch] = useState("");
+  // Ids returned by the server for the current search, or null while the
+  // search hasn't answered yet (we fall back to filtering what's loaded).
+  const [matchIds, setMatchIds] = useState(null);
+  const [renamingId, setRenamingId] = useState("");
+  const [renameValue, setRenameValue] = useState("");
   const [clearing, setClearing] = useState(false);
   // null while signed in (no trial applies). The server is the authority — this
   // is refreshed from a response header after every answer.
@@ -48,16 +110,48 @@ export default function ChatClient({
   const startedRef = useRef(false);
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
+  // send() is called from a mount effect that closes over the first render's
+  // state, so the conversation it should append to is read through a ref.
+  const activeIdRef = useRef("");
+  const skipRenameBlurRef = useRef(false);
 
   const nextId = () => {
     idRef.current += 1;
     return `m${idRef.current}`;
   };
 
+  const setActiveTopic = (id) => {
+    activeIdRef.current = id;
+    setActiveId(id);
+  };
+
   const updateMessage = (id, content) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === id ? { ...m, content } : m))
     );
+  };
+
+  // Move the conversation this answer belongs to to the top of the sidebar,
+  // adding it if the server just created it.
+  const recordTopic = (id, firstQuestion) => {
+    const stamp = new Date().toISOString();
+    setTopics((prev) => {
+      const existing = prev.find((topic) => topic.id === id);
+      const rest = prev.filter((topic) => topic.id !== id);
+      const row = existing
+        ? {
+            ...existing,
+            last_message_at: stamp,
+            message_count: (existing.message_count || 0) + 2
+          }
+        : {
+            id,
+            title: topicTitle(firstQuestion),
+            message_count: 2,
+            last_message_at: stamp
+          };
+      return [row, ...rest];
+    });
   };
 
   const send = async (text) => {
@@ -78,7 +172,10 @@ export default function ChatClient({
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          messages: base.map(({ role, content }) => ({ role, content }))
+          messages: base.map(({ role, content }) => ({ role, content })),
+          // Blank on the first message of a chat — the server opens a new
+          // conversation and hands its id back below.
+          topicId: activeIdRef.current || ""
         })
       });
 
@@ -96,13 +193,12 @@ export default function ChatClient({
         return;
       }
 
-      // Add this question to the visible history using the id the server logged.
-      const savedId = response.headers.get("X-Chat-Query-Id");
-      if (savedId) {
-        setHistoryItems((prev) => {
-          const next = prev.filter((item) => item.id !== savedId);
-          return [{ id: savedId, query: content, created_at: new Date().toISOString() }, ...next];
-        });
+      const savedTopicId = response.headers.get("X-Chat-Topic-Id");
+      if (savedTopicId) {
+        setActiveTopic(savedTopicId);
+        // Guests get a topic id too (it keeps their few turns threaded) but
+        // have no sidebar to list it in.
+        if (isSignedIn) recordTopic(savedTopicId, content);
       }
 
       const reader = response.body.getReader();
@@ -134,11 +230,14 @@ export default function ChatClient({
   }, []);
 
   // Signing in from the gate (Clerk's modal, so the page never reloads) has to
-  // release the lock and retire the trial counter.
+  // release the lock and retire the trial counter. The thread on screen was
+  // filed under an unowned guest topic, so it is detached here: the next
+  // message opens a conversation that actually belongs to the new account.
   useEffect(() => {
     if (!isSignedIn) return;
     setSignUpRequired(false);
     setTrialLeft(null);
+    setActiveTopic("");
   }, [isSignedIn]);
 
   // Keep the conversation scrolled to the latest message.
@@ -146,6 +245,39 @@ export default function ChatClient({
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // Search the user's own conversation titles server-side, so chats older than
+  // the slice rendered on the page are still findable.
+  useEffect(() => {
+    const term = search.trim();
+    if (!isSignedIn || term.length < 2) {
+      setMatchIds(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/chat/history?q=${encodeURIComponent(term)}`,
+          { credentials: "include" }
+        );
+        if (!response.ok) return;
+        const data = await response.json().catch(() => ({}));
+        const rows = Array.isArray(data.topics) ? data.topics : [];
+        if (cancelled) return;
+        setTopics((prev) => mergeTopics(prev, rows));
+        setMatchIds(rows.map((row) => row.id));
+      } catch {
+        // Leave matchIds null and fall back to the local filter below.
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, isSignedIn]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -163,15 +295,88 @@ export default function ChatClient({
     if (streaming) return;
     setMessages([]);
     setInput("");
+    setActiveTopic("");
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", "/chat");
     }
     textareaRef.current?.focus();
   };
 
-  const deleteHistoryItem = async (id) => {
-    const prev = historyItems;
-    setHistoryItems((items) => items.filter((item) => item.id !== id));
+  // Reopen a stored conversation: its turns come back from the database, and
+  // follow-ups then append to that same topic instead of starting a new one.
+  const openTopic = async (id) => {
+    if (streaming || id === activeId) return;
+    setOpeningId(id);
+    try {
+      const response = await fetch(
+        `/api/chat/history?topicId=${encodeURIComponent(id)}`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return;
+      const data = await response.json().catch(() => ({}));
+      const rows = Array.isArray(data.messages) ? data.messages : [];
+      setMessages(
+        rows.map((row) => ({
+          id: row.id,
+          role: row.role === "assistant" ? "assistant" : "user",
+          content: row.content || ""
+        }))
+      );
+      setActiveTopic(id);
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", "/chat");
+      }
+    } catch {
+      // Leave whatever is on screen alone.
+    } finally {
+      setOpeningId("");
+    }
+  };
+
+  const startRename = (topic) => {
+    skipRenameBlurRef.current = false;
+    setRenamingId(topic.id);
+    setRenameValue(topic.title);
+  };
+
+  // Enter and Escape both unmount the input, which can fire onBlur behind them.
+  // The ref is read synchronously, so the second commit is dropped whatever
+  // order React batches the state updates in.
+  const endRename = () => {
+    skipRenameBlurRef.current = true;
+    setRenamingId("");
+  };
+
+  const commitRename = async (id) => {
+    const title = renameValue.trim();
+    endRename();
+    const previous = topics;
+    const current = previous.find((topic) => topic.id === id);
+    if (!title || !current || title === current.title) return;
+
+    setTopics((items) =>
+      items.map((topic) => (topic.id === id ? { ...topic, title: topicTitle(title) } : topic))
+    );
+    try {
+      const response = await fetch("/api/chat/history", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id, title })
+      });
+      if (!response.ok) setTopics(previous);
+    } catch {
+      setTopics(previous);
+    }
+  };
+
+  const deleteTopic = async (id) => {
+    const previous = topics;
+    setTopics((items) => items.filter((topic) => topic.id !== id));
+    if (id === activeId) {
+      setMessages([]);
+      setActiveTopic("");
+    }
     try {
       const response = await fetch("/api/chat/history", {
         method: "DELETE",
@@ -179,17 +384,19 @@ export default function ChatClient({
         credentials: "include",
         body: JSON.stringify({ id })
       });
-      if (!response.ok) setHistoryItems(prev); // revert on failure
+      if (!response.ok) setTopics(previous); // revert on failure
     } catch {
-      setHistoryItems(prev);
+      setTopics(previous);
     }
   };
 
   const clearHistory = async () => {
-    if (clearing || historyItems.length === 0) return;
-    const prev = historyItems;
+    if (clearing || topics.length === 0) return;
+    const previous = topics;
     setClearing(true);
-    setHistoryItems([]);
+    setTopics([]);
+    setMessages([]);
+    setActiveTopic("");
     try {
       const response = await fetch("/api/chat/history", {
         method: "DELETE",
@@ -197,9 +404,9 @@ export default function ChatClient({
         credentials: "include",
         body: JSON.stringify({ all: true })
       });
-      if (!response.ok) setHistoryItems(prev);
+      if (!response.ok) setTopics(previous);
     } catch {
-      setHistoryItems(prev);
+      setTopics(previous);
     } finally {
       setClearing(false);
     }
@@ -208,6 +415,16 @@ export default function ChatClient({
   const railPrompts = Array.from(new Set([...prompts, ...recent]))
     .filter(Boolean)
     .slice(0, 6);
+
+  const term = search.trim().toLowerCase();
+  const visibleTopics = !term
+    ? topics
+    : matchIds
+      ? topics.filter((topic) => matchIds.includes(topic.id))
+      : topics.filter((topic) => (topic.title || "").toLowerCase().includes(term));
+  const groups = term
+    ? [{ label: `${visibleTopics.length} found`, items: visibleTopics }]
+    : groupByDate(visibleTopics);
 
   const isEmpty = messages.length === 0;
 
@@ -250,48 +467,119 @@ export default function ChatClient({
             </div>
           ) : null}
 
-          {historyItems.length > 0 ? (
+          {isSignedIn ? (
             <div className="chat-side-block">
               <div className="chat-side-head">
-                <span className="chat-side-label">Your history</span>
-                <button
-                  type="button"
-                  className="chat-history-clear"
-                  onClick={clearHistory}
-                  disabled={clearing}
-                >
-                  Clear all
-                </button>
+                <span className="chat-side-label">Your chats</span>
+                {topics.length > 0 ? (
+                  <button
+                    type="button"
+                    className="chat-history-clear"
+                    onClick={clearHistory}
+                    disabled={clearing}
+                  >
+                    Clear all
+                  </button>
+                ) : null}
               </div>
-              <ul className="chat-history-list">
-                {historyItems.map((item) => (
-                  <li key={item.id} className="chat-history-item">
-                    <button
-                      type="button"
-                      className="chat-history-open"
-                      onClick={() => send(item.query)}
-                      disabled={streaming}
-                      title={item.query}
-                    >
-                      <span className="chat-history-q">{item.query}</span>
-                      {item.created_at ? (
-                        <span className="chat-history-time">
-                          {formatTimeAgo(item.created_at)}
-                        </span>
-                      ) : null}
-                    </button>
-                    <button
-                      type="button"
-                      className="chat-history-del"
-                      onClick={() => deleteHistoryItem(item.id)}
-                      aria-label="Delete from history"
-                      title="Delete"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
+
+              {topics.length > 0 || term ? (
+                <input
+                  type="search"
+                  className="chat-side-search"
+                  placeholder="Search your chats"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  aria-label="Search your chats"
+                />
+              ) : null}
+
+              {visibleTopics.length === 0 ? (
+                <p className="chat-side-empty">
+                  {term
+                    ? "No chat matches that."
+                    : "Your conversations will be saved here."}
+                </p>
+              ) : (
+                groups.map((group) => (
+                  <div key={group.label} className="chat-history-group">
+                    <div className="chat-history-group-label">{group.label}</div>
+                    <ul className="chat-history-list">
+                      {group.items.map((topic) => (
+                        <li
+                          key={topic.id}
+                          className={`chat-history-item${
+                            topic.id === activeId ? " is-active" : ""
+                          }`}
+                        >
+                          {renamingId === topic.id ? (
+                            <input
+                              className="chat-history-rename"
+                              value={renameValue}
+                              maxLength={TOPIC_TITLE_MAX}
+                              autoFocus
+                              onChange={(event) => setRenameValue(event.target.value)}
+                              onBlur={() => {
+                                if (skipRenameBlurRef.current) {
+                                  skipRenameBlurRef.current = false;
+                                  return;
+                                }
+                                commitRename(topic.id);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  commitRename(topic.id);
+                                }
+                                if (event.key === "Escape") {
+                                  event.preventDefault();
+                                  endRename();
+                                }
+                              }}
+                              aria-label="Rename chat"
+                            />
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="chat-history-open"
+                                onClick={() => openTopic(topic.id)}
+                                disabled={streaming || openingId === topic.id}
+                                title={topic.title}
+                              >
+                                <span className="chat-history-q">{topic.title}</span>
+                                <span className="chat-history-time">
+                                  {openingId === topic.id
+                                    ? "Opening…"
+                                    : describeTopic(topic)}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="chat-history-act"
+                                onClick={() => startRename(topic)}
+                                aria-label={`Rename ${topic.title}`}
+                                title="Rename"
+                              >
+                                ✎
+                              </button>
+                              <button
+                                type="button"
+                                className="chat-history-act chat-history-del"
+                                onClick={() => deleteTopic(topic.id)}
+                                aria-label={`Delete ${topic.title}`}
+                                title="Delete"
+                              >
+                                ×
+                              </button>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
             </div>
           ) : null}
 
@@ -371,8 +659,11 @@ export default function ChatClient({
                           <span></span>
                           <span></span>
                         </span>
-                      ) : (
+                      ) : isUser ? (
+                        // Whatever the visitor typed, shown verbatim.
                         message.content
+                      ) : (
+                        <ChatText content={message.content} />
                       )}
                     </div>
                   </div>
