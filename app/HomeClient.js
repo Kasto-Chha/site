@@ -18,6 +18,9 @@ import {
   IconChat,
   IconHome
 } from "./components/icons";
+import { CATEGORY_LABELS } from "../lib/categories";
+import { CHANNELS, SOCIALS, liveLinks, youtubeChannelUrl } from "../lib/channels";
+import { storyHref } from "../lib/featured";
 
 // Typed one at a time into the hero search bar, so the first thing a visitor
 // sees is the shape of a real query. Module scope keeps the array identity
@@ -32,6 +35,16 @@ const VERDICT_LABELS = {
   naramro: "Naramro chha"
 };
 
+// Channel/social hrefs live in lib/channels.js so the footer, the Reels rail
+// and anything added later share one list. Rows without a url are dropped
+// rather than shipped as a link to a platform's homepage.
+const asFooterLinks = (items) =>
+  liveLinks(items).map((item) => ({
+    label: item.label,
+    href: item.url,
+    external: true
+  }));
+
 const FOOTER_COLUMNS = [
   {
     title: "Explore",
@@ -39,51 +52,43 @@ const FOOTER_COLUMNS = [
       { label: "Answer Engine", href: "/chat" },
       { label: "Trending", href: "/trending" },
       { label: "Battle", href: "/battle" },
-      { label: "Discussion", href: "/experience" },
+      // Discussions and Reels are homepage sections, not pages of their own —
+      // these jump to the section instead of guessing at a nearby route.
+      { label: "Discussion", href: "/#discussions" },
+      { label: "Reels", href: "/#reels" },
       { label: "Experience", href: "/experience" },
-      { label: "Reels", href: "/featured" },
       { label: "Featured", href: "/featured" }
     ]
   },
-  {
-    title: "Our Channels",
-    links: [
-      { label: "KastoChha Paisa", href: "https://www.instagram.com/kasto_chha_paisa/", external: true },
-      { label: "KastoChha Motors", href: "https://www.instagram.com/kasto_chha_motors/", external: true },
-      { label: "KastoChha Food", href: "https://www.instagram.com/kasto_chha_foods/", external: true },
-      { label: "KastoChha Travel", href: "/featured" },
-      { label: "KastoChha Career", href: "/featured" },
-      { label: "KastoChha Muglan", href: "/featured" },
-      { label: "KastoChha Entertainment", href: "https://www.instagram.com/kasto_chha_entertainment/", external: true },
-      { label: "KastoChha Tech & Gadgets", href: "https://www.instagram.com/kasto_chha_tech_gadgets/", external: true },
-      { label: "KastoChha Health & Lifestyle", href: "/featured" }
-    ]
-  },
-  {
-    title: "Follow Us",
-    links: [
-      { label: "Facebook", href: "https://facebook.com", external: true },
-      { label: "Instagram", href: "https://www.instagram.com/kasto_chha/", external: true },
-      { label: "TikTok", href: "https://tiktok.com", external: true },
-      { label: "Reddit", href: "https://reddit.com", external: true },
-      { label: "YouTube", href: "https://youtube.com", external: true },
-      { label: "LinkedIn", href: "https://linkedin.com", external: true },
-      { label: "Pinterest", href: "https://pinterest.com", external: true },
-      { label: "X", href: "https://x.com", external: true },
-      { label: "Quora", href: "https://quora.com", external: true }
-    ]
-  },
+  { title: "Our Channels", links: asFooterLinks(CHANNELS) },
+  { title: "Follow Us", links: asFooterLinks(SOCIALS) },
   {
     title: "Company",
     links: [
       { label: "About Us", href: "/about" },
       { label: "Contact Us", href: "/contact" },
       { label: "Community Guidelines", href: "/guidelines" },
-      { label: "Privacy Policy", href: "#" },
-      { label: "Terms", href: "#" }
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms", href: "/terms" }
     ]
   }
 ];
+
+// Inline failure notice for the share/ask modal. A 401 also offers the way out,
+// since "not signed in" is the one error the visitor can actually act on.
+function ModalError({ message, signIn }) {
+  if (!message) return null;
+  return (
+    <div className="modal-error" role="alert">
+      <span>{message}</span>
+      {signIn ? (
+        <a className="modal-error-link" href="/sign-in">
+          Sign in -&gt;
+        </a>
+      ) : null}
+    </div>
+  );
+}
 
 function FeaturedIcon({ type }) {
   if (type === "home") return <IconHome className="icon" />;
@@ -98,12 +103,19 @@ export default function HomeClient({
   reviews = [],
   stats = [],
   reels = [],
+  questions = [],
   trendingVotes = {},
   battleVotes = {}
 }) {
   const verdictRef = useRef(null);
   const activeTabRef = useRef("share");
+  // Guards against a double submit; the state twin below only drives the button
+  // label, and reading state inside the handler would see a stale value.
+  const busyRef = useRef(false);
   const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   // Stop the typing animation the moment there's something in the box — the
   // placeholder is hidden then, so there is nothing left to animate.
   const [hasQuery, setHasQuery] = useState(false);
@@ -111,7 +123,6 @@ export default function HomeClient({
   const searchPlaceholder = useTypedPlaceholder(SEARCH_EXAMPLES, {
     prefix: "Type ",
     suffix: " and find out KastoChha",
-    shortSuffix: "",
     paused: hasQuery
   });
 
@@ -184,6 +195,9 @@ export default function HomeClient({
 
   const switchMTab = (tab) => {
     activeTabRef.current = tab;
+    // An error from the other tab has nothing to say about this one.
+    setModalError("");
+    setNeedsSignIn(false);
     ["share", "ask"].forEach((key) => {
       const tabBtn = document.getElementById(`tab-${key}`);
       const panel = document.getElementById(`mp-${key}`);
@@ -241,10 +255,19 @@ export default function HomeClient({
     }
   };
 
+  // One request path for both tabs. Errors are shown inline in the modal now:
+  // window.alert() sat behind the modal backdrop on some mobile browsers, and a
+  // 401 used to hard-navigate to /sign-in, throwing away whatever had just been
+  // typed. Nothing here navigates, so a draft survives a failed submit.
   const submitForm = async (type) => {
+    if (busyRef.current) return;
+
     const panel = document.getElementById(`mp-${type}`);
     const success = document.getElementById(`suc-${type}`);
     const tabs = document.querySelector(".modal-tabs");
+
+    let endpoint = "";
+    let payload = null;
 
     if (type === "share") {
       const title = document.getElementById("sh-topic")?.value.trim() || "";
@@ -255,34 +278,19 @@ export default function HomeClient({
       );
 
       if (!title || !summary || !verdictKey) {
-        window.alert("Please fill topic, verdict, and experience before submitting.");
+        setModalError("Add a topic, a verdict, and your experience before posting.");
         return;
       }
 
       // Post into the same reviews pool the homepage discussions and Experience
       // page read from, so a shared story shows up alongside everyone else's.
-      const response = await fetch("/api/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          title,
-          category: categories[0] || "General",
-          verdict: VERDICT_LABELS[verdictKey] || "",
-          summary
-        })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        window.alert(data?.error || "Failed to share experience. Please try again.");
-        return;
-      }
+      endpoint = "/api/reviews";
+      payload = {
+        title,
+        category: categories[0] || "General",
+        verdict: VERDICT_LABELS[verdictKey] || "",
+        summary
+      };
     }
 
     if (type === "ask") {
@@ -290,27 +298,51 @@ export default function HomeClient({
       const category = document.getElementById("ask-cat")?.value.trim() || "";
 
       if (!question) {
-        window.alert("Please enter a question before submitting.");
+        setModalError("Type your question before posting.");
         return;
       }
 
-      const response = await fetch("/api/questions", {
+      endpoint = "/api/questions";
+      payload = { question, category };
+    }
+
+    if (!endpoint) return;
+
+    setModalError("");
+    setNeedsSignIn(false);
+    busyRef.current = true;
+    setBusy(true);
+
+    try {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ question, category })
+        body: JSON.stringify(payload)
       });
 
       if (response.status === 401) {
-        window.location.href = "/sign-in";
+        setNeedsSignIn(true);
+        setModalError("Sign in to post this — your draft stays right here.");
         return;
       }
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        window.alert(data?.error || "Failed to post question. Please try again.");
+        setModalError(
+          data?.error ||
+            (type === "ask"
+              ? "Could not post your question. Please try again."
+              : "Could not share your experience. Please try again.")
+        );
         return;
       }
+    } catch {
+      setModalError("Network problem — please try again.");
+      return;
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
 
     if (panel) panel.style.display = "none";
@@ -320,6 +352,8 @@ export default function HomeClient({
 
   const resetModal = () => {
     verdictRef.current = null;
+    setModalError("");
+    setNeedsSignIn(false);
     document.querySelectorAll(".vbtn-m").forEach((btn) => btn.classList.remove("on"));
     document.querySelectorAll(".tpill").forEach((pill) => pill.classList.remove("on"));
     document.querySelectorAll(".pseg").forEach((seg) => seg.classList.remove("fill"));
@@ -352,7 +386,14 @@ export default function HomeClient({
     "IPO parne chance kasto chha?"
   ];
   const searchItems = uniqueTitles.slice(0, 5);
-  const suggestedQuestions = uniqueTitles.slice(0, 4);
+  // Prefill chips for the Ask tab: what people have actually asked, falling
+  // back to trending poll titles before any question has been posted.
+  const askedQuestions = Array.from(
+    new Set(questions.map((item) => item.question).filter(Boolean))
+  );
+  const suggestedQuestions = (
+    askedQuestions.length ? askedQuestions : uniqueTitles
+  ).slice(0, 4);
 
   const marqueeItems = trending
     .slice(0, 6)
@@ -367,8 +408,15 @@ export default function HomeClient({
     .filter((label) => Boolean(label));
   const marqueeLoop = marqueeItems.length ? [...marqueeItems, ...marqueeItems] : [];
 
-  const featuredMain = featured.find((item) => item.slot === "main");
-  const featuredSide = featured.filter((item) => item.slot !== "main").slice(0, 2);
+  // The lead falls back to the first story so a set with no row marked "main"
+  // still renders a lead card instead of leaving the tall left column empty.
+  // Sides are "everything except the lead", so a story marked "main" twice
+  // can't drop out of the grid entirely.
+  const featuredMain = featured.find((item) => item.slot === "main") || featured[0] || null;
+  const featuredSide = featured.filter((item) => item !== featuredMain).slice(0, 2);
+  // With fewer than three stories the fixed 2x2 template leaves visible holes,
+  // so the grid falls back to a single column (1 story) or two (2 stories).
+  const featCount = (featuredMain ? 1 : 0) + featuredSide.length;
 
   return (
     <>
@@ -541,7 +589,7 @@ export default function HomeClient({
               <h2 className="sec-title">KastoChha <em>Reels</em></h2>
               <p className="sec-sub">Explore our reels across different niche channels and stay updated.</p>
             </div>
-            <a href="https://www.youtube.com/results?search_query=kastochha" target="_blank" rel="noopener noreferrer" className="sec-all">Follow us -&gt;</a>
+            <a href={youtubeChannelUrl()} target="_blank" rel="noopener noreferrer" className="sec-all">Follow us on YouTube -&gt;</a>
           </div>
 
           <ReelsRail reels={reels} />
@@ -562,20 +610,28 @@ export default function HomeClient({
               <a href="/featured" className="sec-all">Front page -&gt;</a>
             </div>
 
-            <div className="feat-grid bento-grid fi">
+            <div className={`feat-grid feat-grid-${featCount} bento-grid fi`}>
               {featuredMain ? (
                 <div className="fc fc-main bento-card">
-                  <div className="fc-visual">
+                  <a href={storyHref(featuredMain)} className="fc-visual">
                     <div className="fc-star">Editor pick</div>
                     <div className="fc-emoji"><FeaturedIcon type={featuredMain.icon} /></div>
-                  </div>
+                  </a>
                   <div className="fc-body">
-                    <span className="fc-why">{featuredMain.why_text}</span>
-                    <div className="fc-title">{featuredMain.title}</div>
-                    <div className="fc-desc">{featuredMain.description}</div>
-                    {featuredMain.link_url ? (
-                      <a href={featuredMain.link_url} className="fc-read">Read full story -&gt;</a>
+                    {featuredMain.why_text ? (
+                      <span className="fc-why">{featuredMain.why_text}</span>
                     ) : null}
+                    <div className="fc-title">
+                      <a href={storyHref(featuredMain)} className="fc-title-link">
+                        {featuredMain.title}
+                      </a>
+                    </div>
+                    {featuredMain.description ? (
+                      <div className="fc-desc">{featuredMain.description}</div>
+                    ) : null}
+                    {/* Always offer a way in: a story with no link_url still has
+                        its own permalink. */}
+                    <a href={storyHref(featuredMain)} className="fc-read">Read full story -&gt;</a>
                     <ShareRow text={featuredMain.title} url={`/featured/${featuredMain.id}`} label="Share" />
                   </div>
                 </div>
@@ -586,16 +642,20 @@ export default function HomeClient({
                   className={`fc ${index === 0 ? "fc-b" : "fc-c"} bento-card`}
                   key={story.id}
                 >
-                  <div className="fc-visual">
+                  <a href={storyHref(story)} className="fc-visual">
                     <div className="fc-emoji"><FeaturedIcon type={story.icon} /></div>
-                  </div>
+                  </a>
                   <div className="fc-body">
-                    <span className="fc-why">{story.why_text}</span>
-                    <div className="fc-title">{story.title}</div>
-                    <div className="fc-desc">{story.description}</div>
-                    {story.link_url ? (
-                      <a href={story.link_url} className="fc-read">Read -&gt;</a>
+                    {story.why_text ? <span className="fc-why">{story.why_text}</span> : null}
+                    <div className="fc-title">
+                      <a href={storyHref(story)} className="fc-title-link">
+                        {story.title}
+                      </a>
+                    </div>
+                    {story.description ? (
+                      <div className="fc-desc">{story.description}</div>
                     ) : null}
+                    <a href={storyHref(story)} className="fc-read">Read -&gt;</a>
                     <ShareRow text={story.title} url={`/featured/${story.id}`} label="Share" />
                   </div>
                 </div>
@@ -668,13 +728,16 @@ export default function HomeClient({
             <div className="fg">
               <div className="flbl"><span className="fstep">3</span>Category</div>
               <div className="trow">
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Technology</button>
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Career</button>
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Food</button>
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Education</button>
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Finance</button>
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Housing</button>
-                <button type="button" className="tpill" onClick={(e) => toggleT(e.currentTarget)}>Lifestyle</button>
+                {CATEGORY_LABELS.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="tpill"
+                    onClick={(e) => toggleT(e.currentTarget)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="fg">
@@ -705,8 +768,14 @@ export default function HomeClient({
                 </select>
               </div>
             </div>
-            <button type="button" className="fsub" onClick={() => submitForm("share")}>
-              Share Experience -&gt;
+            <ModalError message={modalError} signIn={needsSignIn} />
+            <button
+              type="button"
+              className="fsub"
+              disabled={busy}
+              onClick={() => submitForm("share")}
+            >
+              {busy ? "Posting..." : "Share Experience ->"}
             </button>
           </div>
 
@@ -733,17 +802,20 @@ export default function HomeClient({
               <div className="flbl">Category</div>
               <select className="fsel" id="ask-cat">
                 <option value="">Select category...</option>
-                <option>Food</option>
-                <option>Career</option>
-                <option>Housing</option>
-                <option>Education</option>
-                <option>Technology</option>
-                <option>Finance</option>
-                <option>Lifestyle</option>
+                {CATEGORY_LABELS.map((label) => (
+                  <option key={label}>{label}</option>
+                ))}
               </select>
             </div>
-            <button type="button" className="fsub" style={{ marginTop: "6px" }} onClick={() => submitForm("ask")}>
-              Post Question -&gt;
+            <ModalError message={modalError} signIn={needsSignIn} />
+            <button
+              type="button"
+              className="fsub"
+              style={{ marginTop: "6px" }}
+              disabled={busy}
+              onClick={() => submitForm("ask")}
+            >
+              {busy ? "Posting..." : "Post Question ->"}
             </button>
           </div>
 

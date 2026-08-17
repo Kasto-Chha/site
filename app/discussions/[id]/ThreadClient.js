@@ -74,6 +74,7 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
       onDelete={removeExperience}
       isEditBusy={isEditBusy}
       editErrorFor={editErrorFor}
+      showPermalink={false}
     />
   );
 }

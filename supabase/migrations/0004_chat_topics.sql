@@ -43,6 +43,41 @@ create table if not exists public.chat_messages (
   created_at timestamptz not null default now()
 );
 
+-- ---------------------------------------------------------------------------
+-- Reconcile an older chat_topics/chat_messages that already exists.
+--
+-- "create table if not exists" above is a no-op against a database that got
+-- these tables from an earlier draft, so such a database keeps the old shape
+-- and silently diverges from everything the app expects. Two ways that bites,
+-- both observed on a live database:
+--
+--   * archived_at missing — getUserChatTopics and searchUserChatTopics both
+--     filter on it, so every history query errors. safeQuery swallows the
+--     error and returns [], which renders as "Your conversations will be saved
+--     here" forever, no matter how many chats the user has had.
+--   * user_id NOT NULL — a guest conversation has no owner by design, so the
+--     insert is rejected and anonymous visitors' turns are never stored (and
+--     the backfill at the bottom of this file fails outright).
+--
+-- All four statements are no-ops once the shape is right, so this stays safe to
+-- re-run alongside the rest of the file.
+-- ---------------------------------------------------------------------------
+alter table public.chat_topics   add column if not exists archived_at timestamptz;
+alter table public.chat_topics   alter column user_id drop not null;
+alter table public.chat_messages alter column user_id drop not null;
+-- Columns an older draft added that this design doesn't set on insert. They
+-- carry defaults, but only a nullable column is safe if that ever changes.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'chat_topics'
+      and column_name = 'category_slug'
+  ) then
+    alter table public.chat_topics alter column category_slug drop not null;
+  end if;
+end $$;
+
 -- "This user's conversations, newest activity first" — the sidebar's only query.
 create index if not exists idx_chat_topics_user
   on public.chat_topics(user_id, last_message_at desc);

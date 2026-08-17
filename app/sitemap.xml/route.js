@@ -9,7 +9,9 @@ const STATIC_PATHS = [
   "/chat",
   "/about",
   "/contact",
-  "/guidelines"
+  "/guidelines",
+  "/privacy",
+  "/terms"
 ];
 
 function entry(loc, lastmod) {

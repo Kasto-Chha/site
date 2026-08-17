@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// Thumbnail resolver for Instagram/Facebook reel links. Browsers can't load
-// these covers directly (both platforms bot-check or redirect cross-site image
-// requests to a login page), but they resolve fine server-side: Instagram
-// serves a post's cover via its /media/ endpoint, and Facebook serves og:image
-// markup to its own link-preview crawler UA. The resolved image is streamed
-// back with long CDN caching so each thumbnail is fetched upstream rarely.
+// Thumbnail resolver for Instagram/Facebook/TikTok reel links. Browsers can't
+// load these covers directly (all three bot-check or redirect cross-site image
+// requests), but they resolve fine server-side: Instagram serves a post's cover
+// via its /media/ endpoint, Facebook serves og:image markup to its own
+// link-preview crawler UA, and TikTok publishes a keyless oEmbed endpoint that
+// returns a thumbnail_url. The resolved image is streamed back with long CDN
+// caching so each thumbnail is fetched upstream rarely.
 // YouTube never goes through here — its thumbnail URLs load directly.
 
 const CRAWLER_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
@@ -27,9 +28,21 @@ function timeout() {
     : undefined;
 }
 
-// Only ever stream images that live on Meta's CDNs.
+// Only ever stream images that live on the CDNs these platforms serve covers
+// from — the URL being followed comes from an upstream response, so this is
+// what stops a crafted oEmbed/og:image payload turning the route into an open
+// proxy for arbitrary hosts.
+const IMAGE_HOST_SUFFIXES = [
+  ".fbcdn.net",
+  ".cdninstagram.com",
+  ".tiktokcdn.com",
+  ".tiktokcdn-us.com",
+  ".tiktokcdn-eu.com",
+  ".ttwstatic.com"
+];
+
 function isAllowedImageHost(hostname) {
-  return hostname.endsWith(".fbcdn.net") || hostname.endsWith(".cdninstagram.com");
+  return IMAGE_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
 async function streamImage(imageUrl, userAgent) {
@@ -77,6 +90,33 @@ export async function GET(request) {
       const kind = m[1] === "reels" ? "reel" : m[1];
       const media = `https://www.instagram.com/${kind}/${encodeURIComponent(m[2])}/media/?size=l`;
       return (await streamImage(media, BROWSER_UA)) || miss();
+    }
+
+    // TikTok: keyless oEmbed, works for /video/<id> links and for the short
+    // vm./vt. share links people actually copy out of the app.
+    if (host === "tiktok.com" || host.endsWith(".tiktok.com")) {
+      const oembed = await fetch(
+        `https://www.tiktok.com/oembed?url=${encodeURIComponent(target.toString())}`,
+        {
+          redirect: "follow",
+          headers: { "User-Agent": BROWSER_UA, Accept: "application/json" },
+          signal: timeout()
+        }
+      );
+      if (!oembed.ok) return miss();
+      const data = await oembed.json().catch(() => null);
+      const thumb = data?.thumbnail_url;
+      if (!thumb) return miss();
+      let thumbUrl;
+      try {
+        thumbUrl = new URL(thumb);
+      } catch {
+        return miss();
+      }
+      if (thumbUrl.protocol !== "https:" || !isAllowedImageHost(thumbUrl.hostname)) {
+        return miss();
+      }
+      return (await streamImage(thumbUrl.toString(), BROWSER_UA)) || miss();
     }
 
     if (host === "facebook.com" || host === "fb.watch") {

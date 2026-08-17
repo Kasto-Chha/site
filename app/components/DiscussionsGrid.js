@@ -1,7 +1,7 @@
 "use client";
 
 import ShareRow from "./ShareRow";
-import { avatarStack, catTone, delayClass, formatTimeAgo } from "./sectionHelpers";
+import { avatarStack, catLabel, catTone, delayClass, formatTimeAgo } from "./sectionHelpers";
 import { IconThumb } from "./icons";
 import { topicSlug } from "../../lib/slug";
 
@@ -49,7 +49,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
             <div className="disc-top">
               <div className="disc-cat" style={{ color: tone }}>
                 <span className="tcard-glyph" style={{ background: tone }} aria-hidden />
-                {review.category}
+                {catLabel(review.category)}
               </div>
               <div className="disc-avatars" aria-hidden>
                 {stack.map((ch, i) => (

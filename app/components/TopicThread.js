@@ -13,6 +13,7 @@ import {
   IconTrash
 } from "./icons";
 import { formatTimeAgo, scoreOf, verdictTone } from "../../lib/topics";
+import { categoryLabel, categoryTone } from "../../lib/categories";
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 
@@ -32,11 +33,18 @@ export default function TopicThread({
   onEdit,
   onDelete,
   isEditBusy,
-  editErrorFor
+  editErrorFor,
+  // The thread's own page links to itself, so it opts out.
+  showPermalink = true
 }) {
   const total = topic.verdicts.pos + topic.verdicts.neu + topic.verdicts.neg;
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
   const { user } = useUser();
+
+  // A thread has no id of its own — it's a group of experiences sharing a slug —
+  // so it is addressed by its opening post, the same row /discussions/[id]
+  // rebuilds the whole thread from.
+  const permalink = topic.op?.id ? `/discussions/${topic.op.id}` : "";
 
   const [replyText, setReplyText] = useState("");
   const [replyVerdict, setReplyVerdict] = useState("");
@@ -148,21 +156,15 @@ export default function TopicThread({
 
   return (
     <article className={`topic-thread ${isOpen ? "open" : ""}`}>
-      <header
-        className="topic-head"
-        onClick={() => onToggle(topic.slug)}
-        role="button"
-        tabIndex={0}
-        aria-expanded={isOpen}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onToggle(topic.slug);
-          }
-        }}
-      >
+      {/* Clicking the header still toggles the thread, but it is no longer a
+          role="button": the title is a real link to the thread's own page, and
+          an interactive control can't be nested inside another one. Keyboard
+          users get the same toggle from .topic-toggle in the footer below. */}
+      <header className="topic-head" onClick={() => onToggle(topic.slug)}>
         <div className="topic-meta-top">
-          <span className="topic-cat">{topic.category}</span>
+          <span className="topic-cat" style={{ color: categoryTone(topic.category) }}>
+            {categoryLabel(topic.category)}
+          </span>
           <span className="topic-count-pill">
             {topic.count} experience{topic.count === 1 ? "" : "s"}
           </span>
@@ -170,7 +172,19 @@ export default function TopicThread({
             {isOpen ? "collapse" : "expand"}
           </span>
         </div>
-        <h2 className="topic-title">{topic.title}</h2>
+        <h2 className="topic-title">
+          {showPermalink && permalink ? (
+            <a
+              className="topic-title-link"
+              href={permalink}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {topic.title}
+            </a>
+          ) : (
+            topic.title
+          )}
+        </h2>
       </header>
 
       {total > 0 ? (
@@ -233,6 +247,12 @@ export default function TopicThread({
             <IconReply className="icon" />
             Add yours
           </button>
+        ) : null}
+        {showPermalink && permalink ? (
+          <a className="topic-toggle topic-open-cta" href={permalink}>
+            <IconLink className="icon" />
+            Open thread
+          </a>
         ) : null}
         <span className="topic-foot-meta">
           net {topic.score >= 0 ? "+" : ""}

@@ -3,7 +3,7 @@
 import ShareRow from "./ShareRow";
 import useCardVotes from "./useCardVotes";
 import useRevealOnce from "./useRevealOnce";
-import { catTone, delayClass, formatTimeAgo } from "./sectionHelpers";
+import { catLabel, catTone, delayClass, formatTimeAgo } from "./sectionHelpers";
 import { IconMeh, IconThumb, IconThumbDown } from "./icons";
 
 // Trending poll grid. Each card asks a "kasto chha?" question and collects a
@@ -58,7 +58,7 @@ function TrendingCard({ topic, index, myVote, busy, error, onVote }) {
     >
       <div className="tcard-cat" style={{ color: tone }}>
         <span className="tcard-glyph" style={{ background: tone }} aria-hidden />
-        {topic.category}
+        {catLabel(topic.category)}
       </div>
 
       <h3 className="tcard-title">{topic.title}</h3>

@@ -2,8 +2,12 @@ import { auth } from "@clerk/nextjs/server";
 
 import ChatClient from "./ChatClient";
 import { TRIAL_LIMIT, trialRemaining } from "../../lib/chatTrial";
+import { QUOTA_WARN_AT, checkChatQuota } from "../../lib/chatQuota";
+import { createServerSupabase } from "../../lib/supabase/server";
+import { getUserRole, hasRole, ROLE } from "../../lib/auth/roles";
 import {
   getRecentChatTopics,
+  getRecentQuestions,
   getReviews,
   getTrendingTopics,
   getUserChatTopics
@@ -15,15 +19,32 @@ function uniqueStrings(values) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+// Questions left today, so someone returning to a spent quota is told before
+// they type rather than after they send. The role lookup costs a Clerk call, so
+// it only runs when the number is low enough to be shown — admins are exempt
+// from the quota and should never see the warning.
+async function chatQuotaLeft(userId) {
+  if (!userId) return null;
+
+  const quota = await checkChatQuota(createServerSupabase(), userId);
+  if (quota.remaining === null || quota.remaining > QUOTA_WARN_AT) return null;
+
+  const isAdmin = hasRole(await getUserRole(userId), ROLE.ADMIN);
+  return isAdmin ? null : quota.remaining;
+}
+
 export default async function ChatPage() {
   const { userId } = await auth();
 
-  const [trending, reviews, recentTopics, userTopics] = await Promise.all([
-    getTrendingTopics(),
-    getReviews(8),
-    getRecentChatTopics(8),
-    getUserChatTopics(userId, 40)
-  ]);
+  const [trending, reviews, recentTopics, questions, userTopics, dailyLeft] =
+    await Promise.all([
+      getTrendingTopics(),
+      getReviews(8),
+      getRecentChatTopics(8),
+      getRecentQuestions(6),
+      getUserChatTopics(userId, 40),
+      chatQuotaLeft(userId)
+    ]);
 
   const recent = uniqueStrings(recentTopics.map((item) => item.title));
   // The user's own conversations, newest activity first. Full rows so the
@@ -36,10 +57,14 @@ export default async function ChatPage() {
       message_count: item.message_count || 0,
       last_message_at: item.last_message_at || item.created_at
     }));
+  // Questions people actually posted lead the rail — the whole point of "Ask a
+  // KastoChha" is that someone else sees the question — with trending polls and
+  // recent experiences filling the rest out.
   const prompts = uniqueStrings([
+    ...questions.map((item) => item.question),
     ...trending.map((topic) => topic.title),
     ...reviews.map((review) => review.topic || review.title)
-  ]).slice(0, 4);
+  ]).slice(0, 6);
 
   const fallbackCards = [];
   if (trending[0]) {
@@ -85,9 +110,11 @@ export default async function ChatPage() {
       prompts={prompts}
       assistantFallback={assistantFallback}
       trialLimit={TRIAL_LIMIT}
-      // Rendered on the server so the counter is right on first paint instead
+      // Rendered on the server so the counters are right on first paint instead
       // of only after the first answer comes back.
       initialTrialLeft={userId ? null : trialRemaining()}
+      initialDailyLeft={dailyLeft}
+      quotaWarnAt={QUOTA_WARN_AT}
     />
   );
 }

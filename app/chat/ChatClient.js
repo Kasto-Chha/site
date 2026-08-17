@@ -77,7 +77,11 @@ export default function ChatClient({
   recent = [],
   prompts = [],
   trialLimit = 3,
-  initialTrialLeft = null
+  initialTrialLeft = null,
+  initialDailyLeft = null,
+  // Passed in rather than imported: the threshold lives with the quota logic in
+  // lib/chatQuota.js, which is server-side and has no business in this bundle.
+  quotaWarnAt = 5
 }) {
   const searchParams = useSearchParams();
   const initialQuery = (searchParams.get("q") || "").trim();
@@ -102,9 +106,19 @@ export default function ChatClient({
   // is refreshed from a response header after every answer.
   const [trialLeft, setTrialLeft] = useState(initialTrialLeft);
   const [signUpRequired, setSignUpRequired] = useState(false);
+  // Daily quota left for a signed-in account, as last reported by the server.
+  // null = unknown (not signed in yet, or the account is exempt).
+  const [dailyLeft, setDailyLeft] = useState(initialDailyLeft);
+  const [dailyLimitHit, setDailyLimitHit] = useState(initialDailyLeft === 0);
 
   const onTrial = !isSignedIn && trialLeft !== null;
-  const locked = signUpRequired || (onTrial && trialLeft <= 0);
+  const locked = signUpRequired || (onTrial && trialLeft <= 0) || dailyLimitHit;
+
+  // The sidebar is a permanent column from 861px up and a drawer below it, so
+  // phones can reach chat history and the community rail at all — they used to
+  // be display:none, which meant a phone could start conversations but never
+  // reopen one.
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const idRef = useRef(0);
   const startedRef = useRef(false);
@@ -179,13 +193,16 @@ export default function ChatClient({
         })
       });
 
-      // The server owns the trial count; mirror whatever it reports.
+      // The server owns both counters; mirror whatever it reports.
       const remaining = response.headers.get("X-Chat-Trial-Remaining");
       if (remaining !== null) setTrialLeft(Number(remaining) || 0);
+      const daily = response.headers.get("X-Chat-Daily-Remaining");
+      if (daily !== null) setDailyLeft(Number(daily) || 0);
 
       if (!response.ok || !response.body) {
         const data = await response.json().catch(() => ({}));
         if (data?.signUpRequired) setSignUpRequired(true);
+        if (data?.limitReached) setDailyLimitHit(true);
         updateMessage(
           assistantMsg.id,
           data?.error || "Sorry, something went wrong. Please try again."
@@ -246,6 +263,20 @@ export default function ChatClient({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // Drawer: close on Escape, and don't let the thread behind it scroll.
+  useEffect(() => {
+    if (!drawerOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [drawerOpen]);
+
   // Search the user's own conversation titles server-side, so chats older than
   // the slice rendered on the page are still findable.
   useEffect(() => {
@@ -296,6 +327,7 @@ export default function ChatClient({
     setMessages([]);
     setInput("");
     setActiveTopic("");
+    setDrawerOpen(false);
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", "/chat");
     }
@@ -306,6 +338,7 @@ export default function ChatClient({
   // follow-ups then append to that same topic instead of starting a new one.
   const openTopic = async (id) => {
     if (streaming || id === activeId) return;
+    setDrawerOpen(false);
     setOpeningId(id);
     try {
       const response = await fetch(
@@ -429,13 +462,29 @@ export default function ChatClient({
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="chat-app">
-      <aside className="chat-sidebar">
+    <div className={`chat-app${drawerOpen ? " drawer-open" : ""}`}>
+      {/* Only rendered as a real backdrop below the drawer breakpoint (CSS);
+          above it the sidebar is a normal column and this never shows. */}
+      <div
+        className="chat-drawer-scrim"
+        onClick={() => setDrawerOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className="chat-sidebar" id="chat-sidebar">
         <div className="chat-side-top">
           <Link href="/" className="chat-logo" aria-label="KastoChha home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/kastochha-logo.svg" alt="KastoChha" />
           </Link>
+          <button
+            type="button"
+            className="chat-drawer-x"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
           <button
             type="button"
             className="chat-newbtn"
@@ -583,21 +632,34 @@ export default function ChatClient({
             </div>
           ) : null}
 
-          {railPrompts.length > 0 ? (
-            <div className="chat-side-block">
-              <div className="chat-side-label">Community is asking</div>
-              <ul className="chat-side-list">
-                {railPrompts.map((item) => (
-                  <li key={item}>
-                    <button type="button" onClick={() => send(item)} disabled={streaming}>
-                      {item}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </div>
+
+        {/* Pinned below the scrolling history rather than inside it. It used to
+            sit at the end of the same scroll area, so once a user had more than
+            a screenful of conversations the community rail was only reachable
+            by scrolling past all of them. */}
+        {railPrompts.length > 0 ? (
+          <div className="chat-side-pinned">
+            <div className="chat-side-label">Community is asking</div>
+            <ul className="chat-side-list">
+              {railPrompts.map((item) => (
+                <li key={item}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrawerOpen(false);
+                      send(item);
+                    }}
+                    disabled={streaming}
+                    title={item}
+                  >
+                    {item}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="chat-side-foot">
           <Link href="/" className="chat-side-home">← Back to KastoChha</Link>
@@ -606,13 +668,32 @@ export default function ChatClient({
 
       <main className="chat-main" id="main">
         <header className="chat-topbar">
-          {/* Doubles as the way home: the sidebar (with its own back link) is
-              hidden below 860px, so on mobile this is the only exit. */}
+          {/* Below 860px the sidebar is a drawer, so this is how a phone gets to
+              its chat history and the community rail. */}
+          <button
+            type="button"
+            className="chat-drawer-btn"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open chats"
+            aria-expanded={drawerOpen}
+            aria-controls="chat-sidebar"
+          >
+            <span className="hamburger" aria-hidden />
+          </button>
           <Link href="/" className="chat-topbar-title" aria-label="KastoChha home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/kastochha-logo.svg" alt="KastoChha" className="chat-topbar-logo" />
             <span className="chat-topbar-tag">Assist</span>
           </Link>
+          <button
+            type="button"
+            className="chat-topbar-new"
+            onClick={newChat}
+            disabled={streaming}
+            aria-label="New chat"
+          >
+            +
+          </button>
         </header>
 
         <div className="chat-scroll" ref={scrollRef}>
@@ -654,10 +735,19 @@ export default function ChatClient({
                     </div>
                     <div className="chat-bubble">
                       {pending ? (
-                        <span className="chat-typing">
-                          <span></span>
-                          <span></span>
-                          <span></span>
+                        // Between hitting send and the first token there was
+                        // only an unlabelled row of dots, which reads the same
+                        // whether the assistant is working or stuck. Say what
+                        // is happening instead.
+                        <span className="chat-working" role="status">
+                          <span className="chat-typing" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </span>
+                          <span className="chat-working-text">
+                            Khojdai chha — searching KastoChha…
+                          </span>
                         </span>
                       ) : isUser ? (
                         // Whatever the visitor typed, shown verbatim.
@@ -674,7 +764,18 @@ export default function ChatClient({
         </div>
 
         <div className="chat-composer">
-          {locked ? (
+          {dailyLimitHit ? (
+            // Signed in, but today's quota is spent. Nothing to sign up for
+            // here — it just needs time, so the copy says so.
+            <div className="chat-gate">
+              <div className="chat-gate-title">Aaja ko limit sakiyo</div>
+              <p className="chat-gate-body">
+                You&apos;ve used today&apos;s questions on this account. The
+                limit rolls over as your earlier questions pass 24 hours — feri
+                sodhna ali bela pachi aaunus hai.
+              </p>
+            </div>
+          ) : locked ? (
             // Trial spent. The composer stays visible but inert, so it's clear
             // what signing up unlocks.
             <div className="chat-gate">
@@ -707,6 +808,12 @@ export default function ChatClient({
                 </button>
               </SignInButton>
             </div>
+          ) : dailyLeft !== null && dailyLeft <= quotaWarnAt ? (
+            <div className="chat-trial">
+              <span className="chat-trial-count">
+                {dailyLeft} question{dailyLeft === 1 ? "" : "s"} left today
+              </span>
+            </div>
           ) : null}
 
           <form className="chat-composer-form" onSubmit={handleSubmit}>
@@ -715,9 +822,11 @@ export default function ChatClient({
               className="chat-input"
               rows={1}
               placeholder={
-                locked
-                  ? "Sign up to keep chatting..."
-                  : "Ask KastoChha Assist anything “KastoChha”"
+                dailyLimitHit
+                  ? "Aaja ko limit sakiyo — bholi feri sodhnus..."
+                  : locked
+                    ? "Sign up to keep chatting..."
+                    : "Ask KastoChha Assist anything “KastoChha”"
               }
               value={input}
               onChange={(event) => setInput(event.target.value)}

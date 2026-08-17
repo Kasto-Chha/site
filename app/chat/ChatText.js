@@ -4,6 +4,15 @@ import { parseChatText } from "../../lib/chatFormat";
 // parsed spans, so the model's text is never treated as markup.
 function renderSpans(spans) {
   return spans.map((span, index) => {
+    // href is only ever set for an http(s) URL — see the INLINE pattern in
+    // lib/chatFormat.js. Citations point off-site, hence noopener/noreferrer.
+    if (span.href) {
+      return (
+        <a key={index} href={span.href} target="_blank" rel="noopener noreferrer nofollow">
+          {span.text}
+        </a>
+      );
+    }
     if (span.bold) return <strong key={index}>{span.text}</strong>;
     if (span.italic) return <em key={index}>{span.text}</em>;
     if (span.code) return <code key={index}>{span.text}</code>;
