@@ -76,6 +76,9 @@ export default function ChatClient({
   topics: initialTopics = [],
   recent = [],
   prompts = [],
+  // Whether the server resolved a signed-in user for this request. See the
+  // `signedIn` note below for why the client can't just ask Clerk.
+  initialSignedIn = false,
   trialLimit = 3,
   initialTrialLeft = null,
   initialDailyLeft = null,
@@ -85,7 +88,19 @@ export default function ChatClient({
 }) {
   const searchParams = useSearchParams();
   const initialQuery = (searchParams.get("q") || "").trim();
-  const { isSignedIn } = useUser();
+  // `isSignedIn` is undefined until Clerk hydrates on the client, and the whole
+  // sidebar keys off it: the history block renders only when it is true, and
+  // the "Sign in to KastoChha" card renders whenever it is falsy. Undefined is
+  // falsy, so a signed-in user was served the signed-out sidebar — no chat
+  // history — on every single load, and kept it for as long as Clerk took to
+  // load (forever, if its script is slow, blocked, or offline).
+  //
+  // The server already answered this question: it called auth() to fetch this
+  // user's conversations, so it knows. Trust that until Clerk's own state is
+  // actually loaded, then defer to Clerk so signing in or out through a modal
+  // still updates the sidebar without a reload.
+  const { isSignedIn: clerkSignedIn, isLoaded } = useUser();
+  const signedIn = isLoaded ? Boolean(clerkSignedIn) : initialSignedIn;
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -111,7 +126,7 @@ export default function ChatClient({
   const [dailyLeft, setDailyLeft] = useState(initialDailyLeft);
   const [dailyLimitHit, setDailyLimitHit] = useState(initialDailyLeft === 0);
 
-  const onTrial = !isSignedIn && trialLeft !== null;
+  const onTrial = !signedIn && trialLeft !== null;
   const locked = signUpRequired || (onTrial && trialLeft <= 0) || dailyLimitHit;
 
   // The sidebar is a permanent column from 861px up and a drawer below it, so
@@ -215,7 +230,7 @@ export default function ChatClient({
         setActiveTopic(savedTopicId);
         // Guests get a topic id too (it keeps their few turns threaded) but
         // have no sidebar to list it in.
-        if (isSignedIn) recordTopic(savedTopicId, content);
+        if (signedIn) recordTopic(savedTopicId, content);
       }
 
       const reader = response.body.getReader();
@@ -251,11 +266,11 @@ export default function ChatClient({
   // filed under an unowned guest topic, so it is detached here: the next
   // message opens a conversation that actually belongs to the new account.
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!signedIn) return;
     setSignUpRequired(false);
     setTrialLeft(null);
     setActiveTopic("");
-  }, [isSignedIn]);
+  }, [signedIn]);
 
   // Keep the conversation scrolled to the latest message.
   useEffect(() => {
@@ -281,7 +296,7 @@ export default function ChatClient({
   // the slice rendered on the page are still findable.
   useEffect(() => {
     const term = search.trim();
-    if (!isSignedIn || term.length < 2) {
+    if (!signedIn || term.length < 2) {
       setMatchIds(null);
       return undefined;
     }
@@ -308,7 +323,7 @@ export default function ChatClient({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [search, isSignedIn]);
+  }, [search, signedIn]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -496,7 +511,7 @@ export default function ChatClient({
         </div>
 
         <div className="chat-side-scroll">
-          {!isSignedIn ? (
+          {!signedIn ? (
             <div className="chat-side-block">
               <div className="chat-signin-card">
                 <div className="chat-signin-title">Sign in to KastoChha</div>
@@ -516,7 +531,7 @@ export default function ChatClient({
             </div>
           ) : null}
 
-          {isSignedIn ? (
+          {signedIn ? (
             <div className="chat-side-block">
               <div className="chat-side-head">
                 <span className="chat-side-label">Your chats</span>

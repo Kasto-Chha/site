@@ -1996,6 +1996,95 @@ ol.chat-md-list li{list-style:decimal}
 .reel-modal-x:hover{background:var(--red);border-color:var(--red);transform:scale(1.06)}
 
 /* --- Join band (Ask / Share) ------------------------------------------ */
+/* --- Community is asking: the open-questions wall --------------------- */
+/* Cards read as speech bubbles — the question is the whole point, so it gets
+   the display serif and everything else stays out of its way. Per-card niche
+   colour comes in as --q-tone from lib/categories.js. */
+.qwall{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 22px}
+.qcard{
+	--q-tone:var(--saffron);
+	position:relative;display:flex;flex-direction:column;gap:14px;
+	background:var(--card);border:1px solid var(--border);
+	border-radius:18px 18px 18px 6px;padding:24px 24px 20px;
+	transition:transform .2s,box-shadow .2s,border-color .2s;
+}
+.qcard:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 22px 44px rgba(12,11,9,.08)}
+/* Niche colour as a top edge, so a wall of questions is scannable by topic. */
+.qcard::before{
+	content:'';position:absolute;left:22px;right:22px;top:0;height:2px;
+	background:var(--q-tone);opacity:.55;border-radius:0 0 2px 2px;
+}
+/* The bubble's tail: a rotated square borrowing the card's own background and
+   two of its borders, so it stays seamless when the border colour changes. */
+.qcard::after{
+	content:'';position:absolute;left:24px;bottom:-8px;width:15px;height:15px;
+	background:var(--card);
+	border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+	border-bottom-right-radius:3px;transform:rotate(45deg);transition:border-color .2s;
+}
+.qcard:hover::after{border-color:var(--border2)}
+.qcard-quote{
+	position:absolute;top:2px;right:14px;
+	font-family:var(--font-serif),serif;font-size:4.6rem;line-height:1;
+	color:var(--q-tone);opacity:.1;pointer-events:none;user-select:none;
+}
+/* Positioned so it paints over the decorative quote glyph behind it. */
+.qcard-top{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.qcard-cat{
+	display:inline-flex;align-items:center;gap:6px;
+	font-family:var(--font-mono),monospace;font-size:.58rem;letter-spacing:1.5px;
+	text-transform:uppercase;color:var(--q-tone);
+}
+.qcard-dot{width:8px;height:8px;border-radius:2.5px;background:var(--q-tone);flex-shrink:0}
+.qcard-status{
+	margin-left:auto;font-family:var(--font-mono),monospace;font-size:.55rem;
+	letter-spacing:1.2px;text-transform:uppercase;padding:4px 10px;
+	border-radius:999px;white-space:nowrap;
+}
+.qcard-status.open{background:var(--red-pale);color:var(--red);border:1px solid rgba(200,16,46,.2)}
+.qcard-status.answered{background:var(--green-pale);color:var(--green);border:1px solid rgba(59,109,17,.22)}
+.qcard-q{
+	position:relative;font-family:var(--font-serif),serif;font-size:1.28rem;
+	font-weight:800;letter-spacing:-.4px;line-height:1.32;color:var(--ink);
+}
+.qcard-foot{
+	display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+	margin-top:auto;padding-top:16px;border-top:1px solid var(--border);
+}
+.qcard-cta{
+	display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;
+	cursor:pointer;text-decoration:none;background:var(--red);border:1px solid var(--red);color:#fff;
+	font-family:var(--font-sans),sans-serif;font-size:.8rem;font-weight:700;
+	transition:background .18s,box-shadow .18s,gap .18s;
+}
+.qcard-cta:hover{background:#a80e26;box-shadow:0 8px 20px var(--red-glow);gap:11px}
+.qcard-cta .icon{width:15px;height:15px}
+/* Already answered: the pull is the thread, not another reply, so the button
+   steps back to a quiet outline. */
+.qcard.is-answered .qcard-cta{background:transparent;color:var(--ink);border-color:var(--border2)}
+.qcard.is-answered .qcard-cta:hover{background:var(--paper2);color:var(--red);border-color:var(--red);box-shadow:none}
+.qcard-alt{
+	font-family:var(--font-sans),sans-serif;font-size:.78rem;font-weight:600;
+	color:var(--muted);text-decoration:none;transition:color .15s;
+}
+.qcard-alt:hover{color:var(--red);text-decoration:underline;text-underline-offset:3px}
+.qcard-time{margin-left:auto;font-family:var(--font-mono),monospace;font-size:.6rem;letter-spacing:.4px;color:var(--muted2)}
+
+.qwall-empty{
+	display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;
+	padding:52px 24px;border:1.5px dashed var(--border2);border-radius:18px;background:var(--card);
+}
+.qwall-empty-ico{
+	width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+	background:var(--red-pale);color:var(--red);
+}
+.qwall-empty-ico .icon{width:24px;height:24px}
+.qwall-empty-title{font-family:var(--font-serif),serif;font-size:1.5rem;font-weight:800;letter-spacing:-.4px;color:var(--ink)}
+.qwall-empty-sub{font-size:.94rem;line-height:1.65;color:var(--muted);max-width:46ch}
+/* The section header's action is a button here (it opens the modal) rather than
+   the link the other sections use. */
+button.sec-all{background:none;border:none;padding:0;cursor:pointer}
+
 .join-band{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:24px;margin-top:64px;align-items:stretch}
 .join-intro{display:flex;flex-direction:column;justify-content:center;gap:16px;padding-right:20px}
 .join-title{
@@ -2089,6 +2178,7 @@ ol.chat-md-list li{list-style:decimal}
 @media(max-width:980px){
 	.tcard-grid{grid-template-columns:1fr 1fr}
 	.disc-grid{grid-template-columns:1fr 1fr}
+	.qwall{grid-template-columns:1fr 1fr}
 	.join-band{grid-template-columns:1fr 1fr}
 	.join-intro{grid-column:1/-1;padding-right:0}
 	.join-title{font-size:2.2rem}
@@ -2105,6 +2195,9 @@ ol.chat-md-list li{list-style:decimal}
 @media(max-width:680px){
 	.tcard-grid{grid-template-columns:1fr}
 	.disc-grid{grid-template-columns:1fr}
+	.qwall{grid-template-columns:1fr;gap:24px}
+	.qcard-q{font-size:1.14rem}
+	.qcard-foot{gap:10px}
 	.join-band{grid-template-columns:1fr}
 	.tcard{padding:22px 20px 18px}
 	.disc-card{padding:22px 20px 18px}

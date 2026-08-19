@@ -7,6 +7,7 @@ import SiteNav from "./components/SiteNav";
 import TrendingCards from "./components/TrendingCards";
 import BattleSplit from "./components/BattleSplit";
 import DiscussionsGrid from "./components/DiscussionsGrid";
+import QuestionsWall from "./components/QuestionsWall";
 import ReelsRail from "./components/ReelsRail";
 import ShareRow from "./components/ShareRow";
 import useScrollReveal from "./components/useScrollReveal";
@@ -18,7 +19,8 @@ import {
   IconChat,
   IconHome
 } from "./components/icons";
-import { CATEGORY_LABELS } from "../lib/categories";
+import { CATEGORY_LABELS, categoryLabel } from "../lib/categories";
+import { topicSlug } from "../lib/slug";
 import { CHANNELS, SOCIALS, liveLinks, youtubeChannelUrl } from "../lib/channels";
 import { storyHref } from "../lib/featured";
 
@@ -247,6 +249,27 @@ export default function HomeClient({
     });
   };
 
+  // Answering an open question reuses the share flow: open the modal with the
+  // question already filled in as the topic and its niche preselected, so the
+  // only thing left to do is write the actual answer. Retyping the question by
+  // hand is exactly the friction that stops people replying.
+  const answerQuestion = (item) => {
+    openModal("share");
+
+    const topicInput = document.getElementById("sh-topic");
+    if (topicInput) topicInput.value = item.question || "";
+
+    const label = categoryLabel(item.category);
+    document.querySelectorAll(".tpill").forEach((pill) => {
+      pill.classList.toggle("on", pill.textContent.trim() === label);
+    });
+
+    calcProg();
+    // The modal is always mounted (just hidden), so this only waits for the
+    // open transition rather than for the node to exist.
+    setTimeout(() => document.getElementById("sh-exp")?.focus(), 140);
+  };
+
   const fillAsk = (text) => {
     const input = document.getElementById("ask-q");
     if (input) {
@@ -412,6 +435,28 @@ export default function HomeClient({
   // still renders a lead card instead of leaving the tall left column empty.
   // Sides are "everything except the lead", so a story marked "main" twice
   // can't drop out of the grid entirely.
+  // A question is "answered" when an experience has been posted under the same
+  // topic slug — the same grouping /discussions and the Experience wall use. So
+  // the badge on each card reflects real replies rather than being decoration,
+  // and an answered card can point at the thread holding them.
+  const threadBySlug = new Map();
+  for (const review of reviews) {
+    const slug = review.topic_slug || topicSlug(review.topic || review.title);
+    if (!slug) continue;
+    const existing = threadBySlug.get(slug);
+    if (existing) existing.count += 1;
+    else threadBySlug.set(slug, { count: 1, id: review.id });
+  }
+
+  const openQuestions = questions.map((item) => {
+    const thread = threadBySlug.get(topicSlug(item.question));
+    return {
+      ...item,
+      answers: thread?.count || 0,
+      threadId: thread?.id || ""
+    };
+  });
+
   const featuredMain = featured.find((item) => item.slot === "main") || featured[0] || null;
   const featuredSide = featured.filter((item) => item !== featuredMain).slice(0, 2);
   // With fewer than three stories the fixed 2x2 template leaves visible holes,
@@ -576,6 +621,32 @@ export default function HomeClient({
               ))}
             </div>
           ) : null}
+        </div>
+      </section>
+
+      <section className="section" id="questions">
+        <div className="container">
+          <div className="sec-head">
+            <div className="sec-head-left">
+              <div className="sec-eyebrow">
+                <div className="sec-rule"></div>
+              </div>
+              <h2 className="sec-title">Community is <em>Asking</em></h2>
+              <p className="sec-sub">
+                Real questions from people across Nepal, still waiting on
+                someone who has been there. Tapai lai thaha chha bhane, bhanidinus.
+              </p>
+            </div>
+            <button type="button" className="sec-all" onClick={() => openModal("ask")}>
+              Ask a question -&gt;
+            </button>
+          </div>
+
+          <QuestionsWall
+            questions={openQuestions}
+            onAnswer={answerQuestion}
+            onAsk={() => openModal("ask")}
+          />
         </div>
       </section>
 

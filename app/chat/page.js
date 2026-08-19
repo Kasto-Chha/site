@@ -109,6 +109,9 @@ export default async function ChatPage() {
       recent={recent}
       prompts={prompts}
       assistantFallback={assistantFallback}
+      // auth() has already run here, so the first paint can show the signed-in
+      // sidebar instead of waiting for Clerk to hydrate on the client.
+      initialSignedIn={Boolean(userId)}
       trialLimit={TRIAL_LIMIT}
       // Rendered on the server so the counters are right on first paint instead
       // of only after the first answer comes back.
