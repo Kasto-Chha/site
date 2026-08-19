@@ -88,4 +88,11 @@ create index if not exists idx_user_votes_user on public.user_votes(user_id, tar
 -- ---------------------------------------------------------------------------
 -- Comment edits.
 -- ---------------------------------------------------------------------------
-alter table public.blog_comments add column if not exists updated_at timestamptz;
+-- Legacy: the blog was later removed from the app, so this is skipped on any
+-- database that never had the table.
+do $$
+begin
+  if to_regclass('public.blog_comments') is not null then
+    execute 'alter table public.blog_comments add column if not exists updated_at timestamptz';
+  end if;
+end $$;

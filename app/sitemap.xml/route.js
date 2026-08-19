@@ -1,5 +1,3 @@
-import { getBlogPostsForSitemap } from "../../lib/supabase/queries";
-
 export const dynamic = "force-dynamic";
 
 const STATIC_PATHS = [
@@ -11,7 +9,10 @@ const STATIC_PATHS = [
   "/chat",
   "/about",
   "/contact",
-  "/guidelines"
+  "/guidelines",
+  // /terms serves the same combined document and canonicals to /privacy, so
+  // only the canonical URL is listed here.
+  "/privacy"
 ];
 
 function entry(loc, lastmod) {
@@ -21,14 +22,8 @@ function entry(loc, lastmod) {
 
 export async function GET() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const posts = await getBlogPostsForSitemap();
 
-  const urls = [
-    ...STATIC_PATHS.map((path) => entry(`${siteUrl}${path}`)),
-    ...posts.map((post) =>
-      entry(`${siteUrl}/blog/${post.slug}`, post.updated_at || post.published_at)
-    )
-  ];
+  const urls = STATIC_PATHS.map((path) => entry(`${siteUrl}${path}`));
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

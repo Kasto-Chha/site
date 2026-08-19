@@ -14,9 +14,7 @@
 	--paper3:#E3DDD3;
 	--card:#FAF8F4;
 	--card2:#F0EDE6;
-	/* Inset panels sitting on top of a card (comment rows, consent checkbox).
-	   Referenced since the blog comments shipped but never defined, so those
-	   rows were rendering with no background at all. */
+	/* Inset panels sitting on top of a card (contact rows, consent checkbox). */
 	--surface-light:#F1EEE7;
 	--red:#C8102E;
 	--red-pale:#F5E8EB;
@@ -267,10 +265,13 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	box-shadow:0 0 0 4px var(--red-mid),0 14px 36px rgba(12,11,9,.06);
 }
 .search-inner input{
-	flex:1;padding:17px 10px 17px 28px;background:transparent;border:none;outline:none;
+	flex:1;min-width:0;padding:17px 10px 17px 28px;background:transparent;border:none;outline:none;
 	color:var(--ink);font-family:var(--font-sans), sans-serif;font-size:1rem;
 }
-.search-inner input::placeholder{color:var(--muted2)}
+/* --muted2 sits at 2.7:1 on the card background — under the 4.5:1 floor, and
+   this is the one hint that tells a first-time visitor what to type. --muted
+   clears it at 4.4:1 while staying clearly lighter than entered text. */
+.search-inner input::placeholder{color:var(--muted);opacity:1}
 .s-btn{
 	margin:5px;width:42px;height:42px;border-radius:50%;
 	background:var(--red);border:none;
@@ -278,7 +279,15 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	display:flex;align-items:center;justify-content:center;
 	transition:transform .2s,box-shadow .2s;flex-shrink:0;
 }
-.s-btn:hover{transform:scale(1.08);box-shadow:0 0 18px var(--red-glow)}
+.s-btn:not(:disabled):hover{transform:scale(1.08);box-shadow:0 0 18px var(--red-glow)}
+/* "Go" fits a 42px circle; "Searching..." does not, so the button relaxes into
+   a pill and the input — flex:1, min-width:0 — gives up the room. Height is
+   left alone so the search bar itself never changes size. */
+.s-btn.searching{
+	width:auto;padding:0 18px;border-radius:100px;cursor:default;
+	font-size:.75rem;font-weight:600;letter-spacing:.3px;white-space:nowrap;
+	font-family:var(--font-mono), monospace;
+}
 
 .chips-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:32px}
 .chip{
@@ -356,12 +365,21 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	display:grid;grid-template-columns:1.55fr 1fr;grid-template-rows:auto auto;
 	gap:1px;background:var(--border3);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;
 }
-.fc{background:var(--card);cursor:pointer;transition:background .18s;position:relative;overflow:hidden}
+.fc{background:var(--card);transition:background .18s;position:relative;overflow:hidden}
 .fc:hover{background:var(--card2)}
 .fc-main{grid-column:1;grid-row:1/3}
 .fc-b{grid-column:2;grid-row:1}
 .fc-c{grid-column:2;grid-row:2}
-.fc-visual{display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+/* The 2x2 template assumes a lead plus two sides. With fewer stories than that
+   it left empty cells — a tall blank column next to a single card, which is
+   what the seeded database (one story) actually renders. */
+.feat-grid-1{grid-template-columns:1fr;grid-template-rows:auto}
+.feat-grid-1 .fc-main{grid-column:1;grid-row:1}
+.feat-grid-2{grid-template-columns:1fr 1fr;grid-template-rows:auto}
+.feat-grid-2 .fc-main{grid-column:1;grid-row:1}
+.feat-grid-2 .fc-b{grid-column:2;grid-row:1}
+.feat-grid-1 .fc-main .fc-visual{height:260px}
+.fc-visual{display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer}
 .fc-main .fc-visual{height:210px;background:linear-gradient(145deg,#F2E8E4,#EBDED2)}
 .fc-b .fc-visual{height:130px;background:linear-gradient(145deg,#EBEEF1,#E0E7EC)}
 .fc-c .fc-visual{height:130px;background:linear-gradient(145deg,#ECF0E5,#E2EAD8)}
@@ -384,8 +402,30 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .fc-b .fc-title,.fc-c .fc-title{font-size:.98rem}
 .fc-desc{font-size:.875rem;color:var(--muted);line-height:1.65;margin-bottom:18px}
 .fc-b .fc-desc,.fc-c .fc-desc{font-size:.82rem;margin-bottom:12px}
+.fc-title-link{color:inherit;text-decoration:none}
+.fc-title-link:hover{color:var(--red)}
 .fc-read{font-family:var(--font-mono), monospace;font-size:.65rem;color:var(--red);text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:gap .2s}
 .fc-read:hover{gap:12px}
+
+/* Featured permalink, when a story has a body — this is where a KastoChha post
+   is actually read, so it gets article measure and rhythm rather than the
+   card's summary styling. */
+.story-card{padding:30px;border-radius:16px}
+.story-headline{
+	font-family:var(--font-serif), serif;font-size:2rem;font-weight:800;
+	letter-spacing:-.7px;line-height:1.18;color:var(--ink);margin:6px 0 12px;
+}
+.story-standfirst{font-size:1.05rem;line-height:1.65;color:var(--muted);margin-bottom:20px}
+.story-body{
+	display:flex;flex-direction:column;gap:16px;
+	padding-top:20px;border-top:1px solid var(--border);
+}
+.story-body p{font-size:1.02rem;line-height:1.75;color:var(--ink);max-width:66ch}
+.story-empty{
+	padding-top:18px;border-top:1px solid var(--border);
+	font-size:.92rem;line-height:1.6;color:var(--muted);margin-bottom:14px;
+}
+.story-body + .fc-read{margin-top:20px}
 
 .battle-list{display:flex;flex-direction:column;gap:20px}
 .battle-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
@@ -432,16 +472,6 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .wall-header{margin-bottom:16px;padding:0 2px}
 .wall-title{font-family:var(--font-serif), serif;font-size:2.05rem;font-weight:900;letter-spacing:-1px;line-height:1.05;margin-bottom:6px}
 .wall-sub{font-size:.94rem;color:var(--muted);line-height:1.5}
-/* Avatar + byline bits still used by blog comments */
-.av{
-	width:36px;height:36px;border-radius:50%;flex-shrink:0;
-	display:flex;align-items:center;justify-content:center;
-	font-size:.7rem;font-weight:700;color:#fff;
-}
-.av1{background:linear-gradient(135deg,var(--red),var(--saffron))}
-.wc-name{font-size:1.05rem;font-weight:700;color:var(--ink);letter-spacing:-.2px}
-.wc-time{font-family:var(--font-mono), monospace;font-size:.66rem;letter-spacing:.6px;color:var(--muted2)}
-
 .create-panel{padding:22px;border-radius:16px;position:sticky;top:84px}
 .create-title{font-family:var(--font-serif), serif;font-size:2.15rem;font-weight:900;letter-spacing:-1px;line-height:1.08;margin-bottom:8px}
 .create-sub{font-size:.97rem;color:var(--muted);line-height:1.6;margin-bottom:18px}
@@ -557,7 +587,20 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	color:#fff;font-family:var(--font-sans), sans-serif;font-size:.9rem;font-weight:700;
 	cursor:pointer;transition:all .2s;
 }
-.fsub:hover{background:#a80e26;transform:translateY(-1px)}
+.fsub:hover:not(:disabled){background:#a80e26;transform:translateY(-1px)}
+.fsub:disabled{opacity:.6;cursor:not-allowed}
+/* Inline failure notice inside the share/ask modal — window.alert() could open
+   behind the backdrop on mobile Safari, where it was effectively invisible. */
+.modal-error{
+	display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;
+	padding:10px 13px;border-radius:9px;
+	background:var(--red-pale);border:1px solid rgba(200,16,46,.2);
+	color:var(--red);font-size:.84rem;line-height:1.45;
+}
+.modal-error-link{
+	margin-left:auto;color:var(--red);font-weight:700;text-decoration:none;white-space:nowrap;
+}
+.modal-error-link:hover{text-decoration:underline}
 .m-success{
 	display:none;padding:44px 24px;text-align:center;
 	flex-direction:column;align-items:center;gap:10px;
@@ -578,19 +621,33 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .msuc-btn:hover{background:var(--card2);color:var(--ink)}
 
-.site-footer{background:#181411;border-top:1px solid rgba(255,255,255,.06);padding:68px 32px 24px;overflow:hidden}
+.site-footer{background:#181411;border-top:1px solid rgba(255,255,255,.06);padding:76px 32px 28px;overflow:hidden}
 .foot-inner{max-width:1500px;margin:0 auto}
-.foot-grid{display:grid;grid-template-columns:minmax(240px,1.25fr) repeat(4,minmax(140px,1fr));gap:32px 44px;margin-bottom:28px;align-items:start}
+/* Columns are sized to their contents rather than split evenly: "Our Channels"
+   carries nine long labels ("KastoChha Health & Lifestyle") and was wrapping
+   every one of them inside an equal-width track, while "Follow Us" holds a
+   handful of one-word platforms and had room to spare. */
+.foot-grid{
+	display:grid;
+	grid-template-columns:minmax(220px,1.15fr) minmax(120px,.7fr) minmax(205px,1.1fr) minmax(110px,.6fr) minmax(155px,.8fr);
+	gap:40px;margin-bottom:48px;align-items:start;
+}
 .foot-brand{max-width:360px}
 .foot-logo{font-family:var(--font-serif), serif;font-size:1.7rem;font-weight:900;color:#fff;display:inline-flex;align-items:baseline;gap:0;text-decoration:none;letter-spacing:-.04em;line-height:1}
 .foot-logo em{font-style:italic;color:var(--saffron)}
-.foot-tagline{color:rgba(255,255,255,.48);font-size:.92rem;line-height:1.6;max-width:26ch;margin-top:22px}
-.foot-col h5{font-family:var(--font-mono), monospace;font-size:.72rem;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.78);margin-bottom:16px}
+.foot-tagline{color:rgba(255,255,255,.52);font-size:.92rem;line-height:1.65;max-width:28ch;margin-top:20px}
+.foot-col h5{font-family:var(--font-mono), monospace;font-size:.7rem;letter-spacing:2.6px;text-transform:uppercase;color:rgba(255,255,255,.8);margin-bottom:18px}
 .foot-col ul{list-style:none}
-.foot-col ul li{margin-bottom:11px}
-.foot-col ul li a{text-decoration:none;color:rgba(255,255,255,.62);font-size:.92rem;line-height:1.45;transition:color .2s,padding-left .2s}
-.foot-col ul li a:hover{color:#fff;padding-left:4px}
-.foot-bottom{display:flex;align-items:center;justify-content:flex-start;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--font-mono), monospace;font-size:.75rem;color:rgba(255,255,255,.35);letter-spacing:.4px}
+.foot-col ul li{margin-bottom:13px}
+.foot-col ul li:last-child{margin-bottom:0}
+/* inline-block so the hover nudge moves the whole label, and the transition is
+   on transform rather than padding — animating padding relaid out the column. */
+.foot-col ul li a{
+	display:inline-block;text-decoration:none;color:rgba(255,255,255,.64);
+	font-size:.9rem;line-height:1.5;transition:color .2s,transform .2s;
+}
+.foot-col ul li a:hover{color:#fff;transform:translateX(4px)}
+.foot-bottom{display:flex;align-items:center;justify-content:flex-start;padding-top:24px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--font-mono), monospace;font-size:.75rem;color:rgba(255,255,255,.4);letter-spacing:.4px}
 
 .fi{opacity:0;transform:translateY(22px);transition:opacity .55s cubic-bezier(.22,.61,.36,1),transform .55s cubic-bezier(.22,.61,.36,1);will-change:opacity,transform}
 .fi.show{opacity:1;transform:none}
@@ -760,14 +817,20 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .topic-thread:hover .topic-collapse{opacity:1}
 .topic-meta-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Colour is set inline from lib/categories.js so the niche reads the same here
+   as on the trending and discussion cards; this is the fallback only. */
 .topic-cat{
-	font-family:var(--font-mono), monospace;font-size:.62rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--saffron);
+	font-family:var(--font-mono), monospace;font-size:.62rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);
 }
 .topic-count-pill{
 	font-family:var(--font-mono), monospace;font-size:.6rem;letter-spacing:.6px;text-transform:uppercase;
 	color:var(--muted);background:var(--paper2);border:1px solid var(--border);border-radius:999px;padding:3px 9px;
 }
 .topic-title{font-family:var(--font-serif), serif;font-size:1.5rem;line-height:1.18;letter-spacing:-.5px;font-weight:800;color:var(--ink)}
+/* The heading is the way into the thread's own page; the header around it still
+   expands/collapses, so the link stops its click from doing both. */
+.topic-title-link{color:inherit;text-decoration:none}
+.topic-title-link:hover{color:var(--red);text-decoration:underline;text-underline-offset:3px}
 
 .verdict-block{display:flex;flex-direction:column;gap:8px}
 .verdict-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--paper2)}
@@ -787,15 +850,18 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .topic-preview{font-size:.96rem;color:var(--muted);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .topic-preview-by{color:var(--ink);font-weight:700}
 
-.topic-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:2px;border-top:1px solid var(--border);margin-top:2px;padding-top:14px}
+/* Actions group left, meta pushed right — with three actions in the row,
+   space-between spread them across the whole card instead. */
+.topic-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);margin-top:2px;padding-top:14px}
 .topic-toggle{
 	display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;cursor:pointer;
-	border:1px solid var(--border2);background:transparent;color:var(--muted);
+	border:1px solid var(--border2);background:transparent;color:var(--muted);text-decoration:none;
 	font-family:var(--font-sans), sans-serif;font-size:.82rem;font-weight:600;transition:all .16s;
 }
 .topic-toggle:hover{border-color:var(--red);color:var(--red);background:var(--red-pale)}
 .topic-toggle .icon{width:16px;height:16px}
-.topic-foot-meta{font-family:var(--font-mono), monospace;font-size:.66rem;letter-spacing:.4px;color:var(--muted2)}
+.topic-open-cta{border-color:var(--border2);color:var(--ink)}
+.topic-foot-meta{margin-left:auto;font-family:var(--font-mono), monospace;font-size:.66rem;letter-spacing:.4px;color:var(--muted2)}
 
 .exp-list{display:flex;flex-direction:column;gap:10px;padding-top:4px}
 .exp-item{
@@ -873,100 +939,108 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 
 .form-error{margin-top:10px;font-size:.82rem;color:var(--red);line-height:1.4}
 
-/* ============ Blog ============ */
-/* Long-form reading: one continuous paper surface with no card around it, so
-   nothing boxes the text in. Everything from the kicker to the last comment
-   sits on the same colour and is separated by hairlines and whitespace only. */
-.blog-main{padding:92px 0 110px}
-.blog-shell{max-width:720px;margin:0 auto;padding:0 26px}
-.blog-article{padding:0}
+/* Open questions posted through "Ask a KastoChha". Before this panel existed a
+   posted question was written to the database and never displayed anywhere, so
+   asking one looked like it had done nothing. */
+.open-q-list{margin-top:12px;display:flex;flex-direction:column;gap:10px;list-style:none;padding:0}
+.open-q{padding-bottom:10px;border-bottom:1px solid var(--border)}
+.open-q:last-child{padding-bottom:0;border-bottom:none}
+.open-q-text{font-size:.95rem;color:var(--ink);line-height:1.5;margin-bottom:7px}
+.open-q-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.open-q-cat{
+	font-family:var(--font-mono), monospace;font-size:.58rem;letter-spacing:1.4px;text-transform:uppercase;
+}
+.open-q-link{
+	background:none;border:none;padding:0;cursor:pointer;text-decoration:none;
+	font-family:var(--font-sans), sans-serif;font-size:.8rem;font-weight:600;color:var(--red);
+	transition:color .15s;
+}
+.open-q-link:hover{color:var(--saffron);text-decoration:underline;text-underline-offset:3px}
 
-.blog-head{margin-bottom:0;text-align:center}
-.blog-kicker{
+/* ============ Long-form pages (About, Contact, Guidelines) ============ */
+/* Reading surface: one continuous sheet of paper with no card around it, so
+   nothing boxes the text in. Everything sits on the same colour and is
+   separated by hairlines and whitespace only. */
+.article-main{padding:92px 0 110px}
+.article-shell{max-width:720px;margin:0 auto;padding:0 26px}
+.article-body{padding:0}
+
+.article-head{margin-bottom:0;text-align:center}
+.article-kicker{
 	font-family:var(--font-mono), monospace;font-size:.62rem;letter-spacing:2.6px;
 	text-transform:uppercase;color:var(--saffron);margin-bottom:20px;
 }
-.blog-kicker::before{
+.article-kicker::before{
 	content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
 	background:var(--red);margin-right:8px;vertical-align:1px;
 }
-.blog-title{
+.article-title{
 	font-family:var(--font-serif), serif;font-size:clamp(2.2rem,5.2vw,3.4rem);
 	font-weight:900;letter-spacing:-.038em;line-height:1.04;color:var(--ink);margin-bottom:18px;
 }
-.blog-lede{
+.article-lede{
 	font-family:var(--font-serif), serif;font-size:clamp(1.1rem,2vw,1.32rem);
 	font-style:italic;line-height:1.55;color:var(--muted);margin:0 auto 30px;max-width:54ch;
 }
-/* Byline reads as a single centred credit line between two hairlines. */
-.blog-byline{
-	display:flex;align-items:center;justify-content:center;gap:12px;
-	padding:20px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+/* Prose styling for the page body. */
+.article-stamp{
+	margin-top:14px;font-family:var(--font-mono), monospace;font-size:.66rem;
+	letter-spacing:1.4px;text-transform:uppercase;color:var(--muted2);
 }
-.blog-avatar{
-	width:38px;height:38px;border-radius:50%;flex-shrink:0;
-	display:flex;align-items:center;justify-content:center;
-	background:var(--red-pale);color:var(--red);font-weight:700;font-size:.74rem;
-	font-family:var(--font-mono), monospace;
+/* Shown on /privacy and /terms while lib/legal.js still holds the outline. */
+.legal-draft{
+	margin-top:32px;padding:14px 18px;border-radius:10px;
+	background:#FEF4D3;border:1px solid rgba(201,148,10,.3);
+	font-size:.92rem;line-height:1.6;color:#5C4310;
 }
-.blog-byline-meta{display:flex;flex-direction:column;gap:2px;text-align:left}
-.blog-author{font-weight:600;font-size:.92rem;color:var(--ink)}
-.blog-byline-sub{
-	font-family:var(--font-mono), monospace;font-size:.63rem;letter-spacing:1.2px;
-	text-transform:uppercase;color:var(--muted2);
-}
-.blog-cover{
-	width:100%;height:auto;display:block;border-radius:12px;margin:40px 0 0;
-}
-
-/* Prose styling for the sanitized rich-text body. */
-.blog-content{font-size:1.09rem;line-height:1.82;color:#2A2620;margin-top:40px}
+.legal-draft strong{font-weight:700}
+.article-content{font-size:1.09rem;line-height:1.82;color:#2A2620;margin-top:40px}
 /* Opening paragraph is set slightly larger, the way a magazine eases you in. */
-.blog-content > p:first-of-type{font-size:1.16rem;line-height:1.7;color:#231F1A}
-.blog-content > *:first-child{margin-top:0}
-.blog-content > *:last-child{margin-bottom:0}
-.blog-content p{margin:0 0 1.3em}
-.blog-content h2{
+.article-content > p:first-of-type{font-size:1.16rem;line-height:1.7;color:#231F1A}
+.article-content > *:first-child{margin-top:0}
+.article-content > *:last-child{margin-bottom:0}
+.article-content p{margin:0 0 1.3em}
+.article-content h2{
 	font-family:var(--font-serif), serif;font-size:1.7rem;font-weight:800;
 	letter-spacing:-.02em;line-height:1.2;color:var(--ink);margin:1.9em 0 .55em;
 }
-.blog-content h3{
+.article-content h3{
 	font-family:var(--font-serif), serif;font-size:1.34rem;font-weight:800;
 	letter-spacing:-.01em;line-height:1.25;color:var(--ink);margin:1.7em 0 .5em;
 }
-.blog-content h4{font-size:1.08rem;font-weight:700;color:var(--ink);margin:1.5em 0 .4em}
-.blog-content a{
+.article-content h4{font-size:1.08rem;font-weight:700;color:var(--ink);margin:1.5em 0 .4em}
+.article-content a{
 	color:var(--red);text-decoration:underline;text-underline-offset:2px;
 	text-decoration-thickness:1px;transition:color .15s;
 }
-.blog-content a:hover{color:var(--saffron)}
-.blog-content ul,.blog-content ol{margin:0 0 1.3em;padding-left:1.45em}
-.blog-content li{margin:0 0 .55em;padding-left:.25em}
-.blog-content ul li{list-style:disc}
-.blog-content ol li{list-style:decimal}
-.blog-content li::marker{color:var(--muted2)}
-.blog-content blockquote{
+.article-content a:hover{color:var(--saffron)}
+.article-content ul,.article-content ol{margin:0 0 1.3em;padding-left:1.45em}
+.article-content li{margin:0 0 .55em;padding-left:.25em}
+.article-content ul li{list-style:disc}
+.article-content ol li{list-style:decimal}
+.article-content li::marker{color:var(--muted2)}
+.article-content blockquote{
 	margin:1.7em 0;padding:.3em 0 .3em 1.25em;border-left:3px solid var(--red);
 	font-family:var(--font-serif), serif;font-size:1.2rem;font-style:italic;
 	line-height:1.55;color:var(--ink);
 }
-.blog-content blockquote p:last-child{margin-bottom:0}
-.blog-content img{
+.article-content blockquote p:last-child{margin-bottom:0}
+.article-content img{
 	max-width:100%;height:auto;display:block;border-radius:12px;
 	border:1px solid var(--border);margin:1.7em 0;
 }
-.blog-content hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
-.blog-content strong{font-weight:700;color:var(--ink)}
-.blog-content em{font-style:italic}
-.blog-content code{
+.article-content hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+.article-content strong{font-weight:700;color:var(--ink)}
+.article-content em{font-style:italic}
+.article-content code{
 	font-family:var(--font-mono), monospace;font-size:.86em;background:var(--paper2);
 	border:1px solid var(--border);border-radius:5px;padding:.12em .42em;
 }
-.blog-content pre{
+.article-content pre{
 	background:var(--ink);color:#F3EEE6;border-radius:12px;padding:18px 20px;
 	overflow-x:auto;margin:1.7em 0;font-size:.9rem;line-height:1.6;
 }
-.blog-content pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.article-content pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
 
 /* Closing actions on the About and Contact pages. */
 .about-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:36px;padding-top:28px;border-top:1px solid var(--border)}
@@ -1047,9 +1121,6 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .channel-name{font-size:.9rem;font-weight:700;color:var(--ink)}
 .channel-handle{font-family:var(--font-mono),monospace;font-size:.68rem;color:var(--muted2);overflow-wrap:anywhere}
 
-.blog-card{padding:26px 28px;display:flex;flex-direction:column;align-items:flex-start;transition:transform .18s,box-shadow .18s,border-color .18s}
-.blog-card:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:0 18px 36px rgba(12,11,9,.07)}
-
 /* ============ Featured: newspaper front page ============ */
 .np-shell{max-width:1160px;margin:0 auto;padding:0 24px}
 
@@ -1079,16 +1150,10 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	border-top:2px solid var(--ink);padding-top:9px;margin-bottom:18px;
 }
 
-/* Front page: main column + right rail split by a hairline */
-.np-front{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:0}
-.np-front-left{padding-right:36px;display:flex;flex-direction:column;gap:30px}
-.np-rail{border-left:1px solid var(--border);padding-left:36px;display:flex;flex-direction:column;gap:34px}
-
 .np-kicker{
 	font-family:var(--font-mono), monospace;font-size:.6rem;font-weight:700;letter-spacing:1.8px;
 	text-transform:uppercase;color:var(--red);margin-bottom:10px;
 }
-.np-byline{font-family:var(--font-mono), monospace;font-size:.62rem;letter-spacing:.5px;color:var(--muted2);margin-top:12px}
 
 .np-lead-link{display:block;text-decoration:none;color:inherit}
 .np-lead-headline{
@@ -1096,74 +1161,27 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	letter-spacing:-.025em;line-height:1.06;color:var(--ink);margin-bottom:16px;transition:color .15s;
 }
 .np-lead-link:hover .np-lead-headline{color:var(--red)}
-.np-lead-figure{margin:0 0 16px;overflow:hidden;border-radius:4px}
-.np-lead-figure img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;display:block}
 .np-lead-summary{font-size:1.05rem;line-height:1.65;color:var(--muted);max-width:62ch}
 
-/* Two secondary stories divided by a vertical hairline */
-.np-secondary{
-	display:grid;grid-template-columns:1fr 1fr;gap:0;
-	border-top:1px solid var(--border);padding-top:24px;
-}
-.np-secondary .np-story:first-child{padding-right:24px}
-.np-secondary .np-story:last-child{border-left:1px solid var(--border);padding-left:24px}
-.np-story a{display:block;text-decoration:none;color:inherit}
 .np-headline{
 	font-family:var(--font-serif), serif;font-size:1.22rem;font-weight:700;letter-spacing:-.3px;
 	line-height:1.22;color:var(--ink);margin-bottom:8px;transition:color .15s;
 }
-.np-story a:hover .np-headline,.np-more-cell a:hover .np-headline{color:var(--red)}
+.np-more-cell a:hover .np-headline{color:var(--red)}
 .np-summary{font-size:.9rem;line-height:1.6;color:var(--muted)}
 
-/* Rail: editor's picks */
-.np-picks{display:flex;flex-direction:column}
-.np-pick{padding:14px 0;border-bottom:1px solid var(--border)}
-.np-pick:first-child{padding-top:0}
-.np-pick:last-child{border-bottom:none;padding-bottom:0}
-.np-pick a{display:block;text-decoration:none;color:inherit}
-.np-pick-why{
-	font-family:var(--font-mono), monospace;font-size:.56rem;font-weight:700;letter-spacing:1.6px;
-	text-transform:uppercase;color:var(--saffron);margin-bottom:6px;
-}
-.np-pick-title{
-	font-family:var(--font-serif), serif;font-size:1.05rem;font-weight:700;letter-spacing:-.2px;
-	line-height:1.25;color:var(--ink);margin-bottom:5px;transition:color .15s;
-}
-.np-pick a:hover .np-pick-title{color:var(--red)}
-.np-pick-desc{font-size:.84rem;line-height:1.55;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-
-/* Rail: the latest ticker list */
-.np-latest{list-style:none;margin:0;padding:0}
-.np-latest li{border-bottom:1px solid var(--border)}
-.np-latest li:last-child{border-bottom:none}
-.np-latest-item{display:flex;flex-direction:column;gap:3px;padding:11px 0;text-decoration:none;color:inherit}
-.np-latest-time{font-family:var(--font-mono), monospace;font-size:.56rem;letter-spacing:1px;text-transform:uppercase;color:var(--red)}
-.np-latest-title{
-	font-family:var(--font-serif), serif;font-size:.98rem;font-weight:600;line-height:1.3;
-	color:var(--ink);transition:color .14s;
-}
-.np-latest-item:hover .np-latest-title{color:var(--red)}
-
-/* Bottom band: more stories in newspaper columns */
+/* Bottom band: the remaining picks in newspaper columns */
 .np-more{margin-top:56px}
 .np-more-label{border-top-width:2px}
 .np-more-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
 .np-more-cell a{display:block;text-decoration:none;color:inherit;border-top:1px solid var(--border);padding-top:14px}
-.np-more-media{overflow:hidden;border-radius:4px;margin-bottom:12px}
-.np-more-media img{width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;display:block}
 .np-more-headline{font-size:1.06rem}
 
 @media(max-width:960px){
-	.np-front{grid-template-columns:1fr}
-	.np-front-left{padding-right:0}
-	.np-rail{border-left:none;padding-left:0;margin-top:38px;border-top:1px solid var(--border);padding-top:30px}
 	.np-more-grid{grid-template-columns:1fr 1fr;gap:24px}
 }
 @media(max-width:640px){
 	.np-masthead{padding-top:84px}
-	.np-secondary{grid-template-columns:1fr}
-	.np-secondary .np-story:first-child{padding-right:0;padding-bottom:18px}
-	.np-secondary .np-story:last-child{border-left:none;padding-left:0;border-top:1px solid var(--border);padding-top:18px}
 	.np-more-grid{grid-template-columns:1fr}
 	.np-main{padding:34px 0 72px}
 }
@@ -1254,12 +1272,12 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.nav-actions > .btn-red{display:none}
 	.section{padding:28px 16px 32px}
 	.container{padding:0 4px}
-	.blog-main{padding:82px 0 70px}
-	.blog-shell{padding:0 18px}
-	.blog-content{font-size:1.02rem}
-	.blog-content > p:first-of-type{font-size:1.08rem}
-	.blog-content h2{font-size:1.45rem}
-	.blog-content h3{font-size:1.22rem}
+	.article-main{padding:82px 0 70px}
+	.article-shell{padding:0 18px}
+	.article-content{font-size:1.02rem}
+	.article-content > p:first-of-type{font-size:1.08rem}
+	.article-content h2{font-size:1.45rem}
+	.article-content h3{font-size:1.22rem}
 	.post-comments{margin-top:46px;padding-top:30px}
 	.comment-top{flex-direction:column;align-items:flex-start;gap:2px}
 	.sec-head{flex-direction:column;align-items:flex-start;gap:10px;padding-bottom:22px;margin-bottom:32px}
@@ -1303,8 +1321,9 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.bvs-line{width:24px;height:1px}
 	.battle-actions{grid-template-columns:1fr;gap:8px;padding:0 20px 16px}
 	.battle-result{padding:0 20px 20px}
-	.foot-grid{grid-template-columns:1fr 1fr;gap:24px 28px}
-	.site-footer{padding:48px 24px 24px}
+	.foot-grid{grid-template-columns:1fr 1fr;gap:32px 28px;margin-bottom:36px}
+	.foot-brand{grid-column:1/-1;max-width:none}
+	.site-footer{padding:52px 24px 24px}
 }
 
 @media(max-width:480px){
@@ -1336,14 +1355,14 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.stat-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 	.stat-val{font-size:1.2rem}
 	.stat-lbl{font-size:.52rem}
-	.foot-grid{grid-template-columns:1fr;gap:24px}
+	.foot-grid{grid-template-columns:1fr;gap:28px;margin-bottom:30px}
 	.foot-brand{max-width:none}
 	.foot-logo{font-size:1.55rem}
-	.foot-tagline{margin-top:18px;font-size:.88rem;max-width:none}
+	.foot-tagline{margin-top:16px;font-size:.88rem;max-width:none}
 	.foot-col h5{font-size:.68rem;margin-bottom:14px}
-	.foot-col ul li{margin-bottom:10px}
+	.foot-col ul li{margin-bottom:11px}
 	.foot-col ul li a{font-size:.88rem}
-	.foot-bottom{padding-top:18px;font-size:.7rem}
+	.foot-bottom{padding-top:20px;font-size:.7rem}
 	.t-searches ul{gap:10px}
 }
 
@@ -1440,10 +1459,19 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.hero{min-height:auto;padding:22px 14px 48px}
 	.hero h1{font-size:clamp(1.85rem,7.6vw,2.55rem);margin-bottom:14px}
 	.hero-sub{max-width:300px;margin-bottom:20px}
-	.search-inner input{font-size:.9rem;padding:14px 8px 14px 20px}
+	.search-inner input{font-size:.9rem;padding:14px 6px 14px 18px}
 	.s-btn{width:38px;height:38px}
 	.chips-row{gap:6px}
 	.chip{padding:6px 13px;font-size:.76rem}
+}
+/* The hint is longer than what people type, so only the placeholder shrinks on
+   narrow screens — the full phrase fits instead of being cut short, and typed
+   text stays at a comfortable size. */
+@media(max-width:480px){
+	.search-inner input::placeholder{font-size:.78rem}
+}
+@media(max-width:380px){
+	.search-inner input::placeholder{font-size:.7rem}
 }
 /* ============ KastoChha Assist — AI chat ============ */
 .chat-app{
@@ -1465,7 +1493,17 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .chat-newbtn:hover:not(:disabled){border-color:var(--red);color:var(--red);background:var(--red-pale)}
 .chat-newbtn:disabled{opacity:.5;cursor:not-allowed}
-.chat-side-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+/* Only the conversation history scrolls. "Community is asking" used to be the
+   last block inside this same scroller, so a user with more than a screenful of
+   chats had to scroll past all of them to reach it. */
+.chat-side-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:18px;padding-right:2px}
+.chat-side-scroll::-webkit-scrollbar{width:8px}
+.chat-side-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.chat-side-scroll::-webkit-scrollbar-track{background:transparent}
+.chat-side-pinned{
+	flex-shrink:0;display:flex;flex-direction:column;gap:8px;
+	padding-top:14px;border-top:1px solid var(--border);
+}
 .chat-side-block{display:flex;flex-direction:column;gap:8px}
 .chat-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .chat-history-clear{
@@ -1475,9 +1513,24 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .chat-history-clear:hover:not(:disabled){color:var(--red)}
 .chat-history-clear:disabled{opacity:.5;cursor:not-allowed}
+.chat-side-search{
+	width:100%;padding:8px 11px;border-radius:9px;border:1px solid var(--border);
+	background:var(--paper);color:var(--ink);font-family:var(--font-sans), sans-serif;font-size:.84rem;
+}
+.chat-side-search::placeholder{color:var(--muted2)}
+.chat-side-search:focus{outline:none;border-color:var(--red)}
+.chat-side-empty{margin:0;font-size:.8rem;line-height:1.4;color:var(--muted2)}
+.chat-history-group{display:flex;flex-direction:column;gap:4px}
+.chat-history-group + .chat-history-group{margin-top:10px}
+.chat-history-group-label{
+	font-family:var(--font-mono), monospace;font-size:.55rem;letter-spacing:1.2px;
+	text-transform:uppercase;color:var(--muted2);padding:0 2px;
+}
 .chat-history-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px}
 .chat-history-item{display:flex;align-items:stretch;gap:2px;border-radius:9px;transition:background .14s}
 .chat-history-item:hover{background:var(--card)}
+/* The conversation currently on screen — follow-ups append to this one. */
+.chat-history-item.is-active{background:var(--card);box-shadow:inset 2px 0 0 var(--red)}
 .chat-history-open{
 	flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;
 	padding:8px 10px;border:1px solid transparent;border-radius:9px;background:transparent;cursor:pointer;
@@ -1488,21 +1541,32 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .chat-history-time{font-family:var(--font-mono), monospace;font-size:.58rem;letter-spacing:.4px;color:var(--muted2)}
-.chat-history-del{
-	flex-shrink:0;width:28px;border:none;background:transparent;cursor:pointer;border-radius:9px;
-	color:var(--muted2);font-size:1.15rem;line-height:1;opacity:0;transition:all .14s;
+.chat-history-rename{
+	flex:1;min-width:0;padding:8px 10px;border-radius:9px;border:1px solid var(--red);
+	background:var(--paper);color:var(--ink);font-family:var(--font-sans), sans-serif;font-size:.86rem;
 }
-.chat-history-item:hover .chat-history-del{opacity:1}
+.chat-history-rename:focus{outline:none}
+.chat-history-act{
+	flex-shrink:0;width:26px;border:none;background:transparent;cursor:pointer;border-radius:9px;
+	color:var(--muted2);font-size:.9rem;line-height:1;opacity:0;transition:all .14s;
+}
+.chat-history-del{font-size:1.15rem}
+.chat-history-item:hover .chat-history-act,
+.chat-history-item.is-active .chat-history-act{opacity:1}
+.chat-history-act:hover{color:var(--ink);background:var(--border)}
 .chat-history-del:hover{color:var(--red);background:var(--red-pale)}
 .chat-side-label{font-family:var(--font-mono), monospace;font-size:.6rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted2)}
 .chat-side-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+/* Real posted questions land here, not just short topic names, so these wrap to
+   two lines instead of truncating most of the question away. */
 .chat-side-list button{
 	width:100%;text-align:left;padding:9px 11px;border-radius:9px;border:1px solid transparent;
-	background:transparent;color:var(--muted);font-family:var(--font-sans), sans-serif;font-size:.88rem;
-	line-height:1.35;cursor:pointer;transition:all .14s;
-	overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+	background:transparent;color:var(--muted);font-family:var(--font-sans), sans-serif;font-size:.85rem;
+	line-height:1.4;cursor:pointer;transition:all .14s;
+	display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 .chat-side-list button:hover:not(:disabled){background:var(--card);color:var(--ink);border-color:var(--border)}
+.chat-side-list button:disabled{opacity:.55;cursor:not-allowed}
 .chat-side-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
 .chat-side-home{font-size:.86rem;color:var(--muted);text-decoration:none}
 .chat-side-home:hover{color:var(--red)}
@@ -1558,10 +1622,43 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .is-assistant .chat-bubble{background:var(--card);border:1px solid var(--border);border-top-left-radius:5px}
 .is-user .chat-bubble{background:var(--red-pale);border:1px solid rgba(200,16,46,.16);border-top-right-radius:5px}
 
+/* Assistant answers arrive as light markdown and are rendered into real
+   elements (see app/chat/ChatText.js). The bubble's pre-wrap is for the user's
+   own typing, so the formatted side opts out and keeps single line breaks with
+   pre-line on the paragraphs instead. */
+.chat-md{white-space:normal;display:flex;flex-direction:column;gap:10px}
+.chat-md p{margin:0;white-space:pre-line}
+.chat-md-h{font-weight:700;color:var(--ink)}
+.chat-md-list{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:5px}
+.chat-md-list li{margin:0;padding-left:.15em}
+ul.chat-md-list li{list-style:disc}
+ol.chat-md-list li{list-style:decimal}
+.chat-md-list li::marker{color:var(--muted2)}
+.chat-md strong{font-weight:700;color:var(--ink)}
+.chat-md em{font-style:italic}
+/* Citations under a grounded answer. */
+.chat-md a{
+	color:var(--red);text-decoration:underline;text-underline-offset:2px;
+	text-decoration-thickness:1px;overflow-wrap:anywhere;transition:color .15s;
+}
+.chat-md a:hover{color:var(--saffron)}
+.chat-md code{
+	font-family:var(--font-mono), monospace;font-size:.88em;
+	background:var(--paper2);border:1px solid var(--border);border-radius:5px;padding:.08em .4em;
+}
+
 .chat-typing{display:inline-flex;gap:5px;padding:4px 0}
 .chat-typing span{width:7px;height:7px;border-radius:50%;background:var(--muted2);animation:chatDot 1.2s infinite ease-in-out}
 .chat-typing span:nth-child(2){animation-delay:.18s}
 .chat-typing span:nth-child(3){animation-delay:.36s}
+/* Named status while the answer is being produced. Three unlabelled dots look
+   identical whether the assistant is working or has silently failed. */
+.chat-working{display:inline-flex;align-items:center;gap:10px}
+.chat-working-text{
+	font-family:var(--font-mono), monospace;font-size:.7rem;letter-spacing:.6px;
+	color:var(--muted);animation:chatPulse 1.6s ease-in-out infinite;
+}
+@keyframes chatPulse{0%,100%{opacity:.55}50%{opacity:1}}
 @keyframes chatDot{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
 
 .chat-composer{padding:14px 24px 18px;border-top:1px solid var(--border);background:var(--paper)}
@@ -1633,14 +1730,58 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .chat-gate-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
 .chat-input:disabled{cursor:not-allowed;opacity:.7}
 
+/* Drawer controls. Hidden while the sidebar is a permanent column; the media
+   query below turns them on. */
+.chat-drawer-btn,.chat-drawer-x,.chat-topbar-new,.chat-drawer-scrim{display:none}
+.chat-drawer-btn,.chat-topbar-new{
+	flex-shrink:0;width:36px;height:36px;border-radius:9px;border:1px solid var(--border);
+	background:var(--card);color:var(--ink);cursor:pointer;
+	align-items:center;justify-content:center;transition:all .15s;
+}
+.chat-drawer-btn:hover,.chat-topbar-new:hover:not(:disabled){border-color:var(--red);color:var(--red)}
+.chat-topbar-new{font-size:1.3rem;line-height:1;font-family:var(--font-sans),sans-serif}
+.chat-topbar-new:disabled{opacity:.45;cursor:not-allowed}
+.chat-drawer-btn .hamburger{display:block;width:17px;height:2px;background:currentColor;position:relative;border-radius:2px}
+.chat-drawer-btn .hamburger::before,.chat-drawer-btn .hamburger::after{
+	content:'';position:absolute;left:0;width:17px;height:2px;background:currentColor;border-radius:2px;
+}
+.chat-drawer-btn .hamburger::before{top:-5px}
+.chat-drawer-btn .hamburger::after{top:5px}
+.chat-drawer-x{
+	position:absolute;top:16px;right:14px;width:30px;height:30px;border-radius:8px;
+	border:1px solid var(--border);background:var(--card);color:var(--muted);
+	font-size:1.1rem;line-height:1;cursor:pointer;
+}
+.chat-drawer-x:hover{color:var(--red);border-color:var(--red)}
+
 @media(max-width:860px){
 	.chat-app{grid-template-columns:1fr}
-	.chat-sidebar{display:none}
+	/* The sidebar becomes a drawer instead of disappearing. It used to be
+	   display:none here, so a phone could start conversations but had no way to
+	   reopen one, and never saw the community rail at all. */
+	.chat-sidebar{
+		position:fixed;top:0;left:0;bottom:0;z-index:1200;width:min(86vw,310px);
+		transform:translateX(-100%);transition:transform .24s cubic-bezier(.22,.61,.36,1);
+		box-shadow:0 0 48px rgba(12,11,9,.28);
+	}
+	.chat-app.drawer-open .chat-sidebar{transform:none}
+	.chat-drawer-scrim{
+		display:block;position:fixed;inset:0;z-index:1100;
+		background:rgba(12,11,9,.45);backdrop-filter:blur(2px);
+		opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s;
+	}
+	.chat-app.drawer-open .chat-drawer-scrim{opacity:1;visibility:visible}
+	.chat-drawer-btn,.chat-topbar-new{display:inline-flex}
+	.chat-drawer-x{display:block}
+	.chat-side-top{position:relative;padding-right:36px}
+	.chat-topbar{padding:10px 14px;gap:10px}
+	.chat-topbar-title{margin-right:auto}
 	.chat-inner{padding:20px 14px 24px}
 	.chat-composer{padding:12px 14px 16px}
 	.chat-welcome-title{font-size:1.9rem}
 	.chat-suggest{font-size:.82rem;padding:8px 13px}
 	.chat-bubble{max-width:86%}
+	.chat-working-text{font-size:.66rem}
 }
 
 /* ======================================================================
@@ -1683,6 +1824,10 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .permalink-single .tcard-grid,.permalink-single .disc-grid{grid-template-columns:1fr}
 .permalink-single .tcard:hover,.permalink-single .disc-card:hover{transform:none}
 .page-title em{font-style:italic;color:var(--red)}
+/* Accent word in red but upright, matching .sec-title em. The italic default
+   above still applies to the Battle page's "<em>vs</em>", where the slant is
+   doing real work as a separator. */
+.page-title.upright em{font-style:normal}
 
 /* --- Trending poll cards ---------------------------------------------- */
 .tcard-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
@@ -1721,68 +1866,6 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 /* Vote failures used to be silent: the number just snapped back. */
 .vote-error{margin-top:10px;font-size:.76rem;line-height:1.4;color:var(--red)}
 
-/* ---- Post discussion ----------------------------------------------------
-   Same paper surface as the article. Comments are separated by hairlines
-   rather than sitting in their own filled boxes. */
-.post-comments{margin-top:64px;padding-top:38px;border-top:1px solid var(--border)}
-.post-comments-title{
-	font-family:var(--font-serif),serif;font-size:1.5rem;font-weight:800;
-	letter-spacing:-.02em;color:var(--ink);margin-bottom:4px;
-}
-.post-comments-count{color:var(--muted2);font-weight:400}
-.comment-empty{font-size:.95rem;line-height:1.6;color:var(--muted);margin:14px 0 0}
-
-.comment-list{display:flex;flex-direction:column;margin-top:26px}
-.comment{display:flex;gap:14px;padding:22px 0;border-top:1px solid var(--border3)}
-.comment:first-child{border-top:none;padding-top:4px}
-.comment-av{
-	width:36px;height:36px;border-radius:50%;flex-shrink:0;
-	display:flex;align-items:center;justify-content:center;
-	background:var(--paper2);color:var(--muted);font-weight:700;font-size:.7rem;
-	font-family:var(--font-mono),monospace;
-}
-.comment-main{flex:1;min-width:0}
-.comment-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:5px}
-.comment-name{font-weight:600;font-size:.94rem;color:var(--ink)}
-.comment-time{
-	font-family:var(--font-mono),monospace;font-size:.63rem;letter-spacing:.8px;
-	text-transform:uppercase;color:var(--muted2);white-space:nowrap;
-}
-.comment-text{margin:0;font-size:.97rem;line-height:1.68;color:#2A2620;white-space:pre-wrap}
-
-/* Composer */
-.comment-form{margin-top:38px;padding-top:30px;border-top:1px solid var(--border)}
-.comment-label{
-	font-family:var(--font-mono),monospace;font-size:.62rem;letter-spacing:2.2px;
-	text-transform:uppercase;color:var(--muted2);margin-bottom:12px;
-}
-.comment-input{
-	width:100%;padding:15px 17px;border-radius:12px;resize:vertical;
-	background:transparent;border:1px solid var(--border2);color:var(--ink);
-	font-family:var(--font-sans),sans-serif;font-size:.97rem;line-height:1.6;
-	outline:none;transition:border-color .2s,box-shadow .2s;
-}
-.comment-input::placeholder{color:var(--muted2)}
-.comment-input:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-mid)}
-.comment-form-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
-.comment-form-error{font-size:.82rem;color:var(--red);line-height:1.4}
-.comment-signedout{text-align:center;padding:6px 0 2px}
-.comment-signedout p{font-size:.95rem;line-height:1.6;color:var(--muted);margin-bottom:14px}
-
-/* Edit / delete controls under a blog comment the reader owns. */
-.comment-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
-.comment-action{
-	padding:3px 10px;border-radius:999px;cursor:pointer;background:transparent;
-	border:1px solid var(--border);color:var(--muted);
-	font-family:var(--font-sans),sans-serif;font-size:.72rem;font-weight:600;transition:all .16s;
-}
-.comment-action:hover:not(:disabled){color:var(--ink);border-color:var(--muted)}
-.comment-action.primary{background:var(--red);border-color:var(--red);color:#fff}
-.comment-action.primary:hover:not(:disabled){opacity:.88;color:#fff}
-.comment-action.danger{color:var(--red)}
-.comment-action.danger:hover:not(:disabled){background:var(--red-pale);border-color:var(--red);color:var(--red)}
-.comment-action:disabled{opacity:.55;cursor:not-allowed}
-.comment-confirm{font-size:.72rem;color:var(--muted2)}
 .tcard-meta{
 	font-family:var(--font-mono),monospace;font-size:.62rem;letter-spacing:.4px;color:var(--muted2);
 	white-space:nowrap;align-self:center;margin-left:auto;
@@ -1925,6 +2008,95 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .reel-modal-x:hover{background:var(--red);border-color:var(--red);transform:scale(1.06)}
 
 /* --- Join band (Ask / Share) ------------------------------------------ */
+/* --- Community is asking: the open-questions wall --------------------- */
+/* Cards read as speech bubbles — the question is the whole point, so it gets
+   the display serif and everything else stays out of its way. Per-card niche
+   colour comes in as --q-tone from lib/categories.js. */
+.qwall{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 22px}
+.qcard{
+	--q-tone:var(--saffron);
+	position:relative;display:flex;flex-direction:column;gap:14px;
+	background:var(--card);border:1px solid var(--border);
+	border-radius:18px 18px 18px 6px;padding:24px 24px 20px;
+	transition:transform .2s,box-shadow .2s,border-color .2s;
+}
+.qcard:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 22px 44px rgba(12,11,9,.08)}
+/* Niche colour as a top edge, so a wall of questions is scannable by topic. */
+.qcard::before{
+	content:'';position:absolute;left:22px;right:22px;top:0;height:2px;
+	background:var(--q-tone);opacity:.55;border-radius:0 0 2px 2px;
+}
+/* The bubble's tail: a rotated square borrowing the card's own background and
+   two of its borders, so it stays seamless when the border colour changes. */
+.qcard::after{
+	content:'';position:absolute;left:24px;bottom:-8px;width:15px;height:15px;
+	background:var(--card);
+	border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+	border-bottom-right-radius:3px;transform:rotate(45deg);transition:border-color .2s;
+}
+.qcard:hover::after{border-color:var(--border2)}
+.qcard-quote{
+	position:absolute;top:2px;right:14px;
+	font-family:var(--font-serif),serif;font-size:4.6rem;line-height:1;
+	color:var(--q-tone);opacity:.1;pointer-events:none;user-select:none;
+}
+/* Positioned so it paints over the decorative quote glyph behind it. */
+.qcard-top{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.qcard-cat{
+	display:inline-flex;align-items:center;gap:6px;
+	font-family:var(--font-mono),monospace;font-size:.58rem;letter-spacing:1.5px;
+	text-transform:uppercase;color:var(--q-tone);
+}
+.qcard-dot{width:8px;height:8px;border-radius:2.5px;background:var(--q-tone);flex-shrink:0}
+.qcard-status{
+	margin-left:auto;font-family:var(--font-mono),monospace;font-size:.55rem;
+	letter-spacing:1.2px;text-transform:uppercase;padding:4px 10px;
+	border-radius:999px;white-space:nowrap;
+}
+.qcard-status.open{background:var(--red-pale);color:var(--red);border:1px solid rgba(200,16,46,.2)}
+.qcard-status.answered{background:var(--green-pale);color:var(--green);border:1px solid rgba(59,109,17,.22)}
+.qcard-q{
+	position:relative;font-family:var(--font-serif),serif;font-size:1.28rem;
+	font-weight:800;letter-spacing:-.4px;line-height:1.32;color:var(--ink);
+}
+.qcard-foot{
+	display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+	margin-top:auto;padding-top:16px;border-top:1px solid var(--border);
+}
+.qcard-cta{
+	display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;
+	cursor:pointer;text-decoration:none;background:var(--red);border:1px solid var(--red);color:#fff;
+	font-family:var(--font-sans),sans-serif;font-size:.8rem;font-weight:700;
+	transition:background .18s,box-shadow .18s,gap .18s;
+}
+.qcard-cta:hover{background:#a80e26;box-shadow:0 8px 20px var(--red-glow);gap:11px}
+.qcard-cta .icon{width:15px;height:15px}
+/* Already answered: the pull is the thread, not another reply, so the button
+   steps back to a quiet outline. */
+.qcard.is-answered .qcard-cta{background:transparent;color:var(--ink);border-color:var(--border2)}
+.qcard.is-answered .qcard-cta:hover{background:var(--paper2);color:var(--red);border-color:var(--red);box-shadow:none}
+.qcard-alt{
+	font-family:var(--font-sans),sans-serif;font-size:.78rem;font-weight:600;
+	color:var(--muted);text-decoration:none;transition:color .15s;
+}
+.qcard-alt:hover{color:var(--red);text-decoration:underline;text-underline-offset:3px}
+.qcard-time{margin-left:auto;font-family:var(--font-mono),monospace;font-size:.6rem;letter-spacing:.4px;color:var(--muted2)}
+
+.qwall-empty{
+	display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;
+	padding:52px 24px;border:1.5px dashed var(--border2);border-radius:18px;background:var(--card);
+}
+.qwall-empty-ico{
+	width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+	background:var(--red-pale);color:var(--red);
+}
+.qwall-empty-ico .icon{width:24px;height:24px}
+.qwall-empty-title{font-family:var(--font-serif),serif;font-size:1.5rem;font-weight:800;letter-spacing:-.4px;color:var(--ink)}
+.qwall-empty-sub{font-size:.94rem;line-height:1.65;color:var(--muted);max-width:46ch}
+/* The section header's action is a button here (it opens the modal) rather than
+   the link the other sections use. */
+button.sec-all{background:none;border:none;padding:0;cursor:pointer}
+
 .join-band{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:24px;margin-top:64px;align-items:stretch}
 .join-intro{display:flex;flex-direction:column;justify-content:center;gap:16px;padding-right:20px}
 .join-title{
@@ -2018,6 +2190,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 @media(max-width:980px){
 	.tcard-grid{grid-template-columns:1fr 1fr}
 	.disc-grid{grid-template-columns:1fr 1fr}
+	.qwall{grid-template-columns:1fr 1fr}
 	.join-band{grid-template-columns:1fr 1fr}
 	.join-intro{grid-column:1/-1;padding-right:0}
 	.join-title{font-size:2.2rem}
@@ -2034,6 +2207,9 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 @media(max-width:680px){
 	.tcard-grid{grid-template-columns:1fr}
 	.disc-grid{grid-template-columns:1fr}
+	.qwall{grid-template-columns:1fr;gap:24px}
+	.qcard-q{font-size:1.14rem}
+	.qcard-foot{gap:10px}
 	.join-band{grid-template-columns:1fr}
 	.tcard{padding:22px 20px 18px}
 	.disc-card{padding:22px 20px 18px}

@@ -10,7 +10,7 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO featured_stories (slot, title, description, why_text, link_url, icon)
-VALUES ('main', 'How to save on mobile', 'Saving tips for Nepali users', 'Important tips and tricks', '/blog/welcome', 'star')
+VALUES ('main', 'How to save on mobile', 'Saving tips for Nepali users', 'Important tips and tricks', '/trending', 'star')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO battles ("order", category, left_title, left_desc, left_votes, left_color, right_title, right_desc, right_votes, right_color)
@@ -47,12 +47,16 @@ VALUES
   (3, 'Votes cast', '38K+')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO blog_posts (slug, title, excerpt, content, status, author_user_id, author_name, reading_time, published_at)
-VALUES ('welcome', 'Welcome to KastoChha', 'Intro to the community', 'Welcome to KastoChha — share real experiences.', 'published', 'system', 'KastoChha', 1, now())
+-- One guest conversation (user_id NULL) with both turns, so the chat tables
+-- have a shape to look at. Fixed ids keep the re-run idempotent.
+INSERT INTO chat_topics (id, user_id, title)
+VALUES ('99999999-9999-4999-8999-999999999999', NULL, 'phone battery')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO chat_queries (query, response, user_id)
-VALUES ('phone battery', 'Try lowering screen brightness and background refresh.', NULL)
+INSERT INTO chat_messages (id, topic_id, user_id, role, content)
+VALUES
+  ('99999999-9999-4999-8999-99999999990a', '99999999-9999-4999-8999-999999999999', NULL, 'user', 'phone battery'),
+  ('99999999-9999-4999-8999-99999999990b', '99999999-9999-4999-8999-999999999999', NULL, 'assistant', 'Try lowering screen brightness and background refresh.')
 ON CONFLICT DO NOTHING;
 
 COMMIT;

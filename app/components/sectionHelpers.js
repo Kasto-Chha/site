@@ -24,27 +24,10 @@ export function delayClass(index) {
 }
 
 // Per-category accent colour for eyebrows/glyphs so each card reads like a
-// labelled magazine section. Falls back to the brand saffron.
-const CATEGORY_TONES = {
-  technology: "#5b54e6",
-  tech: "#5b54e6",
-  finance: "#3b6d11",
-  paisa: "#3b6d11",
-  auto: "#7c3aed",
-  motors: "#7c3aed",
-  career: "#e05c20",
-  housing: "#c8102e",
-  education: "#2563eb",
-  food: "#c9940a",
-  lifestyle: "#0f766e",
-  travels: "#0e7490",
-  general: "#7a7468"
-};
-
-export function catTone(category) {
-  if (!category) return "#e05c20";
-  return CATEGORY_TONES[category.toString().trim().toLowerCase()] || "#e05c20";
-}
+// labelled magazine section. The tones (and the aliasing that folds legacy
+// free-text categories onto a niche) live in lib/categories.js so the grids,
+// the threads and the category pickers can't drift apart.
+export { categoryLabel as catLabel, categoryTone as catTone } from "../../lib/categories";
 
 // Deterministic 2-letter initials from a name, for avatars.
 export function initials(name) {

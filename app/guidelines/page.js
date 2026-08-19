@@ -26,13 +26,13 @@ export default function GuidelinesPage() {
   return (
     <>
       <SiteNav />
-      <main className="blog-main">
-        <div className="blog-shell">
-          <article className="blog-article">
-            <header className="blog-head">
-              <div className="blog-kicker">Community</div>
-              <h1 className="blog-title">Community Guidelines</h1>
-              <p className="blog-lede">
+      <main className="article-main">
+        <div className="article-shell">
+          <article className="article-body">
+            <header className="article-head">
+              <div className="article-kicker">Community</div>
+              <h1 className="article-title">Community Guidelines</h1>
+              <p className="article-lede">
                 KastoChha is a place where people ask questions, explore
                 experiences, and help one another make better decisions. Every
                 question, answer, and experience contributes to a community built on
@@ -40,7 +40,7 @@ export default function GuidelinesPage() {
               </p>
             </header>
 
-            <div className="blog-content">
+            <div className="article-content">
               <p>
                 These guidelines help keep KastoChha welcoming, helpful, and
                 reliable for everyone.

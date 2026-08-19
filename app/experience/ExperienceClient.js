@@ -8,18 +8,19 @@ import useReviewVotes from "../components/useReviewVotes";
 import useExperienceEdits from "../components/useExperienceEdits";
 import { topicSlug } from "../../lib/slug";
 import { buildTopics } from "../../lib/topics";
+import {
+  CATEGORY_LABELS,
+  categoryLabel,
+  categoryTone
+} from "../../lib/categories";
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
-const CATEGORY_OPTIONS = [
-  "Technology",
-  "Career",
-  "Education",
-  "Housing",
-  "Finance",
-  "Lifestyle"
-];
 
-export default function ExperienceClient({ reviews = [], myVotes = {} }) {
+export default function ExperienceClient({
+  reviews = [],
+  myVotes = {},
+  questions = []
+}) {
   const { items, setItems, handleVote, voteOf, isPending, errorFor } = useReviewVotes(
     reviews,
     myVotes
@@ -39,8 +40,14 @@ export default function ExperienceClient({ reviews = [], myVotes = {} }) {
 
   const topics = useMemo(() => buildTopics(items), [items]);
 
+  // Filter by canonical label, not the raw stored string, so rows saved as
+  // "Technology" and "Tech & Gadgets" collapse into one filter chip instead of
+  // splitting the same niche across two.
   const categories = useMemo(
-    () => Array.from(new Set(topics.map((t) => t.category).filter(Boolean))),
+    () =>
+      Array.from(
+        new Set(topics.map((t) => categoryLabel(t.category)).filter(Boolean))
+      ),
     [topics]
   );
   const filterOptions = ["All", ...categories];
@@ -49,7 +56,7 @@ export default function ExperienceClient({ reviews = [], myVotes = {} }) {
     const filtered =
       activeFilter === "All"
         ? topics
-        : topics.filter((t) => t.category === activeFilter);
+        : topics.filter((t) => categoryLabel(t.category) === activeFilter);
 
     const sorted = [...filtered];
     if (sortMode === "top") {
@@ -80,6 +87,22 @@ export default function ExperienceClient({ reviews = [], myVotes = {} }) {
     if (!slug) return null;
     return topics.find((t) => t.slug === slug) || null;
   }, [topics, topic]);
+
+  // Load a posted question into the share form, so answering one is a scroll
+  // and a paragraph rather than retyping the topic by hand.
+  const answerQuestion = (item) => {
+    const label = categoryLabel(item.category);
+    setTopic(item.question || "");
+    // Only preselect a niche the dropdown actually offers; anything else (an
+    // old free-text category, or none at all) leaves the picker untouched.
+    setCategory(CATEGORY_LABELS.includes(label) ? label : "");
+    setError("");
+    const panel = document.getElementById("share-review");
+    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => {
+      document.querySelector('#share-review textarea[name="summary"]')?.focus();
+    }, 350);
+  };
 
   const toggleTopic = (slug) => {
     setExpanded((prev) => {
@@ -193,7 +216,7 @@ export default function ExperienceClient({ reviews = [], myVotes = {} }) {
           <div className="page-head">
             <div>
               <div className="page-kicker">NEPAL&apos;S CURIOUS COMMUNITY</div>
-              <h1 className="page-title">KastoChha <em>Experience</em></h1>
+              <h1 className="page-title upright">KastoChha <em>Experience</em></h1>
               <p className="page-sub">
                 From momo to mausam, gadgets to careers — real experiences from
                 people across Nepal, grouped by topic. Vote, reply, and post
@@ -317,7 +340,7 @@ export default function ExperienceClient({ reviews = [], myVotes = {} }) {
                         onChange={(event) => setCategory(event.target.value)}
                       >
                         <option value="">Select category...</option>
-                        {CATEGORY_OPTIONS.map((option) => (
+                        {CATEGORY_LABELS.map((option) => (
                           <option key={option}>{option}</option>
                         ))}
                       </select>
@@ -361,6 +384,46 @@ export default function ExperienceClient({ reviews = [], myVotes = {} }) {
                   </button>
                 </form>
               </div>
+
+              {questions.length > 0 ? (
+                <div className="review-panel bento-card">
+                  <h3>Community is asking</h3>
+                  <p>
+                    Questions posted through &ldquo;Ask a KastoChha&rdquo;, still
+                    waiting on someone who has been there.
+                  </p>
+                  <ul className="open-q-list">
+                    {questions.map((item) => (
+                      <li key={item.id} className="open-q">
+                        <p className="open-q-text">{item.question}</p>
+                        <div className="open-q-actions">
+                          {item.category ? (
+                            <span
+                              className="open-q-cat"
+                              style={{ color: categoryTone(item.category) }}
+                            >
+                              {categoryLabel(item.category)}
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="open-q-link"
+                            onClick={() => answerQuestion(item)}
+                          >
+                            Answer this
+                          </button>
+                          <a
+                            className="open-q-link"
+                            href={`/chat?q=${encodeURIComponent(item.question)}`}
+                          >
+                            Ask Assist
+                          </a>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <div className="review-panel bento-card">
                 <h3>Top topics</h3>

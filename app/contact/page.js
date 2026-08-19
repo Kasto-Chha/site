@@ -1,5 +1,6 @@
 import SiteNav from "../components/SiteNav";
 import { IconMail, IconPhone } from "../components/icons";
+import { CHANNELS, SOCIALS, channelHandle, liveLinks } from "../../lib/channels";
 
 // Static Contact page. Same article shell as /about so the two read as a pair.
 const DESCRIPTION =
@@ -30,15 +31,27 @@ const METHODS = [
   }
 ];
 
-// Handles taken from the footer — only the channels that have a real account.
-const CHANNELS = [
-  { label: "KastoChha", handle: "@kasto_chha", href: "https://www.instagram.com/kasto_chha/" },
-  { label: "Paisa", handle: "@kasto_chha_paisa", href: "https://www.instagram.com/kasto_chha_paisa/" },
-  { label: "Motors", handle: "@kasto_chha_motors", href: "https://www.instagram.com/kasto_chha_motors/" },
-  { label: "Food", handle: "@kasto_chha_foods", href: "https://www.instagram.com/kasto_chha_foods/" },
-  { label: "Tech & Gadgets", handle: "@kasto_chha_tech_gadgets", href: "https://www.instagram.com/kasto_chha_tech_gadgets/" },
-  { label: "Entertainment", handle: "@kasto_chha_entertainment", href: "https://www.instagram.com/kasto_chha_entertainment/" }
-];
+// The same list the footer renders, so a handle only ever changes in one place.
+// The main brand accounts lead, then each niche under its short name — the
+// "KastoChha " prefix is already the heading of the card grid's section.
+//
+// The brand accounts carry the platform in their name because they share one
+// handle: Instagram and YouTube are both @kasto_chha, so two cards reading
+// "KastoChha / @kasto_chha" would be indistinguishable. Looked up by label and
+// filtered on url, so removing or blanking either one in lib/channels.js drops
+// its card instead of breaking this page.
+const BRAND_CARDS = ["Instagram", "YouTube"]
+  .map((label) => SOCIALS.find((social) => social.label === label))
+  .filter((social) => social?.url)
+  .map((social) => ({ label: `KastoChha on ${social.label}`, href: social.url }));
+
+const CHANNEL_CARDS = [
+  ...BRAND_CARDS,
+  ...liveLinks(CHANNELS).map((channel) => ({
+    label: channel.label.replace(/^KastoChha\s+/, ""),
+    href: channel.url
+  }))
+].map((card) => ({ ...card, handle: channelHandle(card.href) }));
 
 export const metadata = {
   title: "Contact Us - KastoChha",
@@ -62,13 +75,13 @@ export default function ContactPage() {
   return (
     <>
       <SiteNav />
-      <main className="blog-main">
-        <div className="blog-shell">
-          <article className="blog-article">
-            <header className="blog-head">
-              <div className="blog-kicker">Contact</div>
-              <h1 className="blog-title">Contact Us</h1>
-              <p className="blog-lede">
+      <main className="article-main">
+        <div className="article-shell">
+          <article className="article-body">
+            <header className="article-head">
+              <div className="article-kicker">Contact</div>
+              <h1 className="article-title">Contact Us</h1>
+              <p className="article-lede">
                 Whether you have a question, feedback, a feature suggestion, need
                 support, or are interested in collaborating with KastoChha,
                 we&apos;d love to hear from you.
@@ -95,7 +108,7 @@ export default function ContactPage() {
               })}
             </ul>
 
-            <div className="blog-content">
+            <div className="article-content">
               <h2>Follow our communities</h2>
               <p>
                 You can also connect with us through our social communities and
@@ -104,7 +117,7 @@ export default function ContactPage() {
             </div>
 
             <div className="channel-grid">
-              {CHANNELS.map((channel) => (
+              {CHANNEL_CARDS.map((channel) => (
                 <a
                   className="channel-card"
                   key={channel.href}

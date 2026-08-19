@@ -13,14 +13,16 @@ import { useEffect, useState } from "react";
 // - `paused` stops the loop once the user is actually typing; the placeholder
 //   is hidden then anyway, so animating it is wasted work.
 // - Reduced-motion users get a still placeholder, never the typing effect.
-// - Below 420px the suffix is dropped: the input is ~240px there, so the tail
-//   of the long form would type itself off the edge.
+// - The phrase is the same at every width. It used to drop its suffix below
+//   420px, which left phones reading `Type "iPhone 17"` — an instruction with
+//   its point cut off. The full line fits instead because the placeholder (not
+//   the typed text) shrinks on narrow screens; see .search-inner
+//   input::placeholder in globals.css.
 
 const TYPE_MS = 70;
 const DELETE_MS = 32;
 const HOLD_MS = 1700;
 const GAP_MS = 380;
-const NARROW = "(max-width: 420px)";
 const REDUCED = "(prefers-reduced-motion: reduce)";
 
 function compose(term, prefix, suffix) {
@@ -29,36 +31,27 @@ function compose(term, prefix, suffix) {
 
 export default function useTypedPlaceholder(
   examples,
-  { prefix = "Type ", suffix = "", shortSuffix = "", paused = false } = {}
+  { prefix = "Type ", suffix = "", paused = false } = {}
 ) {
   const [index, setIndex] = useState(0);
   const [length, setLength] = useState(() => examples[0]?.length || 0);
   const [deleting, setDeleting] = useState(false);
-  // Animation is off until the effects below opt in, so SSR and the first
+  // Animation is off until the effect below opts in, so SSR and the first
   // client render produce the same string.
   const [animate, setAnimate] = useState(false);
-  const [tail, setTail] = useState(suffix);
 
   useEffect(() => {
     const reduced = window.matchMedia(REDUCED);
-    const narrow = window.matchMedia(NARROW);
-
-    const sync = () => {
-      setAnimate(!reduced.matches);
-      setTail(narrow.matches ? shortSuffix : suffix);
-    };
+    const sync = () => setAnimate(!reduced.matches);
 
     sync();
 
     // addEventListener on a MediaQueryList is Safari 14+; older phones still
     // get the correct first pass, they just won't react to a live change.
-    const lists = [reduced, narrow];
-    if (!lists[0].addEventListener) return undefined;
-    for (const list of lists) list.addEventListener("change", sync);
-    return () => {
-      for (const list of lists) list.removeEventListener("change", sync);
-    };
-  }, [suffix, shortSuffix]);
+    if (!reduced.addEventListener) return undefined;
+    reduced.addEventListener("change", sync);
+    return () => reduced.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (!animate || paused || examples.length === 0) return undefined;
@@ -86,5 +79,5 @@ export default function useTypedPlaceholder(
   }, [animate, paused, deleting, length, index, examples]);
 
   const word = examples[index] || "";
-  return compose(animate ? word.slice(0, length) : word, prefix, tail);
+  return compose(animate ? word.slice(0, length) : word, prefix, suffix);
 }
