@@ -10,8 +10,9 @@ const STATIC_PATHS = [
   "/about",
   "/contact",
   "/guidelines",
-  "/privacy",
-  "/terms"
+  // /terms serves the same combined document and canonicals to /privacy, so
+  // only the canonical URL is listed here.
+  "/privacy"
 ];
 
 function entry(loc, lastmod) {

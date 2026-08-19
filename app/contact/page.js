@@ -32,12 +32,21 @@ const METHODS = [
 ];
 
 // The same list the footer renders, so a handle only ever changes in one place.
-// The main brand account leads, then each niche under its short name — the
+// The main brand accounts lead, then each niche under its short name — the
 // "KastoChha " prefix is already the heading of the card grid's section.
-const MAIN = SOCIALS.find((social) => social.label === "Instagram");
+//
+// The brand accounts carry the platform in their name because they share one
+// handle: Instagram and YouTube are both @kasto_chha, so two cards reading
+// "KastoChha / @kasto_chha" would be indistinguishable. Looked up by label and
+// filtered on url, so removing or blanking either one in lib/channels.js drops
+// its card instead of breaking this page.
+const BRAND_CARDS = ["Instagram", "YouTube"]
+  .map((label) => SOCIALS.find((social) => social.label === label))
+  .filter((social) => social?.url)
+  .map((social) => ({ label: `KastoChha on ${social.label}`, href: social.url }));
 
 const CHANNEL_CARDS = [
-  { label: "KastoChha", href: MAIN.url },
+  ...BRAND_CARDS,
   ...liveLinks(CHANNELS).map((channel) => ({
     label: channel.label.replace(/^KastoChha\s+/, ""),
     href: channel.url
