@@ -216,7 +216,7 @@ export default function ExperienceClient({
           <div className="page-head">
             <div>
               <div className="page-kicker">NEPAL&apos;S CURIOUS COMMUNITY</div>
-              <h1 className="page-title">KastoChha <em>Experience</em></h1>
+              <h1 className="page-title upright">KastoChha <em>Experience</em></h1>
               <p className="page-sub">
                 From momo to mausam, gadgets to careers — real experiences from
                 people across Nepal, grouped by topic. Vote, reply, and post

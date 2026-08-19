@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import SiteNav from "./components/SiteNav";
@@ -115,6 +115,8 @@ export default function HomeClient({
   // label, and reading state inside the handler would see a stale value.
   const busyRef = useRef(false);
   const router = useRouter();
+  // Drives the hero search button's "Searching..." label while /chat loads.
+  const [searching, startSearch] = useTransition();
   const [busy, setBusy] = useState(false);
   const [modalError, setModalError] = useState("");
   const [needsSignIn, setNeedsSignIn] = useState(false);
@@ -146,11 +148,19 @@ export default function HomeClient({
     };
   }, []);
 
+  // /chat is a heavy route, so a click on "Go" could sit there looking dead for
+  // a second or more while it loads — long enough for someone to press it
+  // again. Wrapping the push in a transition gives the button a real pending
+  // state that React clears on its own once the new route is ready, including
+  // when the visitor comes back to the homepage.
   const submitSearch = () => {
+    if (searching) return;
     const input = document.getElementById("srch");
     const value = input ? input.value.trim() : "";
     if (!value) return;
-    router.push(`/chat?q=${encodeURIComponent(value)}`);
+    startSearch(() => {
+      router.push(`/chat?q=${encodeURIComponent(value)}`);
+    });
   };
 
   const handleSearchKey = (event) => {
@@ -400,13 +410,16 @@ export default function HomeClient({
   const uniqueTitles = Array.from(
     new Set(trending.map((topic) => topic.title).filter((title) => Boolean(title)))
   );
-  // Curated quick-search chips under the hero search bar.
+  // Curated quick-search chips under the hero search bar. Bare topics, not
+  // "<topic> kasto chha?" questions: clicking a chip drops its text straight
+  // into the search box, so a suffix here would show up twice over — once on
+  // the chip and again in the input the visitor is about to send.
   const chipItems = [
-    "Loksewa exam kasto chha?",
-    "BYD ko gaadi kasto chha?",
-    "ABC Trek kasto chha?",
-    "Sandar ko momo kasto chha?",
-    "IPO parne chance kasto chha?"
+    "Loksewa exam",
+    "BYD ko gaadi",
+    "ABC Trek",
+    "Sandar ko momo",
+    "IPO parne chance"
   ];
   const searchItems = uniqueTitles.slice(0, 5);
   // Prefill chips for the Ask tab: what people have actually asked, falling
@@ -505,7 +518,15 @@ export default function HomeClient({
                 setHasQuery(event.currentTarget.value.trim().length > 0)
               }
             />
-            <button type="button" className="s-btn" onClick={submitSearch}>Go</button>
+            <button
+              type="button"
+              className={`s-btn${searching ? " searching" : ""}`}
+              onClick={submitSearch}
+              disabled={searching}
+              aria-busy={searching}
+            >
+              {searching ? "Searching..." : "Go"}
+            </button>
           </div>
         </div>
 

@@ -279,7 +279,15 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	display:flex;align-items:center;justify-content:center;
 	transition:transform .2s,box-shadow .2s;flex-shrink:0;
 }
-.s-btn:hover{transform:scale(1.08);box-shadow:0 0 18px var(--red-glow)}
+.s-btn:not(:disabled):hover{transform:scale(1.08);box-shadow:0 0 18px var(--red-glow)}
+/* "Go" fits a 42px circle; "Searching..." does not, so the button relaxes into
+   a pill and the input — flex:1, min-width:0 — gives up the room. Height is
+   left alone so the search bar itself never changes size. */
+.s-btn.searching{
+	width:auto;padding:0 18px;border-radius:100px;cursor:default;
+	font-size:.75rem;font-weight:600;letter-spacing:.3px;white-space:nowrap;
+	font-family:var(--font-mono), monospace;
+}
 
 .chips-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:32px}
 .chip{
@@ -1816,6 +1824,10 @@ ol.chat-md-list li{list-style:decimal}
 .permalink-single .tcard-grid,.permalink-single .disc-grid{grid-template-columns:1fr}
 .permalink-single .tcard:hover,.permalink-single .disc-card:hover{transform:none}
 .page-title em{font-style:italic;color:var(--red)}
+/* Accent word in red but upright, matching .sec-title em. The italic default
+   above still applies to the Battle page's "<em>vs</em>", where the slant is
+   doing real work as a separator. */
+.page-title.upright em{font-style:normal}
 
 /* --- Trending poll cards ---------------------------------------------- */
 .tcard-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
