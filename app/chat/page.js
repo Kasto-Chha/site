@@ -5,6 +5,7 @@ import { TRIAL_LIMIT, trialRemaining } from "../../lib/chatTrial";
 import { QUOTA_WARN_AT, checkChatQuota } from "../../lib/chatQuota";
 import { createServerSupabase } from "../../lib/supabase/server";
 import { getUserRole, hasRole, ROLE } from "../../lib/auth/roles";
+import { NOINDEX_FOLLOW } from "../../lib/seo/indexable";
 import {
   getRecentChatTopics,
   getRecentQuestions,
@@ -12,6 +13,10 @@ import {
   getTrendingTopics,
   getUserChatTopics
 } from "../../lib/supabase/queries";
+
+// The answer engine is a conversation surface, not content. What should rank
+// are the Featured articles and Discussion threads that lead people here.
+export const metadata = { robots: NOINDEX_FOLLOW };
 
 export const dynamic = "force-dynamic";
 

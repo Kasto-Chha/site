@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 
+import useRequireSignIn from "./useRequireSignIn";
+
 // Shared voting state for the card-style polls (trending topics and battles).
 //
 // The counts live in React state rather than being poked into the DOM by id, so
@@ -21,6 +23,7 @@ export default function useCardVotes(initialRows, initialVotes, config) {
   const [votes, setVotes] = useState(() => ({ ...initialVotes }));
   const [pending, setPending] = useState(() => new Set());
   const [errors, setErrors] = useState({});
+  const requireSignIn = useRequireSignIn();
 
   const patchRow = useCallback((id, patch) => {
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -96,8 +99,10 @@ export default function useCardVotes(initialRows, initialVotes, config) {
         });
 
         if (response.status === 401) {
+          // Same as the experience votes: undo, open Clerk in a modal, and let
+          // the vote land by itself afterwards.
           rollback();
-          window.location.href = "/sign-in";
+          requireSignIn(() => handleVote(id, choice));
           return;
         }
 

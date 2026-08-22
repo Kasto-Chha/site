@@ -7,6 +7,8 @@ import { topicSlug } from "../../../lib/slug";
 import { LIMITS, lengthError } from "../../../lib/validate";
 import { classifyReview } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
+import { pingIndexNow } from "../../../lib/seo/indexnow";
+import { isDiscussionIndexable } from "../../../lib/seo/indexable";
 
 // Detects the "column does not exist" error so we can keep working against a
 // database that has not had the topic_slug migration applied yet.
@@ -128,6 +130,26 @@ export async function POST(request) {
 
     // Ensure the client always receives a slug to group on, even on old DBs.
     const review = data?.topic_slug ? data : { ...data, topic_slug: slug };
+
+    // Tell Bing and Yandex the thread changed, rather than waiting to be
+    // crawled. Not awaited: a slow endpoint must never delay or fail a post.
+    //
+    // Only once the thread clears the indexation gate — submitting a page we
+    // are simultaneously telling crawlers to ignore is a contradictory signal,
+    // and burns goodwill on a protocol that costs nothing to use well.
+    try {
+      const { data: thread } = await supabase
+        .from("reviews")
+        .select("topic, title, summary")
+        .eq("topic_slug", slug);
+
+      if (thread && isDiscussionIndexable(thread)) {
+        pingIndexNow([`/discussions/${slug}`, "/discussions", "/"]);
+      }
+    } catch {
+      // Never block a publish on a search-engine ping.
+    }
+
     return NextResponse.json({ review });
   } catch (error) {
     const message = error?.message || "Failed to save review.";

@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 
+import useRequireSignIn from "./useRequireSignIn";
+
 // Edit / delete for your own experiences, shared by the Experience page, the
 // discussion permalink, and the homepage wall so all three behave the same.
 //
@@ -11,6 +13,7 @@ import { useCallback, useState } from "react";
 export default function useExperienceEdits(setItems) {
   const [busyId, setBusyId] = useState(null);
   const [errors, setErrors] = useState({});
+  const requireSignIn = useRequireSignIn();
 
   const setError = useCallback((id, message) => {
     setErrors((prev) => {
@@ -40,8 +43,10 @@ export default function useExperienceEdits(setItems) {
         });
 
         const data = await response.json().catch(() => ({}));
+        // Usually a session that quietly expired mid-edit. Re-open Clerk and
+        // save the same text afterwards rather than discarding the edit.
         if (response.status === 401) {
-          window.location.href = "/sign-in";
+          requireSignIn(() => editExperience(id, { summary: body, verdict }));
           return { ok: false };
         }
         if (!response.ok) {
@@ -76,7 +81,7 @@ export default function useExperienceEdits(setItems) {
         });
 
         if (response.status === 401) {
-          window.location.href = "/sign-in";
+          requireSignIn(() => removeExperience(id));
           return { ok: false };
         }
         if (!response.ok) {

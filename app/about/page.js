@@ -188,7 +188,7 @@ export default function AboutPage() {
             </div>
 
             <div className="about-cta">
-              <a className="btn-red" href="/experience#share-review">
+              <a className="btn-red" href="/discussions#share-review">
                 Share your experience
               </a>
               <a className="btn-outline" href="/chat">

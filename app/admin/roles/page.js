@@ -1,8 +1,12 @@
+import { NOINDEX_NOFOLLOW } from "../../../lib/seo/indexable";
 import AdminRolesClient from "./AdminRolesClient";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 
 export const metadata = {
-  title: "User Roles - KastoChha"
+  title: "User Roles - KastoChha",
+  // Staff screens. Nothing here belongs in search, and there is nothing
+  // worth crawling beyond them either.
+  robots: NOINDEX_NOFOLLOW
 };
 
 export default async function AdminRolesPage() {

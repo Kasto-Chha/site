@@ -95,7 +95,7 @@ function BattleCard({ battle, index, myVote, busy, error, onVote }) {
         </div>
         <ShareRow
           text={`${battle.left_title} vs ${battle.right_title}`}
-          url={`/battle/${battle.id}`}
+          url={`/battle/${battle.slug || battle.id}`}
           label="Share"
         />
       </div>

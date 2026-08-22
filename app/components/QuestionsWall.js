@@ -1,7 +1,7 @@
 "use client";
 
 import useRevealOnce from "./useRevealOnce";
-import { delayClass, formatTimeAgo } from "./sectionHelpers";
+import { delayClass, formatTimeAgo, isoTime } from "./sectionHelpers";
 import { categoryLabel, categoryTone } from "../../lib/categories";
 import { IconChat, IconQuestion, IconReply } from "./icons";
 
@@ -54,7 +54,7 @@ function QuestionCard({ item, index, onAnswer }) {
 
       <div className="qcard-foot">
         {answered ? (
-          <a className="qcard-cta" href={`/discussions/${item.threadId}`}>
+          <a className="qcard-cta" href={`/discussions/${item.threadSlug}`}>
             <IconChat className="icon" />
             Read the answers
           </a>
@@ -70,7 +70,11 @@ function QuestionCard({ item, index, onAnswer }) {
         >
           Ask Assist
         </a>
-        {time ? <span className="qcard-time">{time}</span> : null}
+        {time ? (
+          <time className="qcard-time" dateTime={isoTime(item.created_at)}>
+            {time}
+          </time>
+        ) : null}
       </div>
     </article>
   );

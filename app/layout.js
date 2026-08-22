@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 
 import TermsGate from "./components/TermsGate";
+import { jsonLd, organizationSchema, websiteSchema } from "../lib/seo/schema";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -29,6 +30,9 @@ const dmMono = DM_Mono({
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
+  // The homepage had no canonical tag at all — every other page emitted one.
+  // Pages that need their own override this via their alternates.
+  alternates: { canonical: "/" },
   title: "KastoChha - Nepal's Curious Community Network | Real Reviews, Opinions & Answers",
   description:
     "From momo to mausam, gadgets to careers — KastoChha answers every Nepali curiosity with real reviews, honest opinions, and community experiences. No filter, no sponsored posts.",
@@ -60,13 +64,16 @@ export default function RootLayout({ children }) {
       <html lang="en">
         <body className={`${stixTwoText.variable} ${dmSans.variable} ${dmMono.variable}`}>
           <a href="#main" className="sr-only focus:not-sr-only" style={{position:'absolute',left:8,top:8,zIndex:10000,background:'#fff',padding:'6px 8px',borderRadius:6}}>Skip to content</a>
-          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "name": "KastoChha",
-            "url": siteUrl,
-            "description": "Community powered opinions from across Nepal."
-          }) }} />
+          {/* Organization + WebSite, site-wide. The Organization block is what
+              finally connects the brand to the 17 accounts it publishes from
+              (sameAs) — that footprint has been invisible to search until now.
+              Page-specific schema is added by each page on top of this. */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: jsonLd(organizationSchema(siteUrl), websiteSchema(siteUrl))
+            }}
+          />
           {children}
           {/* Renders nothing unless the signed-in user still owes consent. */}
           <TermsGate />

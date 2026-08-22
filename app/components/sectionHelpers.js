@@ -15,6 +15,19 @@ export function formatTimeAgo(value) {
   return `${months}mo ago`;
 }
 
+// The ISO form of the same value formatTimeAgo renders.
+//
+// "15h ago" is readable to a person and meaningless to a crawler: it carries no
+// date at all, and it means something different every time the page is fetched.
+// Pairing the two in <time dateTime={iso}>15h ago</time> keeps the human copy
+// and makes the actual timestamp unambiguous.
+export function isoTime(value) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
+
 export function delayClass(index) {
   if (index === 0) return "fi d1";
   if (index === 1) return "fi d2";

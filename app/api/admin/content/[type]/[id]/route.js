@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { createServerSupabase } from "../../../../../../lib/supabase/server";
 import { requireRole, ROLE } from "../../../../../../lib/auth/roles";
 import { getContentType, sanitizeContent } from "../../../../../../lib/admin/contentTypes";
+import { pingIndexNow } from "../../../../../../lib/seo/indexnow";
+import { isFeaturedIndexable } from "../../../../../../lib/seo/indexable";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -61,6 +64,21 @@ export async function PUT(request, { params }) {
   if (dbError) {
     return NextResponse.json({ error: dbError.message }, { status: 500 });
   }
+
+  if (params.type === "featured") {
+    // Drop the cached copies so the edit is visible immediately rather than
+    // after the 5-minute revalidate window.
+    revalidatePath("/featured");
+    revalidatePath("/");
+    if (data?.slug) revalidatePath(`/featured/${data.slug}`);
+
+    // An edited article is a changed page — worth re-submitting, and the reason
+    // featured_stories.updated_at exists. Same gate as everywhere else.
+    if (isFeaturedIndexable(data) && !data?.link_url) {
+      pingIndexNow([`/featured/${data.slug || data.id}`, "/featured"]);
+    }
+  }
+
   return NextResponse.json({ row: data });
 }
 
@@ -82,5 +100,13 @@ export async function DELETE(request, { params }) {
   if (dbError) {
     return NextResponse.json({ error: dbError.message }, { status: 500 });
   }
+
+  // A deleted article must disappear from the cached listing too, or it stays
+  // visible for up to five minutes after being removed.
+  if (params.type === "featured") {
+    revalidatePath("/featured");
+    revalidatePath("/");
+  }
+
   return NextResponse.json({ ok: true });
 }

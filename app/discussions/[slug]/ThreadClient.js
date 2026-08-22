@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import TopicThread from "../../components/TopicThread";
 import useReviewVotes from "../../components/useReviewVotes";
 import useExperienceEdits from "../../components/useExperienceEdits";
+import useRequireSignIn from "../../components/useRequireSignIn";
 import { buildTopics } from "../../../lib/topics";
 
 // Dedicated thread view for one discussion: the experience list starts
@@ -18,6 +19,7 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
   const { editExperience, removeExperience, isEditBusy, editErrorFor } =
     useExperienceEdits(setItems);
   const [isOpen, setIsOpen] = useState(true);
+  const requireSignIn = useRequireSignIn();
 
   const topic = useMemo(() => {
     const topics = buildTopics(items);
@@ -38,8 +40,10 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
         })
       });
 
+      // Not signed in. Open Clerk over this page and post the same reply once
+      // they're through, so the thread they were reading stays put.
       if (response.status === 401) {
-        window.location.href = "/sign-in";
+        requireSignIn(() => submitReply(topicItem, { summary, verdict }));
         return { ok: false };
       }
 

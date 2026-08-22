@@ -22,7 +22,7 @@ export default function TrendingClient({ topics = [], myVotes = {} }) {
             </div>
             <div className="page-actions">
               <a className="btn-outline" href="/chat">Ask community</a>
-              <a className="btn-red" href="/experience">Share review</a>
+              <a className="btn-red" href="/discussions">Share review</a>
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ import {
 } from "./icons";
 import { formatTimeAgo, scoreOf, verdictTone } from "../../lib/topics";
 import { categoryLabel, categoryTone } from "../../lib/categories";
+import { isoTime } from "./sectionHelpers";
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 
@@ -41,10 +42,10 @@ export default function TopicThread({
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
   const { user } = useUser();
 
-  // A thread has no id of its own — it's a group of experiences sharing a slug —
-  // so it is addressed by its opening post, the same row /discussions/[id]
-  // rebuilds the whole thread from.
-  const permalink = topic.op?.id ? `/discussions/${topic.op.id}` : "";
+  // The thread's slug is its address. Every experience inside it links here,
+  // so the topic accumulates on one page instead of splitting across one URL
+  // per reply.
+  const permalink = topic.slug ? `/discussions/${topic.slug}` : "";
 
   const [replyText, setReplyText] = useState("");
   const [replyVerdict, setReplyVerdict] = useState("");
@@ -121,7 +122,10 @@ export default function TopicThread({
   };
 
   const copyLink = async (exp) => {
-    const url = `${window.location.origin}/discussions/${exp.id}`;
+    // Deep-links to the specific experience via a fragment. A fragment is not
+    // a separate URL to a search engine, so per-experience sharing still works
+    // without minting a duplicate page for every reply.
+    const url = `${window.location.origin}/discussions/${topic.slug}#exp-${exp.id}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(exp.id);
@@ -256,7 +260,10 @@ export default function TopicThread({
         ) : null}
         <span className="topic-foot-meta">
           net {topic.score >= 0 ? "+" : ""}
-          {topic.score} · updated {formatTimeAgo(topic.lastActivity)}
+          {topic.score} · updated{" "}
+          <time dateTime={isoTime(topic.lastActivity)}>
+            {formatTimeAgo(topic.lastActivity)}
+          </time>
         </span>
       </div>
 
@@ -272,7 +279,10 @@ export default function TopicThread({
             const editBusy = Boolean(isEditBusy?.(exp.id));
             const editError = editErrorFor?.(exp.id) || "";
             return (
-              <div className="exp-item" key={exp.id}>
+              // Anchor target for the per-experience "Copy link" above. Lets a
+              // contributor share their own reply without that reply needing a
+              // URL of its own.
+              <div className="exp-item" id={`exp-${exp.id}`} key={exp.id}>
                 <div className="review-vote">
                   <button
                     type="button"
@@ -302,7 +312,9 @@ export default function TopicThread({
                       {exp.author_name || "Anonymous"}
                     </span>
                     {isOp(exp) ? <span className="exp-op">OP</span> : null}
-                    {timeLabel ? <span>{timeLabel}</span> : null}
+                    {timeLabel ? (
+                      <time dateTime={isoTime(exp.created_at)}>{timeLabel}</time>
+                    ) : null}
                     {exp.verdict ? (
                       <span className={`exp-verdict ${tone}`}>{exp.verdict}</span>
                     ) : null}

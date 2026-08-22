@@ -2,13 +2,17 @@ import ContentEditorClient from "./ContentEditorClient";
 import { createServerSupabase } from "../../../../../lib/supabase/server";
 import { requireRole, ROLE } from "../../../../../lib/auth/roles";
 import { getContentType } from "../../../../../lib/admin/contentTypes";
+import { NOINDEX_NOFOLLOW } from "../../../../../lib/seo/indexable";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const config = getContentType(params.type);
   const verb = params.id === "new" ? "New" : "Edit";
-  return { title: `${verb} ${config ? config.singular : "content"} - KastoChha Admin` };
+  return {
+    title: `${verb} ${config ? config.singular : "content"} - KastoChha Admin`,
+    robots: NOINDEX_NOFOLLOW
+  };
 }
 
 export default async function AdminContentEditorPage({ params }) {

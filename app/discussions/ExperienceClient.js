@@ -6,6 +6,7 @@ import SiteNav from "../components/SiteNav";
 import TopicThread from "../components/TopicThread";
 import useReviewVotes from "../components/useReviewVotes";
 import useExperienceEdits from "../components/useExperienceEdits";
+import useRequireSignIn from "../components/useRequireSignIn";
 import { topicSlug } from "../../lib/slug";
 import { buildTopics } from "../../lib/topics";
 import {
@@ -28,6 +29,7 @@ export default function ExperienceClient({
   const { editExperience, removeExperience, isEditBusy, editErrorFor } =
     useExperienceEdits(setItems);
   const [submitting, setSubmitting] = useState(false);
+  const requireSignIn = useRequireSignIn();
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortMode, setSortMode] = useState("discussed");
   const [expanded, setExpanded] = useState(() => new Set());
@@ -129,8 +131,10 @@ export default function ExperienceClient({
         })
       });
 
+      // Open Clerk over the page instead of navigating: the thread stays
+      // open and the reply is posted for them once they're signed in.
       if (response.status === 401) {
-        window.location.href = "/sign-in";
+        requireSignIn(() => submitInlineReply(topicItem, { summary, verdict }));
         return { ok: false };
       }
 
@@ -150,8 +154,10 @@ export default function ExperienceClient({
     }
   };
 
+  // `event` is optional: when this is re-run after sign-in there is no form
+  // submit event to cancel.
   const submitReview = async (event) => {
-    event.preventDefault();
+    event?.preventDefault();
     if (submitting) return;
 
     const resolvedTitle = topic.trim();
@@ -178,8 +184,10 @@ export default function ExperienceClient({
         })
       });
 
+      // Same here: the form keeps everything they typed because the page is
+      // never unmounted, and the experience posts itself after sign-in.
       if (response.status === 401) {
-        window.location.href = "/sign-in";
+        requireSignIn(() => submitReview());
         return;
       }
 

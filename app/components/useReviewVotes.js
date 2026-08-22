@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 
+import useRequireSignIn from "./useRequireSignIn";
+
 // Shared voting state for review/experience items (the up/down arrows).
 //
 // `initialVotes` ({ reviewId: "up" | "down" }) is read on the server for the
@@ -19,6 +21,7 @@ export default function useReviewVotes(initialItems, initialVotes = {}) {
   const [votes, setVotes] = useState(() => ({ ...initialVotes }));
   const [pending, setPending] = useState(() => new Set());
   const [errors, setErrors] = useState({});
+  const requireSignIn = useRequireSignIn();
 
   // Move upvotes/downvotes for a previous -> next transition, exactly as the
   // server's apply_review_vote does.
@@ -86,10 +89,11 @@ export default function useReviewVotes(initialItems, initialVotes = {}) {
         });
 
         if (response.status === 401) {
-          // Not signed in: undo the local change before leaving so the state is
-          // clean if the user comes back via the back button.
+          // Not signed in. Undo the optimistic change, then open Clerk over the
+          // page. Nothing unmounts, so the visitor keeps their scroll position
+          // and the vote is re-sent for them once they're in.
           rollback();
-          window.location.href = "/sign-in";
+          requireSignIn(() => handleVote(id, direction));
           return;
         }
 

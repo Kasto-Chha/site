@@ -2,12 +2,21 @@ import SiteNav from "../components/SiteNav";
 import { getFeaturedStories } from "../../lib/supabase/queries";
 import { storyHref } from "../../lib/featured";
 
-export const dynamic = "force-dynamic";
+// Featured pages are identical for every visitor — no auth() call, no
+// personalisation. force-dynamic was making Next send
+// "Cache-Control: private, no-store" anyway, so every crawler hit and every
+// reader paid a full server render for a page that never varies.
+//
+// These are the pages that matter most for search, so they are the ones worth
+// caching. Regenerated at most once every 5 minutes, and immediately whenever
+// an article is published or edited (see revalidatePath in the admin routes).
+export const revalidate = 300;
 
 export const metadata = {
   title: "Featured - KastoChha News",
   description:
-    "Editor's picks from KastoChha — the stories, topics and threads worth your time."
+    "Editor's picks from KastoChha — the stories, topics and threads worth your time.",
+  alternates: { canonical: "/featured" }
 };
 
 // Stories are curated by hand in /admin/content/featured. The "main" slot is the

@@ -2,12 +2,18 @@ import ContentListClient from "./ContentListClient";
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { requireRole, ROLE, hasRole } from "../../../../lib/auth/roles";
 import { getContentType } from "../../../../lib/admin/contentTypes";
+import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const config = getContentType(params.type);
-  return { title: `${config ? config.label : "Content"} - KastoChha Admin` };
+  // Staff screens: nothing here belongs in search, and nothing worth
+  // crawling onward from either.
+  return {
+    title: `${config ? config.label : "Content"} - KastoChha Admin`,
+    robots: NOINDEX_NOFOLLOW
+  };
 }
 
 export default async function AdminContentListPage({ params }) {

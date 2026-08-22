@@ -79,7 +79,7 @@ function TrendingCard({ topic, index, myVote, busy, error, onVote }) {
 
       {error ? <p className="vote-error" role="status">{error}</p> : null}
 
-      <ShareRow text={topic.title} url={`/trending/${topic.id}`} label="Share" />
+      <ShareRow text={topic.title} url={`/trending/${topic.slug || topic.id}`} label="Share" />
     </article>
   );
 }

@@ -12,6 +12,7 @@ import ReelsRail from "./components/ReelsRail";
 import ShareRow from "./components/ShareRow";
 import useScrollReveal from "./components/useScrollReveal";
 import useTypedPlaceholder from "./components/useTypedPlaceholder";
+import useRequireSignIn from "./components/useRequireSignIn";
 import {
   IconBook,
   IconBriefcase,
@@ -58,7 +59,7 @@ const FOOTER_COLUMNS = [
       // these jump to the section instead of guessing at a nearby route.
       { label: "Discussion", href: "/#discussions" },
       { label: "Reels", href: "/#reels" },
-      { label: "Experience", href: "/experience" },
+      { label: "Discussions", href: "/discussions" },
       { label: "Featured", href: "/featured" }
     ]
   },
@@ -78,15 +79,18 @@ const FOOTER_COLUMNS = [
 
 // Inline failure notice for the share/ask modal. A 401 also offers the way out,
 // since "not signed in" is the one error the visitor can actually act on.
-function ModalError({ message, signIn }) {
+function ModalError({ message, signIn, onSignIn }) {
   if (!message) return null;
   return (
     <div className="modal-error" role="alert">
       <span>{message}</span>
       {signIn ? (
-        <a className="modal-error-link" href="/sign-in">
+        // A button, not a link: navigating to /sign-in would unmount this modal
+        // and lose the draft the message just promised to keep. Clerk opens on
+        // top instead, then the post is submitted automatically.
+        <button type="button" className="modal-error-link" onClick={onSignIn}>
           Sign in -&gt;
-        </a>
+        </button>
       ) : null}
     </div>
   );
@@ -120,6 +124,7 @@ export default function HomeClient({
   const [busy, setBusy] = useState(false);
   const [modalError, setModalError] = useState("");
   const [needsSignIn, setNeedsSignIn] = useState(false);
+  const requireSignIn = useRequireSignIn();
   // Stop the typing animation the moment there's something in the box — the
   // placeholder is hidden then, so there is nothing left to animate.
   const [hasQuery, setHasQuery] = useState(false);
@@ -458,7 +463,7 @@ export default function HomeClient({
     if (!slug) continue;
     const existing = threadBySlug.get(slug);
     if (existing) existing.count += 1;
-    else threadBySlug.set(slug, { count: 1, id: review.id });
+    else threadBySlug.set(slug, { count: 1, slug });
   }
 
   const openQuestions = questions.map((item) => {
@@ -466,7 +471,9 @@ export default function HomeClient({
     return {
       ...item,
       answers: thread?.count || 0,
-      threadId: thread?.id || ""
+      // The thread's slug is its URL. Was the opening row's uuid, which sent
+      // every answered question to a per-experience duplicate of the thread.
+      threadSlug: thread?.slug || ""
     };
   });
 
@@ -603,7 +610,7 @@ export default function HomeClient({
               <h2 className="sec-title">KastoChha <em>Discussions</em></h2>
               <p className="sec-sub">Reviews and Opinions from people across Nepal.</p>
             </div>
-            <a href="/experience" className="sec-all">All discussions -&gt;</a>
+            <a href="/discussions" className="sec-all">All discussions -&gt;</a>
           </div>
 
           <DiscussionsGrid reviews={reviews} limit={6} />
@@ -748,7 +755,7 @@ export default function HomeClient({
                       <div className="fc-desc">{story.description}</div>
                     ) : null}
                     <a href={storyHref(story)} className="fc-read">Read -&gt;</a>
-                    <ShareRow text={story.title} url={`/featured/${story.id}`} label="Share" />
+                    <ShareRow text={story.title} url={`/featured/${story.slug || story.id}`} label="Share" />
                   </div>
                 </div>
               ))}
@@ -860,7 +867,11 @@ export default function HomeClient({
                 </select>
               </div>
             </div>
-            <ModalError message={modalError} signIn={needsSignIn} />
+            <ModalError
+              message={modalError}
+              signIn={needsSignIn}
+              onSignIn={() => requireSignIn(() => submitForm(activeTabRef.current))}
+            />
             <button
               type="button"
               className="fsub"
@@ -899,7 +910,11 @@ export default function HomeClient({
                 ))}
               </select>
             </div>
-            <ModalError message={modalError} signIn={needsSignIn} />
+            <ModalError
+              message={modalError}
+              signIn={needsSignIn}
+              onSignIn={() => requireSignIn(() => submitForm(activeTabRef.current))}
+            />
             <button
               type="button"
               className="fsub"

@@ -9,14 +9,14 @@ const LINKS = [
   { href: "/trending", label: "Trending" },
   { href: "/featured", label: "Featured" },
   { href: "/battle", label: "Battle" },
-  { href: "/experience", label: "Experience" }
+  { href: "/discussions", label: "Discussions" }
 ];
 
 // Single nav used across every page so links, mobile behaviour, and auth stay
 // consistent. Primary/secondary actions can be either links (href) or buttons
 // (onClick handlers, e.g. the homepage modal).
 export default function SiteNav({
-  shareHref = "/experience#share-review",
+  shareHref = "/discussions#share-review",
   shareLabel = "Share a story",
   onShare
 }) {

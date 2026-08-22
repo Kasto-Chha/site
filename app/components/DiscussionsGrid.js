@@ -1,7 +1,14 @@
 "use client";
 
 import ShareRow from "./ShareRow";
-import { avatarStack, catLabel, catTone, delayClass, formatTimeAgo } from "./sectionHelpers";
+import {
+  avatarStack,
+  catLabel,
+  catTone,
+  delayClass,
+  formatTimeAgo,
+  isoTime
+} from "./sectionHelpers";
 import { IconThumb } from "./icons";
 import { topicSlug } from "../../lib/slug";
 
@@ -59,7 +66,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
             </div>
 
             <h3 className="disc-title">
-              <a className="disc-link" href={`/discussions/${review.id}`}>
+              <a className="disc-link" href={`/discussions/${slugOf(review)}`}>
                 {review.title || review.topic}
               </a>
             </h3>
@@ -70,12 +77,16 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
             <div className="disc-foot">
               <span className="disc-replies">{replies} {replies === 1 ? "reply" : "replies"}</span>
               <span className="disc-likes"><IconThumb className="icon" /> {likes}</span>
-              {time ? <span className="disc-time">{time}</span> : null}
+              {time ? (
+                <time className="disc-time" dateTime={isoTime(review.created_at)}>
+                  {time}
+                </time>
+              ) : null}
             </div>
 
             <ShareRow
               text={review.title || review.topic || "KastoChha discussion"}
-              url={`/discussions/${review.id}`}
+              url={`/discussions/${slugOf(review)}`}
               label="Share"
             />
           </article>
