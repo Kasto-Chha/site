@@ -5,7 +5,6 @@ import { createServerSupabase } from "../../../lib/supabase/server";
 import { getClerkUser, getPreferredUserName } from "../../../lib/auth/clerk";
 import { topicSlug } from "../../../lib/slug";
 import { LIMITS, lengthError } from "../../../lib/validate";
-import { classifyReview } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 import { pingIndexNow } from "../../../lib/seo/indexnow";
 import { isDiscussionIndexable } from "../../../lib/seo/indexable";
@@ -65,22 +64,44 @@ export async function POST(request) {
     return NextResponse.json({ error: lenError }, { status: 400 });
   }
 
-  // Auto-classify (best-effort, time-boxed) so experiences group under a clean,
-  // canonical topic and a normalized category — even if the author's wording
-  // varies. Falls back to the raw title/category if the AI is off or slow.
-  let topicLabel = title;
-  try {
-    const ai = await Promise.race([
-      classifyReview({ title, summary, category }),
-      new Promise((resolve) => setTimeout(() => resolve(null), 5000))
-    ]);
-    if (ai) {
-      if (ai.category) category = ai.category;
-      if (ai.topic) topicLabel = ai.topic;
-    }
-  } catch {
-    // Ignore — keep the author-provided values.
-  }
+  // WHAT YOU TYPE IS WHAT GETS SAVED.
+  //
+  // This used to hand the topic, category and experience text to Gemini and use
+  // whatever came back:
+  //
+  //   if (ai.category) category = ai.category;
+  //   if (ai.topic) topicLabel = ai.topic;
+  //
+  // The intent was to stop "iPhone 15" and "iphone 15" forking into two
+  // threads. In practice it did three bad things.
+  //
+  // It moved posts. Someone answering "tiptop ko samosa" had their topic
+  // rewritten to "Tiptop Samosa" — a different slug, so a new thread. The
+  // original question stayed unanswered while the answers accumulated
+  // somewhere else. Same for "Sandra ko momo" and "samsung galaxy fold
+  // series": each ended up as two threads on the homepage.
+  //
+  // It moved categories. A thread's category comes from its first row, so a
+  // reclassified post changed the whole thread — General became Food, then
+  // Tech & Gadgets, while the author watched.
+  //
+  // And it read the wrong field. Both were inferred from the experience *text*,
+  // not the topic. Mention paying by phone in a review of a momo place and the
+  // classifier has grounds to file it under Tech & Gadgets.
+  //
+  // None of it was visible: the substitution happens after the post button, so
+  // the only way to notice is to go looking for your own experience and find it
+  // somewhere strange.
+  //
+  // It is also unnecessary. Casing already folds together — "iPhone 15" and
+  // "iphone 15" produce the same slug without any of this. Anything looser is
+  // the suggestions panel's job, where the author sees the existing threads and
+  // chooses. And the category is picked from a list of nine; second-guessing a
+  // deliberate choice from prose is how a samosa thread lands in Tech.
+  //
+  // The Gemini call is gone rather than left with its results discarded: it
+  // cost a request per post and up to five seconds of waiting.
+  const topicLabel = title;
 
   const slug = topicSlug(topicLabel);
 

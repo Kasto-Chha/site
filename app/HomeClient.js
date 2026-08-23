@@ -663,6 +663,36 @@ export default function HomeClient({
 
           <DiscussionsGrid reviews={reviews} limit={6} />
 
+{/* Open questions sit directly under the discussion grid: "here is the
+              conversation, and here is where it needs you". The share block
+              follows both, because a call to action lands better once someone
+              has seen why they'd bother than wedged between two lists. */}
+  <div className="qwall-block" id="questions">
+          <div className="qwall-inner">
+            <div className="sec-head">
+              <div className="sec-head-left">
+                <div className="sec-eyebrow">
+                  <div className="sec-rule"></div>
+                </div>
+                <h2 className="sec-title">Community is <em>Asking</em></h2>
+                <p className="sec-sub">
+                  Real questions from people across Nepal, still waiting on
+                  someone who has been there. Tapai lai thaha chha bhane, bhanidinus.
+                </p>
+              </div>
+              <button type="button" className="sec-all" onClick={() => openModal("ask")}>
+                Ask a question -&gt;
+              </button>
+            </div>
+
+            <QuestionsWall
+              questions={openQuestions}
+              onAnswer={answerQuestion}
+              onAsk={() => openModal("ask")}
+            />
+          </div>
+        </div>
+
           <div className="join-band">
             <div className="join-intro">
               <h2 className="join-title">
@@ -697,32 +727,6 @@ export default function HomeClient({
               ))}
             </div>
           ) : null}
-        </div>
-      </section>
-
-      <section className="section" id="questions">
-        <div className="container">
-          <div className="sec-head">
-            <div className="sec-head-left">
-              <div className="sec-eyebrow">
-                <div className="sec-rule"></div>
-              </div>
-              <h2 className="sec-title">Community is <em>Asking</em></h2>
-              <p className="sec-sub">
-                Real questions from people across Nepal, still waiting on
-                someone who has been there. Tapai lai thaha chha bhane, bhanidinus.
-              </p>
-            </div>
-            <button type="button" className="sec-all" onClick={() => openModal("ask")}>
-              Ask a question -&gt;
-            </button>
-          </div>
-
-          <QuestionsWall
-            questions={openQuestions}
-            onAnswer={answerQuestion}
-            onAsk={() => openModal("ask")}
-          />
         </div>
       </section>
 

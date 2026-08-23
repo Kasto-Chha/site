@@ -698,6 +698,11 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .page-sub{font-size:1.02rem;line-height:1.65;color:var(--muted);max-width:70ch}
 .page-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* Open questions, now nested inside the Discussions section rather than
+   standing alone, so they need the breathing room a <section> gave them. */
+.qwall-block{margin-top:56px}
+.qwall-inner{width:100%}
+
 /* Existing-thread suggestions under the topic field. Quiet by design: an aid
    while typing, not a dialog demanding a decision. */
 .topic-suggest{
