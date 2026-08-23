@@ -35,6 +35,9 @@ export default function TopicThread({
   onDelete,
   isEditBusy,
   editErrorFor,
+  // A reply typed before signing in, handed back after the page reloaded, so
+  // the composer opens with their own words rather than empty.
+  restoredReply = null,
   // The thread's own page links to itself, so it opts out.
   showPermalink = true
 }) {
@@ -47,8 +50,8 @@ export default function TopicThread({
   // per reply.
   const permalink = topic.slug ? `/discussions/${topic.slug}` : "";
 
-  const [replyText, setReplyText] = useState("");
-  const [replyVerdict, setReplyVerdict] = useState("");
+  const [replyText, setReplyText] = useState(restoredReply?.summary || "");
+  const [replyVerdict, setReplyVerdict] = useState(restoredReply?.verdict || "");
   const [sending, setSending] = useState(false);
   const [replyError, setReplyError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
@@ -269,7 +272,9 @@ export default function TopicThread({
 
       {isOpen ? (
         <div className="exp-list">
-          {ordered.map((exp) => {
+          {/* The question is already the thread's heading — rendering its row
+              as a card too would print it twice. Answers only here. */}
+          {ordered.filter((exp) => exp.kind !== "question").map((exp) => {
             const tone = verdictTone(exp.verdict);
             const timeLabel = formatTimeAgo(exp.created_at);
             const myVote = voteOf?.(exp.id) || null;

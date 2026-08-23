@@ -41,6 +41,16 @@ export async function POST(request) {
   let category = (payload.category || "").toString().trim();
   const verdict = (payload.verdict || "").toString().trim();
 
+  // A question is a discussion with no answers yet — same table, same thread,
+  // distinguished only by kind. Asking used to write to a separate `questions`
+  // table, which meant a question and its answers could never be connected
+  // except by comparing text, and that almost never matched.
+  //
+  // "title" is the subject ("Sikko Calculator") and "summary" is the question
+  // ("Battery kati tikchha?"), exactly as for an experience. That is what keeps
+  // a thread named after a subject rather than a whole sentence.
+  const kind = payload.kind === "question" ? "question" : "experience";
+
   if (!title || !summary || !category) {
     return NextResponse.json({ error: "Missing fields." }, { status: 400 });
   }
@@ -104,9 +114,11 @@ export async function POST(request) {
       summary,
       topic: canonicalTopic,
       category,
-      verdict: verdict || null,
+      // A question has no verdict: forming one is what it is asking for.
+      verdict: kind === "question" ? null : verdict || null,
       author_name: name,
-      user_id: userId
+      user_id: userId,
+      kind
     };
 
     let { data, error } = await supabase
@@ -141,7 +153,11 @@ export async function POST(request) {
       const { data: thread } = await supabase
         .from("reviews")
         .select("topic, title, summary")
-        .eq("topic_slug", slug);
+        .eq("topic_slug", slug)
+        // Experiences only: a thread holding nothing but an unanswered question
+        // has nothing to read yet, and submitting it would contradict the
+        // noindex it carries.
+        .eq("kind", "experience");
 
       if (thread && isDiscussionIndexable(thread)) {
         pingIndexNow([`/discussions/${slug}`, "/discussions", "/"]);

@@ -698,6 +698,31 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .page-sub{font-size:1.02rem;line-height:1.65;color:var(--muted);max-width:70ch}
 .page-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* Existing-thread suggestions under the topic field. Quiet by design: an aid
+   while typing, not a dialog demanding a decision. */
+.topic-suggest{
+	margin-top:8px;border:1px solid var(--line);border-radius:10px;
+	background:var(--card);overflow:hidden;
+}
+.topic-suggest-head{
+	display:flex;align-items:center;justify-content:space-between;
+	padding:8px 12px;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;
+	color:var(--muted);border-bottom:1px solid var(--line);
+}
+.topic-suggest-close{
+	background:none;border:0;padding:0 4px;font-size:1.1rem;line-height:1;
+	color:var(--muted);cursor:pointer;
+}
+.topic-suggest-item{
+	display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+	width:100%;padding:10px 12px;background:none;border:0;border-bottom:1px solid var(--line);
+	text-align:left;font:inherit;cursor:pointer;
+}
+.topic-suggest-item:hover,.topic-suggest-item:focus-visible{background:var(--bg-soft,rgba(0,0,0,.03))}
+.topic-suggest-title{font-weight:600;font-size:.95rem}
+.topic-suggest-meta{font-size:.78rem;color:var(--muted);white-space:nowrap}
+.topic-suggest-foot{padding:8px 12px;font-size:.75rem;color:var(--muted)}
+
 /* Byline on a Featured article: quieter than the standfirst, sits between
    the headline and the description. */
 .page-byline{font-size:.9rem;color:var(--muted);margin:6px 0 10px;letter-spacing:.01em}

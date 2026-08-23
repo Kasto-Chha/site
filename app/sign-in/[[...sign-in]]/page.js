@@ -13,7 +13,15 @@ export const metadata = {
 export default function SignInPage() {
   return (
     <AuthShell>
-      <SignIn path="/sign-in" signUpUrl="/sign-up" appearance={clerkAppearance} />
+      {/* fallbackRedirectUrl only applies when no redirect_url is on the
+          query string, so arriving from a specific page still returns
+          there. Without it, Clerk sends everyone to the homepage. */}
+      <SignIn
+        path="/sign-in"
+        signUpUrl="/sign-up"
+        fallbackRedirectUrl="/"
+        appearance={clerkAppearance}
+      />
     </AuthShell>
   );
 }

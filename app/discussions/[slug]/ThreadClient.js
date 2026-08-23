@@ -19,7 +19,16 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
   const { editExperience, removeExperience, isEditBusy, editErrorFor } =
     useExperienceEdits(setItems);
   const [isOpen, setIsOpen] = useState(true);
-  const requireSignIn = useRequireSignIn();
+  // A reply typed on a thread page. Keyed by slug so it can only rehydrate
+  // into the thread it was written for.
+  const [restoredReply, setRestoredReply] = useState(null);
+  const requireSignIn = useRequireSignIn({
+    draftKey: `thread:${threadSlug}`,
+    onRestore: (draft) => {
+      setRestoredReply(draft);
+      setIsOpen(true);
+    }
+  });
 
   const topic = useMemo(() => {
     const topics = buildTopics(items);
@@ -43,7 +52,10 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
       // Not signed in. Open Clerk over this page and post the same reply once
       // they're through, so the thread they were reading stays put.
       if (response.status === 401) {
-        requireSignIn(() => submitReply(topicItem, { summary, verdict }));
+        requireSignIn(() => submitReply(topicItem, { summary, verdict }), {
+          summary,
+          verdict
+        });
         return { ok: false };
       }
 
@@ -78,6 +90,7 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
       onDelete={removeExperience}
       isEditBusy={isEditBusy}
       editErrorFor={editErrorFor}
+      restoredReply={restoredReply}
       showPermalink={false}
     />
   );

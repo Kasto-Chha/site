@@ -7,6 +7,7 @@ import TopicThread from "../components/TopicThread";
 import useReviewVotes from "../components/useReviewVotes";
 import useExperienceEdits from "../components/useExperienceEdits";
 import useRequireSignIn from "../components/useRequireSignIn";
+import TopicSuggest from "../components/TopicSuggest";
 import { topicSlug } from "../../lib/slug";
 import { buildTopics } from "../../lib/topics";
 import {
@@ -29,7 +30,23 @@ export default function ExperienceClient({
   const { editExperience, removeExperience, isEditBusy, editErrorFor } =
     useExperienceEdits(setItems);
   const [submitting, setSubmitting] = useState(false);
-  const requireSignIn = useRequireSignIn();
+  // The share form's contents, so a refresh during sign-in doesn't discard
+  // what someone typed.
+  const requireSignIn = useRequireSignIn({
+    draftKey: "discussions:share",
+    onRestore: (draft) => {
+      setTopic(draft.topic || "");
+      setCategory(draft.category || "");
+      setVerdict(draft.verdict || "");
+      setSummary(draft.summary || "");
+      setError("Signed in — your experience is ready to post.");
+      requestAnimationFrame(() => {
+        document
+          .getElementById("share-review")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  });
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortMode, setSortMode] = useState("discussed");
   const [expanded, setExpanded] = useState(() => new Set());
@@ -94,7 +111,10 @@ export default function ExperienceClient({
   // and a paragraph rather than retyping the topic by hand.
   const answerQuestion = (item) => {
     const label = categoryLabel(item.category);
-    setTopic(item.question || "");
+    // The SUBJECT, not the question text. Setting the whole question here
+    // created a second thread named after the sentence, sitting beside the one
+    // named after the subject.
+    setTopic(item.topic || item.question || "");
     // Only preselect a niche the dropdown actually offers; anything else (an
     // old free-text category, or none at all) leaves the picker untouched.
     setCategory(CATEGORY_LABELS.includes(label) ? label : "");
@@ -187,7 +207,7 @@ export default function ExperienceClient({
       // Same here: the form keeps everything they typed because the page is
       // never unmounted, and the experience posts itself after sign-in.
       if (response.status === 401) {
-        requireSignIn(() => submitReview());
+        requireSignIn(() => submitReview(), { topic, category, verdict, summary });
         return;
       }
 
@@ -328,6 +348,7 @@ export default function ExperienceClient({
                       value={topic}
                       onChange={(event) => setTopic(event.target.value)}
                     />
+                    <TopicSuggest value={topic} onPick={setTopic} />
                   </div>
 
                   {matchedTopic ? (

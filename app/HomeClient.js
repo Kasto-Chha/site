@@ -13,6 +13,7 @@ import ShareRow from "./components/ShareRow";
 import useScrollReveal from "./components/useScrollReveal";
 import useTypedPlaceholder from "./components/useTypedPlaceholder";
 import useRequireSignIn from "./components/useRequireSignIn";
+import TopicSuggest from "./components/TopicSuggest";
 import {
   IconBook,
   IconBriefcase,
@@ -124,7 +125,30 @@ export default function HomeClient({
   const [busy, setBusy] = useState(false);
   const [modalError, setModalError] = useState("");
   const [needsSignIn, setNeedsSignIn] = useState(false);
-  const requireSignIn = useRequireSignIn();
+  // This form is read from the DOM at submit rather than held in state, so the
+  // topic is mirrored here purely to drive the suggestions.
+  const [shareTopic, setShareTopic] = useState("");
+  const [askTopic, setAskTopic] = useState("");
+  // This modal reads its fields from the DOM at submit, so restoring means
+  // writing the values back into the inputs and reopening the right tab.
+  const requireSignIn = useRequireSignIn({
+    draftKey: "home:modal",
+    onRestore: (draft) => {
+      openModal(draft.tab || "share");
+      const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el && value) el.value = value;
+      };
+      set("sh-topic", draft.topic);
+      set("sh-exp", draft.summary);
+      set("ask-q", draft.question);
+      set("ask-cat", draft.category);
+      setShareTopic(draft.topic || "");
+      setAskTopic(draft.question || "");
+      setModalError("Signed in — ready to post.");
+      calcProg();
+    }
+  });
   // Stop the typing animation the moment there's something in the box — the
   // placeholder is hidden then, so there is nothing left to animate.
   const [hasQuery, setHasQuery] = useState(false);
@@ -271,8 +295,15 @@ export default function HomeClient({
   const answerQuestion = (item) => {
     openModal("share");
 
+    // Pre-fill the SUBJECT, not the question. This used to insert the whole
+    // question text, so answering "Sikko calculator kasto chha?" created a
+    // thread called "sikko-calculator-kasto-chha" beside the existing
+    // "sikko-calculator" — two threads about one product, which is the
+    // fragmentation topic slugs exist to prevent.
     const topicInput = document.getElementById("sh-topic");
-    if (topicInput) topicInput.value = item.question || "";
+    const prefill = item.topic || item.question || "";
+    if (topicInput) topicInput.value = prefill;
+    setShareTopic(prefill);
 
     const label = categoryLabel(item.category);
     document.querySelectorAll(".tpill").forEach((pill) => {
@@ -340,8 +371,28 @@ export default function HomeClient({
         return;
       }
 
-      endpoint = "/api/questions";
-      payload = { question, category };
+      // A question starts a discussion rather than living in its own table, so
+      // it posts to the same endpoint as an experience and differs only by
+      // kind. The subject names the thread; the question is its opening post.
+      //
+      // Asking about a subject that already has a thread adds to that thread —
+      // the API folds matching slugs together — instead of forking a near
+      // duplicate.
+      // The question IS the thread. "BYD ko battery kati tikchha?" is its own
+      // discussion, distinct from "BYD ko resale value" — each targets what
+      // someone actually wants to know, and each accumulates its own answers.
+      //
+      // So there is no separate subject to collect. The question names the
+      // thread, and the suggestions under the field are what stop a near
+      // duplicate: type "byd" and every existing BYD thread appears, so joining
+      // one is easier than starting another.
+      endpoint = "/api/reviews";
+      payload = {
+        kind: "question",
+        title: question,
+        summary: question,
+        category: category || "General"
+      };
     }
 
     if (!endpoint) return;
@@ -395,6 +446,8 @@ export default function HomeClient({
     document.querySelectorAll(".vbtn-m").forEach((btn) => btn.classList.remove("on"));
     document.querySelectorAll(".tpill").forEach((pill) => pill.classList.remove("on"));
     document.querySelectorAll(".pseg").forEach((seg) => seg.classList.remove("fill"));
+    setShareTopic("");
+    setAskTopic("");
     ["sh-topic", "sh-exp", "ask-q"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.value = "";
@@ -453,29 +506,24 @@ export default function HomeClient({
   // still renders a lead card instead of leaving the tall left column empty.
   // Sides are "everything except the lead", so a story marked "main" twice
   // can't drop out of the grid entirely.
-  // A question is "answered" when an experience has been posted under the same
-  // topic slug — the same grouping /discussions and the Experience wall use. So
-  // the badge on each card reflects real replies rather than being decoration,
-  // and an answered card can point at the thread holding them.
-  const threadBySlug = new Map();
-  for (const review of reviews) {
-    const slug = review.topic_slug || topicSlug(review.topic || review.title);
-    if (!slug) continue;
-    const existing = threadBySlug.get(slug);
-    if (existing) existing.count += 1;
-    else threadBySlug.set(slug, { count: 1, slug });
-  }
-
-  const openQuestions = questions.map((item) => {
-    const thread = threadBySlug.get(topicSlug(item.question));
-    return {
-      ...item,
-      answers: thread?.count || 0,
-      // The thread's slug is its URL. Was the opening row's uuid, which sent
-      // every answered question to a per-experience duplicate of the thread.
-      threadSlug: thread?.slug || ""
-    };
-  });
+  // getRecentQuestions already returns only threads with no experiences on
+  // them, so everything here is open by definition.
+  //
+  // This used to pair a question with its answers by slugifying the entire
+  // question text and looking for a thread with that exact slug —
+  // "sikko-calculator-kasto-chha" against "sikko-calculator" — which almost
+  // never matched. Every question showed as unanswered however many people had
+  // replied. Now a question and its answers are the same thread, so there is
+  // nothing to reconcile.
+  // getRecentQuestions returns threads that have not yet cleared the
+  // indexation gate, with a real answer count attached — so a thread with one
+  // reply still shows here, and shows that one reply, rather than reading zero
+  // until it vanishes.
+  const openQuestions = questions.map((item) => ({
+    ...item,
+    answers: item.answers || 0,
+    threadSlug: item.topic_slug || ""
+  }));
 
   const featuredMain = featured.find((item) => item.slot === "main") || featured[0] || null;
   const featuredSide = featured.filter((item) => item !== featuredMain).slice(0, 2);
@@ -814,7 +862,25 @@ export default function HomeClient({
             </div>
             <div className="fg">
               <div className="flbl"><span className="fstep">1</span>Topic</div>
-              <input className="finp" id="sh-topic" type="text" placeholder="e.g. delivery experience" onInput={calcProg} />
+              <input
+                className="finp"
+                id="sh-topic"
+                type="text"
+                placeholder="e.g. delivery experience"
+                onInput={(event) => {
+                  setShareTopic(event.target.value);
+                  calcProg();
+                }}
+              />
+              <TopicSuggest
+                value={shareTopic}
+                onPick={(title) => {
+                  const input = document.getElementById("sh-topic");
+                  if (input) input.value = title;
+                  setShareTopic(title);
+                  calcProg();
+                }}
+              />
             </div>
             <div className="fg">
               <div className="flbl"><span className="fstep">2</span>Verdict</div>
@@ -870,7 +936,15 @@ export default function HomeClient({
             <ModalError
               message={modalError}
               signIn={needsSignIn}
-              onSignIn={() => requireSignIn(() => submitForm(activeTabRef.current))}
+              onSignIn={() =>
+                requireSignIn(() => submitForm(activeTabRef.current), {
+                  tab: activeTabRef.current,
+                  topic: document.getElementById("sh-topic")?.value || "",
+                  summary: document.getElementById("sh-exp")?.value || "",
+                  question: document.getElementById("ask-q")?.value || "",
+                  category: document.getElementById("ask-cat")?.value || ""
+                })
+              }
             />
             <button
               type="button"
@@ -885,7 +959,20 @@ export default function HomeClient({
           <div className="mpanel" id="mp-ask">
             <div className="fg" style={{ marginTop: "18px" }}>
               <div className="flbl">Your Question</div>
-              <textarea className="fta" id="ask-q" placeholder="Tapai ko question type garnus... (e.g. warranty kasto chha?)"></textarea>
+              <textarea
+                className="fta"
+                id="ask-q"
+                placeholder="e.g. BYD ko battery kati barsa tikchha?"
+                onInput={(event) => setAskTopic(event.target.value)}
+              ></textarea>
+              <TopicSuggest
+                value={askTopic}
+                onPick={(title) => {
+                  const input = document.getElementById("ask-q");
+                  if (input) input.value = title;
+                  setAskTopic(title);
+                }}
+              />
               {suggestedQuestions.length > 0 ? (
                 <div className="ex-chips">
                   {suggestedQuestions.map((label) => (
@@ -913,7 +1000,15 @@ export default function HomeClient({
             <ModalError
               message={modalError}
               signIn={needsSignIn}
-              onSignIn={() => requireSignIn(() => submitForm(activeTabRef.current))}
+              onSignIn={() =>
+                requireSignIn(() => submitForm(activeTabRef.current), {
+                  tab: activeTabRef.current,
+                  topic: document.getElementById("sh-topic")?.value || "",
+                  summary: document.getElementById("sh-exp")?.value || "",
+                  question: document.getElementById("ask-q")?.value || "",
+                  category: document.getElementById("ask-cat")?.value || ""
+                })
+              }
             />
             <button
               type="button"

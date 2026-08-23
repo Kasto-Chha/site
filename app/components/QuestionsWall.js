@@ -53,17 +53,21 @@ function QuestionCard({ item, index, onAnswer }) {
       <h3 className="qcard-q">{item.question}</h3>
 
       <div className="qcard-foot">
+        {/* Both prompts once there are answers, not one or the other.
+            A thread only appears here while it is still thin, so someone
+            reading it is exactly the person who might add the reply that
+            finishes it — offering only "Read the answers" at that point
+            removes the ask at the moment it is most likely to land. */}
         {answered ? (
           <a className="qcard-cta" href={`/discussions/${item.threadSlug}`}>
             <IconChat className="icon" />
-            Read the answers
+            Read the {answers === 1 ? "answer" : "answers"}
           </a>
-        ) : (
-          <button type="button" className="qcard-cta" onClick={() => onAnswer(item)}>
-            <IconReply className="icon" />
-            Answer this
-          </button>
-        )}
+        ) : null}
+        <button type="button" className="qcard-cta" onClick={() => onAnswer(item)}>
+          <IconReply className="icon" />
+          {answered ? "Add yours" : "Answer this"}
+        </button>
         <a
           className="qcard-alt"
           href={`/chat?q=${encodeURIComponent(item.question)}`}
