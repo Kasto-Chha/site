@@ -353,10 +353,23 @@ export default function HomeClient({
 
       // Post into the same reviews pool the homepage discussions and Experience
       // page read from, so a shared story shows up alongside everyone else's.
+      // Required when sharing. This used to fall back to "General" here, so the
+      // API's own check never fired and an unselected category silently became
+      // a value nobody chose — which is how threads ended up filed under
+      // labels that were not in the picker.
+      //
+      // Asking still falls back to "Other": someone asking has not formed a
+      // view yet, so being unsure where it belongs is reasonable. Someone
+      // sharing has been there and can say.
+      if (!categories[0]) {
+        setModalError("Pick a category so people can find this.");
+        return;
+      }
+
       endpoint = "/api/reviews";
       payload = {
         title,
-        category: categories[0] || "General",
+        category: categories[0],
         verdict: VERDICT_LABELS[verdictKey] || "",
         summary
       };
@@ -391,7 +404,12 @@ export default function HomeClient({
         kind: "question",
         title: question,
         summary: question,
-        category: category || "General"
+        // Optional when asking, required when sharing. Someone asking has not
+        // formed a view yet, so being unsure where it belongs is reasonable;
+        // someone sharing has been there and can say. "Other" is now a real
+        // option in the picker, so this fallback is something they could have
+        // chosen themselves rather than a value that only appears afterwards.
+        category: category || "Other"
       };
     }
 
