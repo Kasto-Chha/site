@@ -21,14 +21,29 @@ const slugOf = (review) =>
 // is a "kasto chha?" thread with a participant avatar stack, a quoted opener,
 // and reply / upvote / time meta. Clicking a card opens the full thread page.
 export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
-  const items = reviews.slice(0, limit);
-
-  // Real reply counts: how many other experiences share each card's topic
-  // within the loaded pool (rather than the seeded comment_count column).
+  // Real reply counts: how many other rows share each card's topic within the
+  // loaded pool (rather than the seeded comment_count column).
   const threadSize = new Map();
   for (const review of reviews) {
     const slug = slugOf(review);
     threadSize.set(slug, (threadSize.get(slug) || 0) + 1);
+  }
+
+  // One card per THREAD, not per row.
+  //
+  // This used to slice the raw list, so a thread with three replies produced
+  // three identical cards all linking to the same page — the grid looked like
+  // it held six discussions when it held two. The newest row represents each
+  // thread, since reviews arrive newest-first and that is the most recent
+  // thing said on it.
+  const seen = new Set();
+  const items = [];
+  for (const review of reviews) {
+    const slug = slugOf(review);
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    items.push(review);
+    if (items.length >= limit) break;
   }
 
   if (items.length === 0) {
