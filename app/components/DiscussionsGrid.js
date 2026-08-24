@@ -85,7 +85,13 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
                 {review.title || review.topic}
               </a>
             </h3>
-            {review.summary ? <p className="disc-quote">&ldquo;{review.summary}&rdquo;</p> : null}
+            {/* The quote exists to show what someone SAID about the topic, so it
+                has to differ from the heading. On a question row they are the
+                same text — the question is both the thread's name and its
+                opening post — and printing it twice reads as a stutter. */}
+            {review.summary && review.kind !== "question" ? (
+              <p className="disc-quote">&ldquo;{review.summary}&rdquo;</p>
+            ) : null}
 
             <div className="disc-divider" />
 

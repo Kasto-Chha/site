@@ -965,6 +965,8 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .thread-composer-send:hover{background:#A50D25}
 .thread-composer-send:disabled{opacity:.6;cursor:wait}
 
+/* Also used in the homepage share modal, where it replaces the category
+   picker while joining an existing thread. */
 .topic-match-note{
 	display:flex;flex-direction:column;gap:3px;margin-top:12px;padding:11px 13px;border-radius:10px;
 	background:var(--green-pale);border:1px solid rgba(59,109,17,.22);

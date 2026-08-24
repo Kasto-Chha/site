@@ -128,6 +128,10 @@ export default function HomeClient({
   // This form is read from the DOM at submit rather than held in state, so the
   // topic is mirrored here purely to drive the suggestions.
   const [shareTopic, setShareTopic] = useState("");
+  // The thread the typed topic will join, if it already exists. Reported by
+  // TopicSuggest from the server search, so it covers every thread rather than
+  // only the ones this page happened to load.
+  const [joiningThread, setJoiningThread] = useState(null);
   const [askTopic, setAskTopic] = useState("");
   // This modal reads its fields from the DOM at submit, so restoring means
   // writing the values back into the inputs and reopening the right tab.
@@ -361,7 +365,10 @@ export default function HomeClient({
       // Asking still falls back to "Other": someone asking has not formed a
       // view yet, so being unsure where it belongs is reasonable. Someone
       // sharing has been there and can say.
-      if (!categories[0]) {
+      // Required only when starting a new thread. Joining one adopts its
+      // category, and the picker is hidden in that case — blocking on a field
+      // nobody can see would be a dead end.
+      if (!categories[0] && !joiningThread) {
         setModalError("Pick a category so people can find this.");
         return;
       }
@@ -369,7 +376,10 @@ export default function HomeClient({
       endpoint = "/api/reviews";
       payload = {
         title,
-        category: categories[0],
+        // The server overrides this with the thread's own category when the
+        // slug matches, but sending it keeps the request honest rather than
+        // relying on that.
+        category: categories[0] || joiningThread?.category || "Other",
         verdict: VERDICT_LABELS[verdictKey] || "",
         summary
       };
@@ -896,6 +906,7 @@ export default function HomeClient({
               />
               <TopicSuggest
                 value={shareTopic}
+                onExactMatch={setJoiningThread}
                 onPick={(title) => {
                   const input = document.getElementById("sh-topic");
                   if (input) input.value = title;
@@ -912,21 +923,38 @@ export default function HomeClient({
                 <button type="button" className="vbtn-m naramro" id="vn" onClick={() => pickV("naramro")}>Naramro chha</button>
               </div>
             </div>
-            <div className="fg">
-              <div className="flbl"><span className="fstep">3</span>Category</div>
-              <div className="trow">
-                {CATEGORY_LABELS.map((label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className="tpill"
-                    onClick={(e) => toggleT(e.currentTarget)}
-                  >
-                    {label}
-                  </button>
-                ))}
+            {/* Joining an existing thread adopts its category server-side, so
+                showing a picker here would ask for a value and then discard it.
+                Say what is about to happen instead — the same treatment the
+                /discussions form already gives it. */}
+            {joiningThread ? (
+              <div className="fg">
+                <div className="topic-match-note">
+                  <strong>Joining existing topic</strong>
+                  <span>
+                    {joiningThread.title} · {joiningThread.experiences} experience
+                    {joiningThread.experiences === 1 ? "" : "s"}
+                    {joiningThread.category ? ` · ${categoryLabel(joiningThread.category)}` : ""}
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="fg">
+                <div className="flbl"><span className="fstep">3</span>Category</div>
+                <div className="trow">
+                  {CATEGORY_LABELS.map((label) => (
+                    <button
+                      key={label}
+                      type="button"
+                      className="tpill"
+                      onClick={(e) => toggleT(e.currentTarget)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="fg">
               <div className="flbl"><span className="fstep">4</span>Your Experience</div>
               <textarea className="fta" id="sh-exp" placeholder="Tapai ko real experience share garnus. Cost, time, ra service mention gare ramro." onInput={calcProg}></textarea>

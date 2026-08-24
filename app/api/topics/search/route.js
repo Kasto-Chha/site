@@ -40,7 +40,7 @@ export async function GET(request) {
 
     const { data, error } = await supabase
       .from("reviews")
-      .select("topic, title, summary, topic_slug, kind, created_at")
+      .select("topic, title, summary, topic_slug, kind, category, created_at")
       .or(ilikeAnyClause(tokens, ["topic", "title", "summary"]))
       .order("created_at", { ascending: false })
       // Wider than what is shown: these collapse into threads below, and a
@@ -65,6 +65,11 @@ export async function GET(request) {
 
       threads.set(row.topic_slug, {
         slug: row.topic_slug,
+        // The thread's own category. Joining a thread adopts it server-side
+        // anyway (see app/api/reviews/route.js), so the picker should show what
+        // is actually going to happen rather than asking for a value it will
+        // then discard.
+        category: row.category || "",
         // The thread's own name, which is what the person would be joining.
         title: row.topic || row.title || row.topic_slug,
         experiences: row.kind === "experience" ? 1 : 0,

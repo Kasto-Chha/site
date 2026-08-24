@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { topicSlug } from "../../lib/slug";
+
 // ---------------------------------------------------------------------------
 // Threads that already exist for whatever is being typed into the topic field.
 //
@@ -16,13 +18,28 @@ import { useEffect, useRef, useState } from "react";
 // be wrong.
 // ---------------------------------------------------------------------------
 
-export default function TopicSuggest({ value, onPick, minChars = 3 }) {
+export default function TopicSuggest({
+  value,
+  onPick,
+  minChars = 3,
+  // Fires with the thread whose slug matches exactly what has been typed, or
+  // null when there is no such thread. Lets a caller show "you are about to
+  // join this" rather than a category picker whose value will be overwritten.
+  //
+  // Matched on slug rather than title, because that is what the server groups
+  // on: "Sandar Momo" and "sandar momo" are the same thread.
+  onExactMatch
+}) {
   const [topics, setTopics] = useState([]);
   const [dismissed, setDismissed] = useState(false);
 
   // Aborts the previous request when a new keystroke arrives, so a slow early
   // response can't overwrite the results for what is now on screen.
   const abortRef = useRef(null);
+
+  // Last slug reported upward, so onExactMatch fires on change rather than on
+  // every render.
+  const exactRef = useRef(null);
 
   // Typing again after dismissing means they're still looking — show again.
   const lastValueRef = useRef(value);
@@ -64,6 +81,16 @@ export default function TopicSuggest({ value, onPick, minChars = 3 }) {
     return () => clearTimeout(timer);
   }, [value, minChars]);
 
+  // Report the exact match on every render pass rather than inside an effect:
+  // the parent only stores it, and an effect here would lag a keystroke behind
+  // what is on screen.
+  const typedSlug = topicSlug(value || "");
+  const exact = typedSlug ? topics.find((t) => t.slug === typedSlug) || null : null;
+  if (onExactMatch && exactRef.current !== (exact?.slug || null)) {
+    exactRef.current = exact?.slug || null;
+    onExactMatch(exact);
+  }
+
   if (dismissed || !topics.length) return null;
 
   // An exact match needs no suggestion — they're already on the right thread.
@@ -93,7 +120,9 @@ export default function TopicSuggest({ value, onPick, minChars = 3 }) {
           aria-selected="false"
           className="topic-suggest-item"
           onClick={() => {
-            onPick(topic.title);
+            // The whole thread, not just its title: callers want the category
+            // too, since joining adopts it.
+            onPick(topic.title, topic);
             setDismissed(true);
           }}
         >

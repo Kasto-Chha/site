@@ -432,6 +432,11 @@ export default function ExperienceClient({
                       value={topic}
                       onChange={(event) => setTopic(event.target.value)}
                     />
+                    {/* Only the title. This form already detects an exact match and
+                        replaces the category picker with a "Joining existing
+                        topic" banner showing the thread's own category — which
+                        is better than prefilling a field, because it explains
+                        what is about to happen rather than just filling a box. */}
                     <TopicSuggest value={topic} onPick={setTopic} />
                   </div>
 
