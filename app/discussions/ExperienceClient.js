@@ -21,7 +21,11 @@ const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 export default function ExperienceClient({
   reviews = [],
   myVotes = {},
-  questions = []
+  questions = [],
+  hasMore: initialHasMore = false,
+  nextOffset: initialOffset = 30,
+  page = 1,
+  pageSize = 30
 }) {
   const { items, setItems, handleVote, voteOf, isPending, errorFor } = useReviewVotes(
     reviews,
@@ -47,6 +51,33 @@ export default function ExperienceClient({
       });
     }
   });
+  // Threads loaded beyond the first page. Held separately from `reviews` so a
+  // server refresh — after posting, say — replaces the first page without
+  // discarding what has already been loaded below it.
+  const [extraRows, setExtraRows] = useState([]);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [nextOffset, setNextOffset] = useState(initialOffset);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const response = await fetch(`/api/discussions/page?offset=${nextOffset}`);
+      if (!response.ok) throw new Error("Could not load more");
+      const data = await response.json();
+      setExtraRows((rows) => [...rows, ...(data.rows || [])]);
+      setHasMore(Boolean(data.hasMore));
+      setNextOffset(data.nextOffset || nextOffset + 30);
+    } catch {
+      // Leave what is on screen and let them try again — a failed "load more"
+      // should never take the list away.
+      setHasMore(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortMode, setSortMode] = useState("discussed");
   const [expanded, setExpanded] = useState(() => new Set());
@@ -57,7 +88,12 @@ export default function ExperienceClient({
   const [verdict, setVerdict] = useState("");
   const [summary, setSummary] = useState("");
 
-  const topics = useMemo(() => buildTopics(items), [items]);
+  // buildTopics groups by slug, so a thread arriving on a later page cannot
+  // duplicate one already shown — the rows merge into the same thread.
+  const topics = useMemo(
+    () => buildTopics([...items, ...extraRows]),
+    [items, extraRows]
+  );
 
   // Filter by canonical label, not the raw stored string, so rows saved as
   // "Technology" and "Tech & Gadgets" collapse into one filter chip instead of
@@ -327,6 +363,54 @@ export default function ExperienceClient({
                     />
                   ))
                 )}
+
+                {/* Nothing on this site should become unreachable through age.
+                    A question asked a year ago and never answered is exactly
+                    the sort of thing someone should be able to find and answer,
+                    so the list pages back through every thread rather than
+                    stopping at the recent ones. */}
+                {page > 1 ? (
+                  // A crawler landing on ?page=5 needs a way back. Without
+                  // this, deep pages are dead ends — links lead forward only,
+                  // and neither a person nor a crawler can walk back up.
+                  <div className="load-more-row">
+                    <a
+                      className="btn-outline load-more"
+                      href={page === 2 ? "/discussions" : `/discussions?page=${page - 1}`}
+                    >
+                      &lt;- Newer discussions
+                    </a>
+                  </div>
+                ) : null}
+
+                {hasMore ? (
+                  <div className="load-more-row">
+                    {/* A real link, enhanced rather than replaced.
+                        Googlebot renders JavaScript but does not click, so a
+                        button alone left every thread past this page reachable
+                        only through the sitemap — which on this domain went
+                        unread for months at a time. The href is what a crawler
+                        follows; onClick intercepts it for people and loads the
+                        next batch in place. Neither depends on the other. */}
+                    <a
+                      className="btn-outline load-more"
+                      href={`/discussions?page=${page + 1}`}
+                      onClick={(event) => {
+                        // Let modified clicks through — a middle-click or
+                        // ctrl-click means "open in a new tab", and hijacking
+                        // that is a small rudeness people notice.
+                        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+                          return;
+                        }
+                        event.preventDefault();
+                        loadMore();
+                      }}
+                      aria-disabled={loadingMore ? "true" : undefined}
+                    >
+                      {loadingMore ? "Loading…" : "Load older discussions"}
+                    </a>
+                  </div>
+                ) : null}
               </div>
             </div>
 

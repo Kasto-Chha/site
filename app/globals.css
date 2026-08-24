@@ -698,6 +698,13 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .page-sub{font-size:1.02rem;line-height:1.65;color:var(--muted);max-width:70ch}
 .page-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* "Load older discussions" — a quiet full-width row under the thread list,
+   not a call to action competing with the share form. */
+.load-more-row{display:flex;justify-content:center;padding:20px 0 4px}
+.load-more{min-width:220px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.load-more[aria-disabled="true"]{opacity:.6;pointer-events:none}
+.load-more:disabled{opacity:.6;cursor:default}
+
 /* Open questions, now nested inside the Discussions section rather than
    standing alone, so they need the breathing room a <section> gave them. */
 .qwall-block{margin-top:56px}
