@@ -34,8 +34,13 @@ export default function TopicSuggest({
   const [dismissed, setDismissed] = useState(false);
 
   // Aborts the previous request when a new keystroke arrives, so a slow early
-  // response can't overwrite the results for what is now on screen.
+  // response can't overwrite the results for what is now on screen. Kept
+  // alongside requestIdRef below: abort() asks the browser to cancel a
+  // fetch, but does not guarantee an already-in-flight response won't still
+  // resolve — the request-id check is what actually enforces "only the
+  // latest answer wins" regardless of what abort managed to stop in time.
   const abortRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   // Last slug reported upward, so onExactMatch fires on change rather than on
   // every render.
@@ -58,8 +63,14 @@ export default function TopicSuggest({
       return;
     }
 
-    // Wait for a pause in typing rather than firing per keystroke.
+    // Give every request its own identity. A slower earlier response can
+    // still resolve after a faster later one even when abort() was called on
+    // it, and without this check that stale response would overwrite the
+    // topics for whatever is currently on screen — showing "already exists"
+    // for a moment and then pulling it back, for reasons that have nothing
+    // to do with whether a match actually exists.
     const timer = setTimeout(async () => {
+      const requestId = ++requestIdRef.current;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -71,6 +82,16 @@ export default function TopicSuggest({
         );
         if (!response.ok) return;
         const data = await response.json();
+
+        // A newer request has started since this one went out — its answer
+        // is already stale, ignore it even though it arrived.
+        if (requestId !== requestIdRef.current) return;
+
+        // ok:false means the lookup itself failed, not that nothing
+        // matched — leave whatever was already on screen alone rather than
+        // reading a transient failure as a confident "no match".
+        if (data.ok === false) return;
+
         setTopics(Array.isArray(data.topics) ? data.topics : []);
       } catch {
         // Aborted, offline, or the endpoint is unhappy. Suggestions are an aid,
