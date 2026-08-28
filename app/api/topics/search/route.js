@@ -59,22 +59,30 @@ export async function GET(request) {
 
       const existing = threads.get(row.topic_slug);
       if (existing) {
-        if (row.kind === "experience") existing.experiences += 1;
+        if (row.kind === "experience") {
+          existing.experiences += 1;
+        } else if (row.kind === "question" && !existing.question) {
+          existing.question = {
+            topic: row.topic || row.title || row.topic_slug,
+            category: row.category || "",
+            question: row.title || row.topic || row.topic_slug
+          };
+        }
         continue;
       }
 
       threads.set(row.topic_slug, {
         slug: row.topic_slug,
-        // The thread's own category. Joining a thread adopts it server-side
-        // anyway (see app/api/reviews/route.js), so the picker should show what
-        // is actually going to happen rather than asking for a value it will
-        // then discard.
         category: row.category || "",
-        // The thread's own name, which is what the person would be joining.
         title: row.topic || row.title || row.topic_slug,
         experiences: row.kind === "experience" ? 1 : 0,
-        // Enough of the opening text to recognise the thread, not enough to
-        // read instead of opening it.
+        question: row.kind === "question"
+          ? {
+              topic: row.topic || row.title || row.topic_slug,
+              category: row.category || "",
+              question: row.title || row.topic || row.topic_slug
+            }
+          : null,
         preview: (row.summary || "").slice(0, 90)
       });
     }

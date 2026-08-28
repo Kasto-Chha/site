@@ -133,6 +133,7 @@ export default function HomeClient({
   // only the ones this page happened to load.
   const [joiningThread, setJoiningThread] = useState(null);
   const [askTopic, setAskTopic] = useState("");
+  const [existingAskQuestion, setExistingAskQuestion] = useState(null);
   // This modal reads its fields from the DOM at submit, so restoring means
   // writing the values back into the inputs and reopening the right tab.
   const requireSignIn = useRequireSignIn({
@@ -391,6 +392,13 @@ export default function HomeClient({
 
       if (!question) {
         setModalError("Type your question before posting.");
+        return;
+      }
+
+      // An exact existing question must not be posted again. The existing
+      // question is already available through "Share Experience" above.
+      if (existingAskQuestion) {
+        setModalError("This question already exists. Share your experience instead.");
         return;
       }
 
@@ -1017,13 +1025,29 @@ export default function HomeClient({
               ></textarea>
               <TopicSuggest
                 value={askTopic}
-                onExactMatch={setJoiningThread}
-                onPick={(title) => {
+                onExactMatch={(topic) => {
+                  setExistingAskQuestion(topic?.question || null);
+                }}
+                onPick={(title, topic) => {
                   const input = document.getElementById("ask-q");
                   if (input) input.value = title;
                   setAskTopic(title);
+                  setExistingAskQuestion(topic?.question || null);
                 }}
               />
+              {existingAskQuestion ? (
+                <div className="topic-match-note">
+                  <strong>This question already exists.</strong>
+                  <span>Share your experience instead?</span>
+                  <button
+                    type="button"
+                    className="qcard-cta"
+                    onClick={() => answerQuestion(existingAskQuestion)}
+                  >
+                    Share Experience
+                  </button>
+                </div>
+              ) : null}
               {suggestedQuestions.length > 0 ? (
                 <div className="ex-chips">
                   {suggestedQuestions.map((label) => (

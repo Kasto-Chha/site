@@ -93,9 +93,7 @@ export default function TopicSuggest({
 
   if (dismissed || !topics.length) return null;
 
-  // An exact match needs no suggestion — they're already on the right thread.
-  const typed = (value || "").trim().toLowerCase();
-  const visible = topics.filter((t) => t.title.toLowerCase() !== typed);
+  const visible = topics;
   if (!visible.length) return null;
 
   return (
