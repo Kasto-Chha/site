@@ -87,6 +87,14 @@ export default function ExperienceClient({
   const [category, setCategory] = useState("");
   const [verdict, setVerdict] = useState("");
   const [summary, setSummary] = useState("");
+  // The thread the typed topic will join, if one already exists. Reported by
+  // TopicSuggest from the live /api/topics/search, not derived from this
+  // page's own loaded rows — those exclude any thread that's still an
+  // unanswered question (getThreadPage holds those back for the "Community is
+  // Asking" section), so a topic like a bare "samsung" that exists only as an
+  // open question was invisible to the old page-rows-only check even though
+  // it was right there in the suggestions dropdown above it.
+  const [matchedTopic, setMatchedTopic] = useState(null);
 
   // buildTopics groups by slug, so a thread arriving on a later page cannot
   // duplicate one already shown — the rows merge into the same thread.
@@ -135,13 +143,6 @@ export default function ExperienceClient({
       [...topics].sort((a, b) => b.count - a.count || b.score - a.score).slice(0, 5),
     [topics]
   );
-
-  // Live preview of which existing thread the in-progress post will join.
-  const matchedTopic = useMemo(() => {
-    const slug = topicSlug(topic);
-    if (!slug) return null;
-    return topics.find((t) => t.slug === slug) || null;
-  }, [topics, topic]);
 
   // Load a posted question into the share form, so answering one is a scroll
   // and a paragraph rather than retyping the topic by hand.
@@ -437,15 +438,19 @@ export default function ExperienceClient({
                         topic" banner showing the thread's own category — which
                         is better than prefilling a field, because it explains
                         what is about to happen rather than just filling a box. */}
-                    <TopicSuggest value={topic} onPick={setTopic} />
+                    <TopicSuggest
+                      value={topic}
+                      onPick={setTopic}
+                      onExactMatch={setMatchedTopic}
+                    />
                   </div>
 
                   {matchedTopic ? (
                     <div className="topic-match-note">
                       <strong>Joining existing topic</strong>
                       <span>
-                        {matchedTopic.title} · {matchedTopic.count} experience
-                        {matchedTopic.count === 1 ? "" : "s"} · {matchedTopic.category}
+                        {matchedTopic.title} · {matchedTopic.experiences} experience
+                        {matchedTopic.experiences === 1 ? "" : "s"} · {matchedTopic.category}
                       </span>
                     </div>
                   ) : (
