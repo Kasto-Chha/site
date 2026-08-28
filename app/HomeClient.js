@@ -305,8 +305,14 @@ export default function HomeClient({
     // thread called "sikko-calculator-kasto-chha" beside the existing
     // "sikko-calculator" — two threads about one product, which is the
     // fragmentation topic slugs exist to prevent.
+    //
+    // item.title covers a thread from /api/topics/search (Share's shape,
+    // and now Ask's too, since Ask's exact-match handler passes the whole
+    // thread rather than just its nested question). item.topic/item.question
+    // stay as fallbacks for the older nested shape, so this keeps working
+    // wherever else answerQuestion gets called with that shape instead.
     const topicInput = document.getElementById("sh-topic");
-    const prefill = item.topic || item.question || "";
+    const prefill = item.title || item.topic || item.question || "";
     if (topicInput) topicInput.value = prefill;
     setShareTopic(prefill);
 
@@ -1026,13 +1032,21 @@ export default function HomeClient({
               <TopicSuggest
                 value={askTopic}
                 onExactMatch={(topic) => {
-                  setExistingAskQuestion(topic?.question || null);
+                  // The thread existing is what matters, not what kind its
+                  // opening post happened to be. Reading topic?.question here
+                  // meant a thread that started as an experience (most of
+                  // them) never triggered this, even though the same typed
+                  // text correctly matched it on the Share side — Share
+                  // checks "does this thread exist", this checked "does this
+                  // thread have a question on it", a narrower and different
+                  // question.
+                  setExistingAskQuestion(topic || null);
                 }}
                 onPick={(title, topic) => {
                   const input = document.getElementById("ask-q");
                   if (input) input.value = title;
                   setAskTopic(title);
-                  setExistingAskQuestion(topic?.question || null);
+                  setExistingAskQuestion(topic || null);
                 }}
               />
               {existingAskQuestion ? (
