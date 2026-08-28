@@ -46,7 +46,7 @@ function QuestionCard({ item, index, onAnswer }) {
         <span className={`qcard-status ${answered ? "answered" : "open"}`}>
           {answered
             ? `${answers} answer${answers === 1 ? "" : "s"}`
-            : "Needs an answer"}
+            : "This question is yet to be answered, be the first one."}
         </span>
       </div>
 

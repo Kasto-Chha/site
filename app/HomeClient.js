@@ -1017,6 +1017,7 @@ export default function HomeClient({
               ></textarea>
               <TopicSuggest
                 value={askTopic}
+                onExactMatch={setJoiningThread}
                 onPick={(title) => {
                   const input = document.getElementById("ask-q");
                   if (input) input.value = title;
