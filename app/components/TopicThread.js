@@ -225,12 +225,25 @@ export default function TopicThread({
       ) : null}
 
       {!isOpen ? (
-        <p className="topic-preview">
-          <span className="topic-preview-by">
-            {topic.top.author_name || "Anonymous"}:
-          </span>{" "}
-          {topic.top.summary}
-        </p>
+        topic.top.kind === "question" ? (
+          // The preview exists to show what someone SAID about the topic. On a
+          // question with no answers the only row is the question itself, so it
+          // would print the heading again — a stutter where a prompt belongs.
+          //
+          // Once an answer arrives, topic.top is the highest-scoring row, which
+          // is that answer, and the preview goes back to being useful. So this
+          // is the empty state, not a label questions carry forever.
+          <p className="topic-preview topic-preview-empty">
+            This question is yet to be answered, be the first one.
+          </p>
+        ) : (
+          <p className="topic-preview">
+            <span className="topic-preview-by">
+              {topic.top.author_name || "Anonymous"}:
+            </span>{" "}
+            {topic.top.summary}
+          </p>
+        )
       ) : null}
 
       <div className="topic-foot">

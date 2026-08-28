@@ -698,6 +698,10 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .page-sub{font-size:1.02rem;line-height:1.65;color:var(--muted);max-width:70ch}
 .page-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* The unanswered-question prompt, in both card styles. Slightly quieter than a
+   real quote: it is the site speaking, not a person. */
+.topic-preview-empty,.disc-quote-empty{font-style:normal;color:var(--muted)}
+
 /* "Load older discussions" — a quiet full-width row under the thread list,
    not a call to action competing with the share form. */
 .load-more-row{display:flex;justify-content:center;padding:20px 0 4px}

@@ -85,11 +85,17 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
                 {review.title || review.topic}
               </a>
             </h3>
-            {/* The quote exists to show what someone SAID about the topic, so it
-                has to differ from the heading. On a question row they are the
-                same text — the question is both the thread's name and its
-                opening post — and printing it twice reads as a stutter. */}
-            {review.summary && review.kind !== "question" ? (
+            {/* The quote shows what someone SAID about the topic, so it has to
+                differ from the heading. On a question row they are the same
+                text, and printing it twice reads as a stutter — but a blank
+                space says nothing either. A prompt does something: an
+                unanswered question is a small, specific thing a passing reader
+                could actually do. */}
+            {review.kind === "question" ? (
+              <p className="disc-quote disc-quote-empty">
+                This question is yet to be answered, be the first one.
+              </p>
+            ) : review.summary ? (
               <p className="disc-quote">&ldquo;{review.summary}&rdquo;</p>
             ) : null}
 
