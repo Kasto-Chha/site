@@ -132,16 +132,8 @@ export default function HomeClient({
   // TopicSuggest from the server search, so it covers every thread rather than
   // only the ones this page happened to load.
   const [joiningThread, setJoiningThread] = useState(null);
-  // Ask now mirrors Share: a subject field ("Topic") that suggestions and
-  // exact-matching key on, and a separate question field that is the opening
-  // post's actual content. Previously the whole question was both — so
-  // "BYD ko battery kati barsa tikchha?" slugified to a sentence-sized slug
-  // that almost nothing else would ever match, and picking a suggestion
-  // overwrote the typed question with just its subject before posting it.
-  const [askSubject, setAskSubject] = useState("");
-  // The thread the typed subject will join, if one already exists — same
-  // shape and source as joiningThread above.
-  const [joiningAskThread, setJoiningAskThread] = useState(null);
+  const [askTopic, setAskTopic] = useState("");
+  const [existingAskQuestion, setExistingAskQuestion] = useState(null);
   // This modal reads its fields from the DOM at submit, so restoring means
   // writing the values back into the inputs and reopening the right tab.
   const requireSignIn = useRequireSignIn({
@@ -154,11 +146,10 @@ export default function HomeClient({
       };
       set("sh-topic", draft.topic);
       set("sh-exp", draft.summary);
-      set("ask-topic", draft.askSubject);
       set("ask-q", draft.question);
       set("ask-cat", draft.category);
       setShareTopic(draft.topic || "");
-      setAskSubject(draft.askSubject || "");
+      setAskTopic(draft.question || "");
       setModalError("Signed in — ready to post.");
       calcProg();
     }
@@ -396,36 +387,47 @@ export default function HomeClient({
     }
 
     if (type === "ask") {
-      const subject = document.getElementById("ask-topic")?.value.trim() || "";
       const question = document.getElementById("ask-q")?.value.trim() || "";
       const category = document.getElementById("ask-cat")?.value.trim() || "";
 
-      if (!subject || !question) {
-        setModalError("Add a topic and your question before posting.");
+      if (!question) {
+        setModalError("Type your question before posting.");
+        return;
+      }
+
+      // An exact existing question must not be posted again. The existing
+      // question is already available through "Share Experience" above.
+      if (existingAskQuestion) {
+        setModalError("This question already exists. Share your experience instead.");
         return;
       }
 
       // A question starts a discussion rather than living in its own table, so
       // it posts to the same endpoint as an experience and differs only by
-      // kind. The subject names the thread ("BYD ko battery"); the question
-      // is its opening post ("Kati barsa tikchha?").
+      // kind. The subject names the thread; the question is its opening post.
       //
-      // This is the same title/summary split Share uses, and for the same
-      // reason: the thread has to be findable by its subject, not by the
-      // exact sentence someone happened to type. A subject that already has
-      // a thread — asked or answered — folds into it via joiningAskThread
-      // below instead of forking a near duplicate.
+      // Asking about a subject that already has a thread adds to that thread —
+      // the API folds matching slugs together — instead of forking a near
+      // duplicate.
+      // The question IS the thread. "BYD ko battery kati tikchha?" is its own
+      // discussion, distinct from "BYD ko resale value" — each targets what
+      // someone actually wants to know, and each accumulates its own answers.
+      //
+      // So there is no separate subject to collect. The question names the
+      // thread, and the suggestions under the field are what stop a near
+      // duplicate: type "byd" and every existing BYD thread appears, so joining
+      // one is easier than starting another.
       endpoint = "/api/reviews";
       payload = {
         kind: "question",
-        title: subject,
+        title: question,
         summary: question,
-        // The server overrides this with the thread's own category when the
-        // slug matches, but sending it keeps the request honest rather than
-        // relying on that. Falls back to "Other" only when starting a fresh
-        // thread — someone asking has not formed a view on where it belongs,
-        // and "Other" is a real option in the picker they could have chosen.
-        category: category || joiningAskThread?.category || "Other"
+        // Optional when asking, required when sharing. Someone asking has not
+        // formed a view yet, so being unsure where it belongs is reasonable;
+        // someone sharing has been there and can say. "Other" is now a real
+        // option in the picker, so this fallback is something they could have
+        // chosen themselves rather than a value that only appears afterwards.
+        category: category || "Other"
       };
     }
 
@@ -481,10 +483,8 @@ export default function HomeClient({
     document.querySelectorAll(".tpill").forEach((pill) => pill.classList.remove("on"));
     document.querySelectorAll(".pseg").forEach((seg) => seg.classList.remove("fill"));
     setShareTopic("");
-    setJoiningThread(null);
-    setAskSubject("");
-    setJoiningAskThread(null);
-    ["sh-topic", "sh-exp", "ask-topic", "ask-q"].forEach((id) => {
+    setAskTopic("");
+    ["sh-topic", "sh-exp", "ask-q"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
@@ -999,7 +999,6 @@ export default function HomeClient({
                   tab: activeTabRef.current,
                   topic: document.getElementById("sh-topic")?.value || "",
                   summary: document.getElementById("sh-exp")?.value || "",
-                  askSubject: document.getElementById("ask-topic")?.value || "",
                   question: document.getElementById("ask-q")?.value || "",
                   category: document.getElementById("ask-cat")?.value || ""
                 })
@@ -1017,60 +1016,38 @@ export default function HomeClient({
 
           <div className="mpanel" id="mp-ask">
             <div className="fg" style={{ marginTop: "18px" }}>
-              <div className="flbl">Topic</div>
-              <input
-                className="finp"
-                id="ask-topic"
-                type="text"
-                placeholder="e.g. BYD ko battery"
-                onInput={(event) => setAskSubject(event.target.value)}
-              />
-              <TopicSuggest
-                value={askSubject}
-                onExactMatch={setJoiningAskThread}
-                onPick={(title) => {
-                  const input = document.getElementById("ask-topic");
-                  if (input) input.value = title;
-                  setAskSubject(title);
-                }}
-              />
-            </div>
-            {/* Same treatment Share gives a matched topic: say what is about
-                to happen instead of asking for a category the server is
-                going to overwrite anyway. Posting here still creates a new
-                question on the thread — it just joins the existing subject
-                rather than forking a near-duplicate one. */}
-            {joiningAskThread ? (
-              <div className="fg">
-                <div className="topic-match-note">
-                  <strong>Joining existing topic</strong>
-                  <span>
-                    {joiningAskThread.title} · {joiningAskThread.experiences} experience
-                    {joiningAskThread.experiences === 1 ? "" : "s"}
-                    {joiningAskThread.category
-                      ? ` · ${categoryLabel(joiningAskThread.category)}`
-                      : ""}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="fg">
-                <div className="flbl">Category</div>
-                <select className="fsel" id="ask-cat">
-                  <option value="">Select category...</option>
-                  {CATEGORY_LABELS.map((label) => (
-                    <option key={label}>{label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="fg">
               <div className="flbl">Your Question</div>
               <textarea
                 className="fta"
                 id="ask-q"
-                placeholder="e.g. Kati barsa tikchha?"
+                placeholder="e.g. BYD ko battery kati barsa tikchha?"
+                onInput={(event) => setAskTopic(event.target.value)}
               ></textarea>
+              <TopicSuggest
+                value={askTopic}
+                onExactMatch={(topic) => {
+                  setExistingAskQuestion(topic?.question || null);
+                }}
+                onPick={(title, topic) => {
+                  const input = document.getElementById("ask-q");
+                  if (input) input.value = title;
+                  setAskTopic(title);
+                  setExistingAskQuestion(topic?.question || null);
+                }}
+              />
+              {existingAskQuestion ? (
+                <div className="topic-match-note">
+                  <strong>This question already exists.</strong>
+                  <span>Share your experience instead?</span>
+                  <button
+                    type="button"
+                    className="qcard-cta"
+                    onClick={() => answerQuestion(existingAskQuestion)}
+                  >
+                    Share Experience
+                  </button>
+                </div>
+              ) : null}
               {suggestedQuestions.length > 0 ? (
                 <div className="ex-chips">
                   {suggestedQuestions.map((label) => (
@@ -1086,6 +1063,15 @@ export default function HomeClient({
                 </div>
               ) : null}
             </div>
+            <div className="fg">
+              <div className="flbl">Category</div>
+              <select className="fsel" id="ask-cat">
+                <option value="">Select category...</option>
+                {CATEGORY_LABELS.map((label) => (
+                  <option key={label}>{label}</option>
+                ))}
+              </select>
+            </div>
             <ModalError
               message={modalError}
               signIn={needsSignIn}
@@ -1094,7 +1080,6 @@ export default function HomeClient({
                   tab: activeTabRef.current,
                   topic: document.getElementById("sh-topic")?.value || "",
                   summary: document.getElementById("sh-exp")?.value || "",
-                  askSubject: document.getElementById("ask-topic")?.value || "",
                   question: document.getElementById("ask-q")?.value || "",
                   category: document.getElementById("ask-cat")?.value || ""
                 })

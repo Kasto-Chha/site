@@ -31,10 +31,8 @@ export async function GET(request) {
   const tokens = searchTokens(query, { minLength: 2 });
 
   // Nothing meaningful typed yet — no suggestions rather than everything.
-  // ok:true because this is a genuine "nothing to search for" answer, not a
-  // failure — see the note on `ok` below.
   if (!tokens.length) {
-    return NextResponse.json({ topics: [], ok: true });
+    return NextResponse.json({ topics: [] });
   }
 
   try {
@@ -46,34 +44,21 @@ export async function GET(request) {
       .or(ilikeAnyClause(tokens, ["topic", "title", "summary"]))
       .order("created_at", { ascending: false })
       // Wider than what is shown: these collapse into threads below, and a
-      // busy thread would otherwise crowd out every other match. Raised from
-      // 60: a thread with steady but not-most-recent activity was falling
-      // out of this window entirely, so a match that genuinely existed never
-      // reached the ranking step below.
-      .limit(200);
+      // busy thread would otherwise crowd out every other match.
+      .limit(60);
 
     if (error) {
       console.warn("[topics/search]", error.message);
-      // ok:false marks this as a failed lookup, not "nothing found" — see the
-      // note on `ok` below. Suggestions are still never a gate: the form
-      // works with or without them, this only stops a transient failure from
-      // being read as a confident "no match".
-      return NextResponse.json({ topics: [], ok: false });
+      return NextResponse.json({ topics: [] });
     }
 
-    // One entry per thread, not per row. `body` accumulates every matched
-    // row's full text for scoring; `preview` is a separate, short copy kept
-    // only for display. Scoring used to run against `preview` itself, so a
-    // match past character 90 was found by the query and then thrown away by
-    // the ranker — this keeps the two uses of the text apart.
+    // One entry per thread, not per row.
     const threads = new Map();
     for (const row of data || []) {
       if (!row.topic_slug) continue;
 
-      const rowText = row.summary || "";
       const existing = threads.get(row.topic_slug);
       if (existing) {
-        existing.body += ` ${rowText}`;
         if (row.kind === "experience") {
           existing.experiences += 1;
         } else if (row.kind === "question" && !existing.question) {
@@ -98,8 +83,7 @@ export async function GET(request) {
               question: row.title || row.topic || row.topic_slug
             }
           : null,
-        body: rowText,
-        preview: rowText.slice(0, 90)
+        preview: (row.summary || "").slice(0, 90)
       });
     }
 
@@ -108,7 +92,7 @@ export async function GET(request) {
         thread,
         score: relevanceScore(tokens, {
           heading: thread.title,
-          body: thread.body
+          body: thread.preview
         })
       }))
       .filter((entry) => entry.score > 0)
@@ -118,18 +102,13 @@ export async function GET(request) {
         return b.thread.experiences - a.thread.experiences;
       })
       .slice(0, 5)
-      .map((entry) => {
-        // Drop the scoring-only field before it goes over the wire.
-        const { body, ...thread } = entry.thread;
-        return thread;
-      });
+      .map((entry) => entry.thread);
 
-    return NextResponse.json({ topics: ranked, ok: true });
+    return NextResponse.json({ topics: ranked });
   } catch (error) {
     console.warn("[topics/search]", error?.message || error);
     // Suggestions are an aid, never a gate: if this fails the form still works
-    // exactly as it did before. ok:false so the caller can tell this apart
-    // from a genuine no-match instead of clearing whatever it had on screen.
-    return NextResponse.json({ topics: [], ok: false });
+    // exactly as it did before.
+    return NextResponse.json({ topics: [] });
   }
 }
