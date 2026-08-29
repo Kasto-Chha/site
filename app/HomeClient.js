@@ -49,6 +49,34 @@ const asFooterLinks = (items) =>
     external: true
   }));
 
+// The footer's own display order for "Our Channels" — deliberately separate
+// from CHANNELS' own order in lib/channels.js, which the contact page's
+// channel grid also reads. Reordering CHANNELS itself would have silently
+// reordered that page too; this reorders only what the footer renders.
+const FOOTER_CHANNEL_ORDER = [
+  "KastoChha Motors",
+  "KastoChha Tech & Gadgets",
+  "KastoChha Entertainment",
+  "KastoChha Travel",
+  "KastoChha Food",
+  "KastoChha Paisa",
+  "KastoChha Career",
+  "KastoChha Health & Lifestyle",
+  "KastoChha Muglan"
+];
+
+const footerChannels = () => {
+  const bySequence = new Map(FOOTER_CHANNEL_ORDER.map((label, index) => [label, index]));
+  // Anything not in the list above (e.g. a channel added later) falls in
+  // after the named ones, in whatever order CHANNELS already has it, rather
+  // than silently vanishing from the footer.
+  return [...CHANNELS].sort((a, b) => {
+    const posA = bySequence.has(a.label) ? bySequence.get(a.label) : FOOTER_CHANNEL_ORDER.length;
+    const posB = bySequence.has(b.label) ? bySequence.get(b.label) : FOOTER_CHANNEL_ORDER.length;
+    return posA - posB;
+  });
+};
+
 const FOOTER_COLUMNS = [
   {
     title: "Explore",
@@ -63,7 +91,7 @@ const FOOTER_COLUMNS = [
       { label: "Featured", href: "/featured" }
     ]
   },
-  { title: "Our Channels", links: asFooterLinks(CHANNELS) },
+  { title: "Our Channels", links: asFooterLinks(footerChannels()) },
   { title: "Follow Us", links: asFooterLinks(SOCIALS) },
   {
     title: "Company",
