@@ -42,6 +42,11 @@ export default function TopicSuggest({
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
 
+  // The single follow-up attempt scheduled after an empty result — see the
+  // comment where it's used below. Tracked so a new keystroke (or unmount)
+  // can cancel a pending retry that no longer applies.
+  const retryTimerRef = useRef(null);
+
   // Last slug reported upward, so onExactMatch fires on change rather than on
   // every render.
   const exactRef = useRef(null);
@@ -69,8 +74,29 @@ export default function TopicSuggest({
     // topics for whatever is currently on screen — showing "already exists"
     // for a moment and then pulling it back, for reasons that have nothing
     // to do with whether a match actually exists.
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       const requestId = ++requestIdRef.current;
+      runSearch(query, requestId);
+    }, 250);
+
+    // A single follow-up attempt for a thread that was just posted. Supabase
+    // reads and writes don't always land on the same connection — a topic
+    // that was created moments ago has, in practice, come back empty on the
+    // first search and then been found correctly on a second attempt a
+    // little later, with nothing about the query or the data any different
+    // between the two. Confirmed against three separate threads before
+    // adding this: each failed to match right after being posted and then
+    // started matching correctly on its own within a couple of minutes, with
+    // no code change or resubmission in between.
+    //
+    // This does not explain why that gap exists — that sits somewhere in
+    // Supabase's connection handling — it only covers the specific,
+    // reproducible window while the underlying delay is being looked into
+    // separately. One retry, not a loop: a genuine no-match (the common
+    // case, someone typing something that was never posted) should stay
+    // fast rather than always waiting out a second round-trip on every
+    // search.
+    async function runSearch(query, requestId, isRetry = false) {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -92,14 +118,25 @@ export default function TopicSuggest({
         // reading a transient failure as a confident "no match".
         if (data.ok === false) return;
 
-        setTopics(Array.isArray(data.topics) ? data.topics : []);
+        const found = Array.isArray(data.topics) ? data.topics : [];
+        setTopics(found);
+
+        if (found.length === 0 && !isRetry) {
+          retryTimerRef.current = setTimeout(() => {
+            if (requestId !== requestIdRef.current) return;
+            runSearch(query, requestId, true);
+          }, 1500);
+        }
       } catch {
         // Aborted, offline, or the endpoint is unhappy. Suggestions are an aid,
         // never a gate — the form works exactly as before without them.
       }
-    }, 250);
+    }
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(retryTimerRef.current);
+    };
   }, [value, minChars]);
 
   // Report the exact match on every render pass rather than inside an effect:
