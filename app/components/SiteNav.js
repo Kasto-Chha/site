@@ -7,9 +7,9 @@ import NavAuth from "./NavAuth";
 
 const LINKS = [
   { href: "/trending", label: "Trending" },
-  { href: "/featured", label: "Featured" },
   { href: "/battle", label: "Battle" },
-  { href: "/discussions", label: "Discussions" }
+  { href: "/discussions", label: "Discussions" },
+  { href: "/featured", label: "Featured" }
 ];
 
 // Single nav used across every page so links, mobile behaviour, and auth stay

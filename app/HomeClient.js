@@ -56,11 +56,10 @@ const FOOTER_COLUMNS = [
       { label: "Answer Engine", href: "/chat" },
       { label: "Trending", href: "/trending" },
       { label: "Battle", href: "/battle" },
-      // Discussions and Reels are homepage sections, not pages of their own —
-      // these jump to the section instead of guessing at a nearby route.
-      { label: "Discussion", href: "/#discussions" },
-      { label: "Reels", href: "/#reels" },
       { label: "Discussions", href: "/discussions" },
+      // Reels has no page of its own yet, so this still jumps to the
+      // homepage section rather than guessing at a route.
+      { label: "Reels", href: "/#reels" },
       { label: "Featured", href: "/featured" }
     ]
   },

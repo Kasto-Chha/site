@@ -624,7 +624,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .msuc-btn:hover{background:var(--card2);color:var(--ink)}
 
 .site-footer{background:#181411;border-top:1px solid rgba(255,255,255,.06);padding:76px 32px 28px;overflow:hidden}
-.foot-inner{max-width:1500px;margin:0 auto}
+.foot-inner{max-width:1200px;margin:0 auto}
 /* Columns are sized to their contents rather than split evenly: "Our Channels"
    carries nine long labels ("KastoChha Health & Lifestyle") and was wrapping
    every one of them inside an equal-width track, while "Follow Us" holds a
@@ -636,7 +636,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .foot-brand{max-width:360px}
 .foot-logo{font-family:var(--font-serif), serif;font-size:1.7rem;font-weight:900;color:#fff;display:inline-flex;align-items:baseline;gap:0;text-decoration:none;letter-spacing:-.04em;line-height:1}
-.foot-logo em{font-style:italic;color:var(--saffron)}
+.foot-logo em{font-style:normal;color:#fff}
 .foot-tagline{color:rgba(255,255,255,.52);font-size:.92rem;line-height:1.65;max-width:28ch;margin-top:20px}
 .foot-col h5{font-family:var(--font-mono), monospace;font-size:.7rem;letter-spacing:2.6px;text-transform:uppercase;color:rgba(255,255,255,.8);margin-bottom:18px}
 .foot-col ul{list-style:none}
