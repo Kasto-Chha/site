@@ -568,7 +568,9 @@ export default function HomeClient({
   }));
 
   const featuredMain = featured.find((item) => item.slot === "main") || featured[0] || null;
-  const featuredSide = featured.filter((item) => item !== featuredMain).slice(0, 2);
+  // Up to 3 side stories alongside the lead — 4 total, a plain blog-style
+  // count rather than the old fixed 3-card bento layout.
+  const featuredSide = featured.filter((item) => item !== featuredMain).slice(0, 3);
   // With fewer than three stories the fixed 2x2 template leaves visible holes,
   // so the grid falls back to a single column (1 story) or two (2 stories).
   const featCount = (featuredMain ? 1 : 0) + featuredSide.length;
@@ -830,29 +832,30 @@ export default function HomeClient({
                 </div>
               ) : null}
 
-              {featuredSide.map((story, index) => (
-                <div
-                  className={`fc ${index === 0 ? "fc-b" : "fc-c"} bento-card`}
-                  key={story.id}
-                >
-                  <a href={storyHref(story)} className="fc-visual">
-                    <div className="fc-emoji"><FeaturedIcon type={story.icon} /></div>
-                  </a>
-                  <div className="fc-body">
-                    {story.why_text ? <span className="fc-why">{story.why_text}</span> : null}
-                    <div className="fc-title">
-                      <a href={storyHref(story)} className="fc-title-link">
-                        {story.title}
+              {featuredSide.length > 0 ? (
+                <div className="feat-side-row">
+                  {featuredSide.map((story) => (
+                    <div className="fc fc-side bento-card" key={story.id}>
+                      <a href={storyHref(story)} className="fc-visual">
+                        <div className="fc-emoji"><FeaturedIcon type={story.icon} /></div>
                       </a>
+                      <div className="fc-body">
+                        {story.why_text ? <span className="fc-why">{story.why_text}</span> : null}
+                        <div className="fc-title">
+                          <a href={storyHref(story)} className="fc-title-link">
+                            {story.title}
+                          </a>
+                        </div>
+                        {story.description ? (
+                          <div className="fc-desc">{story.description}</div>
+                        ) : null}
+                        <a href={storyHref(story)} className="fc-read">Read -&gt;</a>
+                        <ShareRow text={story.title} url={`/featured/${story.slug || story.id}`} label="Share" />
+                      </div>
                     </div>
-                    {story.description ? (
-                      <div className="fc-desc">{story.description}</div>
-                    ) : null}
-                    <a href={storyHref(story)} className="fc-read">Read -&gt;</a>
-                    <ShareRow text={story.title} url={`/featured/${story.slug || story.id}`} label="Share" />
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : null}
             </div>
           </div>
         </section>

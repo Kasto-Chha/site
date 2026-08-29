@@ -367,22 +367,20 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .fc{background:var(--card);transition:background .18s;position:relative;overflow:hidden}
 .fc:hover{background:var(--card2)}
-.fc-main{grid-column:1;grid-row:1/3}
-.fc-b{grid-column:2;grid-row:1}
-.fc-c{grid-column:2;grid-row:2}
-/* The 2x2 template assumes a lead plus two sides. With fewer stories than that
-   it left empty cells — a tall blank column next to a single card, which is
-   what the seeded database (one story) actually renders. */
-.feat-grid-1{grid-template-columns:1fr;grid-template-rows:auto}
-.feat-grid-1 .fc-main{grid-column:1;grid-row:1}
-.feat-grid-2{grid-template-columns:1fr 1fr;grid-template-rows:auto}
-.feat-grid-2 .fc-main{grid-column:1;grid-row:1}
-.feat-grid-2 .fc-b{grid-column:2;grid-row:1}
+.fc-main{grid-column:1/-1}
+/* A plain lead-plus-row layout, not a fixed bento grid: the lead spans full
+   width, and however many side stories exist (1 to 4) sit in an equal-width
+   row beneath it. Replaces the old fc-main/fc-b/fc-c grid, which had exactly
+   three fixed cells — a fourth story had nowhere to go but on top of the
+   third. This scales to any count instead, including a row of just one or
+   two without leaving a visible gap the way the old fixed 2x2 did. */
+.feat-grid{grid-template-columns:1fr;grid-template-rows:auto auto}
+.feat-side-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1px}
+.feat-grid-1{grid-template-rows:auto}
 .feat-grid-1 .fc-main .fc-visual{height:260px}
 .fc-visual{display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer}
 .fc-main .fc-visual{height:210px;background:linear-gradient(145deg,#F2E8E4,#EBDED2)}
-.fc-b .fc-visual{height:130px;background:linear-gradient(145deg,#EBEEF1,#E0E7EC)}
-.fc-c .fc-visual{height:130px;background:linear-gradient(145deg,#ECF0E5,#E2EAD8)}
+.fc-side .fc-visual{height:150px;background:linear-gradient(145deg,#EBEEF1,#E0E7EC)}
 .fc-emoji{font-size:2.8rem;opacity:.4;transition:transform .35s cubic-bezier(.22,.61,.36,1)}
 .fc:hover .fc-emoji{transform:scale(1.08) rotate(-2deg)}
 .fc-star{
@@ -392,16 +390,16 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	padding:3px 9px;border-radius:4px;text-transform:uppercase;
 }
 .fc-body{padding:26px}
-.fc-b .fc-body,.fc-c .fc-body{padding:20px}
+.fc-side .fc-body{padding:20px}
 .fc-why{
 	font-family:var(--font-mono), monospace;font-size:.58rem;letter-spacing:1.5px;
 	text-transform:uppercase;color:var(--saffron);display:block;margin-bottom:9px;
 }
 .fc-title{font-family:var(--font-serif), serif;font-weight:700;letter-spacing:-.3px;line-height:1.3;color:var(--ink);margin-bottom:10px}
 .fc-main .fc-title{font-size:1.45rem;margin-bottom:14px}
-.fc-b .fc-title,.fc-c .fc-title{font-size:.98rem}
+.fc-side .fc-title{font-size:.98rem}
 .fc-desc{font-size:.875rem;color:var(--muted);line-height:1.65;margin-bottom:18px}
-.fc-b .fc-desc,.fc-c .fc-desc{font-size:.82rem;margin-bottom:12px}
+.fc-side .fc-desc{font-size:.82rem;margin-bottom:12px}
 .fc-title-link{color:inherit;text-decoration:none}
 .fc-title-link:hover{color:var(--red)}
 .fc-read{font-family:var(--font-mono), monospace;font-size:.65rem;color:var(--red);text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:gap .2s}
@@ -1224,6 +1222,8 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .np-more{margin-top:56px}
 .np-more-label{border-top-width:2px}
 .np-more-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
+.np-pager{display:flex;justify-content:space-between;align-items:center;margin-top:40px;padding-top:24px;border-top:1px solid var(--border)}
+.np-pager .load-more{min-width:180px}
 .np-more-cell a{display:block;text-decoration:none;color:inherit;border-top:1px solid var(--border);padding-top:14px}
 .np-more-headline{font-size:1.06rem}
 
@@ -1350,7 +1350,8 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.review-side{position:static;max-width:740px;margin:0 auto;width:100%}
 	.review-panel h3{font-size:1.6rem}
 	.feat-grid{grid-template-columns:1fr}
-	.fc-main,.fc-b,.fc-c{grid-column:1;grid-row:auto}
+	.fc-main,.fc-side{grid-column:1;grid-row:auto}
+	.feat-side-row{grid-template-columns:1fr}
 	.exp-layout{grid-template-columns:1fr;gap:16px}
 	.wall-panel,.create-panel{padding:16px}
 	.wall-title{font-size:1.58rem}

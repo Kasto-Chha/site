@@ -1,6 +1,7 @@
 import SiteNav from "../components/SiteNav";
-import { getFeaturedStories } from "../../lib/supabase/queries";
+import { getFeaturedStoriesPage } from "../../lib/supabase/queries";
 import { storyHref } from "../../lib/featured";
+import { breadcrumbSchema, jsonLd } from "../../lib/seo/schema";
 
 // Featured pages are identical for every visitor — no auth() call, no
 // personalisation. force-dynamic was making Next send
@@ -12,19 +13,48 @@ import { storyHref } from "../../lib/featured";
 // an article is published or edited (see revalidatePath in the admin routes).
 export const revalidate = 300;
 
-export const metadata = {
-  title: "Featured - KastoChha News",
-  description:
-    "Editor's picks from KastoChha — the stories, topics and threads worth your time.",
-  alternates: { canonical: "/featured" }
-};
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-// Stories are curated by hand in /admin/content/featured. The "main" slot is the
-// lead; everything else fills the grid below. storyHref lives in lib/featured.js
-// so this page and the homepage grid resolve a story's destination identically.
+// Matches the query default, so the offsets line up.
+const PAGE_SIZE = 9;
 
-export default async function FeaturedPage() {
-  const stories = await getFeaturedStories();
+function pageNumber(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  // Bounded so a crafted ?page= cannot ask for an unreasonable offset.
+  return Math.min(parsed, 200);
+}
+
+export async function generateMetadata({ searchParams }) {
+  const page = pageNumber(searchParams?.page);
+  const suffix = page > 1 ? ` — page ${page}` : "";
+
+  return {
+    title: `Featured${suffix} - KastoChha News`,
+    description:
+      "Editor's picks from KastoChha — the stories, topics and threads worth your time.",
+    // Each page canonicals to itself. Pointing page 2 at page 1 would tell
+    // Google the stories on it are duplicates of stories it has never seen —
+    // same reasoning as /discussions.
+    alternates: { canonical: page > 1 ? `/featured?page=${page}` : "/featured" },
+    // Page 2 onward exists to be crawled through, not to rank: a numbered
+    // slice of a list is thin by itself, same as /discussions past page 1.
+    robots: page > 1 ? { index: false, follow: true } : undefined
+  };
+}
+
+// Stories are curated by hand in /admin/content/featured. The "main" slot is
+// the lead, shown only on page 1; everything else pages newest-first. See the
+// comment on getFeaturedStoriesPage for why slot itself isn't the sort order.
+// storyHref lives in lib/featured.js so this page and the homepage grid
+// resolve a story's destination identically.
+
+export default async function FeaturedPage({ searchParams }) {
+  const page = pageNumber(searchParams?.page);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const { lead, rows, hasMore } = await getFeaturedStoriesPage({ offset, limit: PAGE_SIZE });
+  const showLead = page === 1 && lead;
 
   const dateline = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -33,12 +63,18 @@ export default async function FeaturedPage() {
     day: "numeric"
   });
 
-  const lead = stories.find((story) => story.slot === "main") || stories[0] || null;
-  const rest = stories.filter((story) => story !== lead);
+  const breadcrumbTrail = [{ name: "Featured", path: "/featured" }];
+  if (page > 1) {
+    breadcrumbTrail.push({ name: `Page ${page}`, path: `/featured?page=${page}` });
+  }
 
   return (
     <>
       <SiteNav />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbSchema(siteUrl, breadcrumbTrail)) }}
+      />
 
       {/* Newspaper masthead */}
       <header className="np-masthead">
@@ -57,30 +93,40 @@ export default async function FeaturedPage() {
 
       <main className="np-main" id="main">
         <div className="np-shell">
-          {!lead ? (
+          {!showLead && !rows.length ? (
             <div className="bento-card empty-card" style={{ padding: "24px" }}>
-              <div className="fc-title">The newsroom is quiet</div>
+              <div className="fc-title">
+                {page > 1 ? "No more stories" : "The newsroom is quiet"}
+              </div>
               <div className="fc-desc">
-                Add featured stories in the admin panel to fill the front page.
+                {page > 1 ? (
+                  <a href="/featured">Back to the front page →</a>
+                ) : (
+                  "Add featured stories in the admin panel to fill the front page."
+                )}
               </div>
             </div>
           ) : (
             <>
-              <article className="np-lead">
-                <a href={storyHref(lead)} className="np-lead-link">
-                  <div className="np-kicker">{lead.why_text || "Editor's Pick"}</div>
-                  <h2 className="np-lead-headline">{lead.title}</h2>
-                  {lead.description ? (
-                    <p className="np-lead-summary">{lead.description}</p>
-                  ) : null}
-                </a>
-              </article>
+              {showLead ? (
+                <article className="np-lead">
+                  <a href={storyHref(lead)} className="np-lead-link">
+                    <div className="np-kicker">{lead.why_text || "Editor's Pick"}</div>
+                    <h2 className="np-lead-headline">{lead.title}</h2>
+                    {lead.description ? (
+                      <p className="np-lead-summary">{lead.description}</p>
+                    ) : null}
+                  </a>
+                </article>
+              ) : null}
 
-              {rest.length > 0 ? (
+              {rows.length > 0 ? (
                 <section className="np-more">
-                  <h2 className="np-section-label np-more-label">More featured</h2>
+                  <h2 className="np-section-label np-more-label">
+                    {page > 1 ? `More featured — page ${page}` : "More featured"}
+                  </h2>
                   <div className="np-more-grid">
-                    {rest.map((story) => (
+                    {rows.map((story) => (
                       <article className="np-more-cell" key={story.id}>
                         <a href={storyHref(story)}>
                           {story.why_text ? (
@@ -95,6 +141,27 @@ export default async function FeaturedPage() {
                     ))}
                   </div>
                 </section>
+              ) : null}
+
+              {page > 1 || hasMore ? (
+                <nav className="np-pager" aria-label="Featured pages">
+                  {page > 1 ? (
+                    // A crawler landing on ?page=5 needs a way back — without
+                    // this, deep pages are dead ends. Same reasoning as
+                    // /discussions' pager.
+                    <a
+                      className="btn-outline load-more"
+                      href={page === 2 ? "/featured" : `/featured?page=${page - 1}`}
+                    >
+                      &lt;- Newer stories
+                    </a>
+                  ) : <span />}
+                  {hasMore ? (
+                    <a className="btn-outline load-more" href={`/featured?page=${page + 1}`}>
+                      Older stories -&gt;
+                    </a>
+                  ) : <span />}
+                </nav>
               ) : null}
             </>
           )}
