@@ -63,6 +63,17 @@ export default function RootLayout({ children }) {
     <ClerkProvider>
       <html lang="en">
         <body className={`${stixTwoText.variable} ${dmSans.variable} ${dmMono.variable}`}>
+          {/* .fi elements (every card grid) start at opacity:0 and only reach
+              opacity:1 via a useEffect that adds .show once IntersectionObserver
+              fires — see useScrollReveal. That effect never runs at all without
+              JavaScript, so every one of those sections stays invisible forever,
+              not just unanimated. <noscript> content is only ever applied by a
+              browser that has JS disabled, so this has zero effect on the
+              normal, JS-enabled case — the reveal animation is untouched for
+              every real visitor — and exists purely as the no-JS floor. */}
+          <noscript>
+            <style>{".fi{opacity:1 !important;transform:none !important}"}</style>
+          </noscript>
           <a href="#main" className="sr-only focus:not-sr-only" style={{position:'absolute',left:8,top:8,zIndex:10000,background:'#fff',padding:'6px 8px',borderRadius:6}}>Skip to content</a>
           {/* Organization + WebSite, site-wide. The Organization block is what
               finally connects the brand to the 17 accounts it publishes from
