@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import SiteNav from "../components/SiteNav";
 import { getFeaturedStoriesPage } from "../../lib/supabase/queries";
 import { storyHref } from "../../lib/featured";
@@ -111,6 +113,18 @@ export default async function FeaturedPage({ searchParams }) {
               {showLead ? (
                 <article className="np-lead">
                   <a href={storyHref(lead)} className="np-lead-link">
+                    {lead.image_url ? (
+                      <div className="np-lead-image">
+                        <Image
+                          src={lead.image_url}
+                          alt=""
+                          fill
+                          sizes="(max-width: 900px) 100vw, 900px"
+                          style={{ objectFit: "cover" }}
+                          priority
+                        />
+                      </div>
+                    ) : null}
                     <div className="np-kicker">{lead.why_text || "Editor's Pick"}</div>
                     <h2 className="np-lead-headline">{lead.title}</h2>
                     {lead.description ? (
@@ -129,6 +143,17 @@ export default async function FeaturedPage({ searchParams }) {
                     {rows.map((story) => (
                       <article className="np-more-cell" key={story.id}>
                         <a href={storyHref(story)}>
+                          {story.image_url ? (
+                            <div className="np-more-thumb">
+                              <Image
+                                src={story.image_url}
+                                alt=""
+                                fill
+                                sizes="(max-width: 720px) 50vw, 280px"
+                                style={{ objectFit: "cover" }}
+                              />
+                            </div>
+                          ) : null}
                           {story.why_text ? (
                             <div className="np-kicker">{story.why_text}</div>
                           ) : null}

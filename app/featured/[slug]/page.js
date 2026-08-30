@@ -1,5 +1,6 @@
 import SiteNav from "../../components/SiteNav";
 import SharePanel from "../../components/SharePanel";
+import Image from "next/image";
 import { permanentRedirect } from "next/navigation";
 
 import {
@@ -131,6 +132,18 @@ export default async function FeaturedPermalink({ params }) {
       <section className="section">
         <div className="permalink-single" style={{ maxWidth: 720 }}>
           <article className="bento-card story-card">
+            {story.image_url ? (
+              <div className="story-hero-image">
+                <Image
+                  src={story.image_url}
+                  alt=""
+                  fill
+                  sizes="720px"
+                  style={{ objectFit: "cover" }}
+                  priority
+                />
+              </div>
+            ) : null}
             <span className="fc-why">{story.why_text || "Featured"}</span>
             <h2 className="story-headline">{story.title}</h2>
             {story.description ? <p className="story-standfirst">{story.description}</p> : null}

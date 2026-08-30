@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 import SiteNav from "./components/SiteNav";
 import TrendingCards from "./components/TrendingCards";
@@ -128,6 +129,29 @@ function FeaturedIcon({ type }) {
   if (type === "home") return <IconHome className="icon" />;
   if (type === "briefcase") return <IconBriefcase className="icon" />;
   return <IconBook className="icon" />;
+}
+
+// A real photo if one was set, otherwise the fixed icon it's replacing —
+// same fallback either card size already had, just conditional on whether
+// this particular story has image_url. `fill` needs the positioned,
+// overflow:hidden box .fc-visual already is, so no new CSS for this.
+function FeaturedVisual({ story }) {
+  if (story.image_url) {
+    return (
+      <Image
+        src={story.image_url}
+        alt=""
+        fill
+        sizes="(max-width: 720px) 100vw, 50vw"
+        style={{ objectFit: "cover" }}
+      />
+    );
+  }
+  return (
+    <div className="fc-emoji">
+      <FeaturedIcon type={story.icon} />
+    </div>
+  );
 }
 
 export default function HomeClient({
@@ -837,7 +861,7 @@ export default function HomeClient({
                 <div className="fc fc-main bento-card">
                   <a href={storyHref(featuredMain)} className="fc-visual">
                     <div className="fc-star">Editor pick</div>
-                    <div className="fc-emoji"><FeaturedIcon type={featuredMain.icon} /></div>
+                    <FeaturedVisual story={featuredMain} />
                   </a>
                   <div className="fc-body">
                     {featuredMain.why_text ? (
@@ -864,7 +888,7 @@ export default function HomeClient({
                   {featuredSide.map((story) => (
                     <div className="fc fc-side bento-card" key={story.id}>
                       <a href={storyHref(story)} className="fc-visual">
-                        <div className="fc-emoji"><FeaturedIcon type={story.icon} /></div>
+                        <FeaturedVisual story={story} />
                       </a>
                       <div className="fc-body">
                         {story.why_text ? <span className="fc-why">{story.why_text}</span> : null}

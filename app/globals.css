@@ -384,7 +384,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .fc-emoji{font-size:2.8rem;opacity:.4;transition:transform .35s cubic-bezier(.22,.61,.36,1)}
 .fc:hover .fc-emoji{transform:scale(1.08) rotate(-2deg)}
 .fc-star{
-	position:absolute;top:12px;left:12px;
+	position:absolute;top:12px;left:12px;z-index:2;
 	background:var(--red);color:#fff;
 	font-family:var(--font-mono), monospace;font-size:.54rem;letter-spacing:1.5px;
 	padding:3px 9px;border-radius:4px;text-transform:uppercase;
@@ -409,6 +409,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
    is actually read, so it gets article measure and rhythm rather than the
    card's summary styling. */
 .story-card{padding:30px;border-radius:16px}
+.story-hero-image{position:relative;overflow:hidden;border-radius:8px;aspect-ratio:16/9;margin-bottom:22px;background:var(--border)}
 .story-headline{
 	font-family:var(--font-serif), serif;font-size:2rem;font-weight:800;
 	letter-spacing:-.7px;line-height:1.18;color:var(--ink);margin:6px 0 12px;
@@ -1204,6 +1205,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 
 .np-lead-link{display:block;text-decoration:none;color:inherit}
+.np-lead-image{position:relative;overflow:hidden;border-radius:6px;aspect-ratio:21/9;margin-bottom:24px;background:var(--border)}
 .np-lead-headline{
 	font-family:var(--font-serif), serif;font-size:clamp(1.8rem,3.4vw,2.7rem);font-weight:800;
 	letter-spacing:-.025em;line-height:1.06;color:var(--ink);margin-bottom:16px;transition:color .15s;
@@ -1217,6 +1219,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .np-more-cell a:hover .np-headline{color:var(--red)}
 .np-summary{font-size:.9rem;line-height:1.6;color:var(--muted)}
+.np-more-thumb{position:relative;overflow:hidden;border-radius:4px;aspect-ratio:16/10;margin-bottom:14px;background:var(--border)}
 
 /* Bottom band: the remaining picks in newspaper columns */
 .np-more{margin-top:56px}
