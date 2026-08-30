@@ -117,7 +117,7 @@ export default async function FeaturedPage({ searchParams }) {
                       <div className="np-lead-image">
                         <Image
                           src={lead.image_url}
-                          alt=""
+                          alt={lead.image_alt || lead.title}
                           fill
                           sizes="(max-width: 900px) 100vw, 900px"
                           style={{ objectFit: "cover" }}
@@ -147,7 +147,7 @@ export default async function FeaturedPage({ searchParams }) {
                             <div className="np-more-thumb">
                               <Image
                                 src={story.image_url}
-                                alt=""
+                                alt={story.image_alt || story.title}
                                 fill
                                 sizes="(max-width: 720px) 50vw, 280px"
                                 style={{ objectFit: "cover" }}

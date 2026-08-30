@@ -51,7 +51,9 @@ export async function generateMetadata({ params }) {
       path: `/featured/${story.slug || story.id}`,
       title: story.title,
       description: story.description,
-      kicker: story.why_text || "Featured"
+      kicker: story.why_text || "Featured",
+      image: story.image_url,
+      imageAlt: story.image_alt
     }),
     // A story that is only a card — a title, a blurb and a link somewhere else —
     // has nothing of its own to rank. Real articles clear 300 words easily.
@@ -136,7 +138,7 @@ export default async function FeaturedPermalink({ params }) {
               <div className="story-hero-image">
                 <Image
                   src={story.image_url}
-                  alt=""
+                  alt={story.image_alt || story.title}
                   fill
                   sizes="720px"
                   style={{ objectFit: "cover" }}
@@ -153,9 +155,34 @@ export default async function FeaturedPermalink({ params }) {
                 page falls back to pointing at wherever they do live. */}
             {paragraphs.length > 0 ? (
               <div className="story-body">
-                {paragraphs.map((block, index) => (
-                  <p key={index}>{block}</p>
-                ))}
+                {paragraphs.map((block, index) => {
+                  if (block.type === "heading") {
+                    // A dynamic tag name ("h2"/"h3"/"h4") is valid JSX —
+                    // compiles to createElement(HeadingTag, ...) same as any
+                    // other element. dangerouslySetInnerHTML is safe here
+                    // specifically because block.html was already built by
+                    // escapeHtml + renderInline in lib/featured.js, never
+                    // from this raw text directly.
+                    const HeadingTag = `h${block.level}`;
+                    return (
+                      <HeadingTag
+                        key={index}
+                        className={`story-subhead story-h${block.level}`}
+                        dangerouslySetInnerHTML={{ __html: block.html }}
+                      />
+                    );
+                  }
+                  if (block.type === "list") {
+                    return (
+                      <ul key={index} className="story-list">
+                        {block.items.map((item, itemIndex) => (
+                          <li key={itemIndex} dangerouslySetInnerHTML={{ __html: item }} />
+                        ))}
+                      </ul>
+                    );
+                  }
+                  return <p key={index} dangerouslySetInnerHTML={{ __html: block.html }} />;
+                })}
               </div>
             ) : (
               <p className="story-empty">

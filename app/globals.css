@@ -420,6 +420,19 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	padding-top:20px;border-top:1px solid var(--border);
 }
 .story-body p{font-size:1.02rem;line-height:1.75;color:var(--ink);max-width:66ch}
+.story-body a{color:var(--red);text-decoration:underline;text-underline-offset:2px}
+.story-body a:hover{text-decoration:none}
+.story-subhead{
+	font-family:var(--font-serif), serif;font-weight:700;
+	letter-spacing:-.2px;color:var(--ink);margin-top:8px;
+}
+.story-h2{font-size:1.35rem}
+.story-h3{font-size:1.15rem}
+.story-h4{font-size:1.02rem}
+.story-list{
+	display:flex;flex-direction:column;gap:8px;padding-left:22px;max-width:66ch;
+	font-size:1.02rem;line-height:1.65;color:var(--ink);list-style:disc;
+}
 .story-empty{
 	padding-top:18px;border-top:1px solid var(--border);
 	font-size:.92rem;line-height:1.6;color:var(--muted);margin-bottom:14px;

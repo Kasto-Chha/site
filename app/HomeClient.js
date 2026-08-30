@@ -140,7 +140,7 @@ function FeaturedVisual({ story }) {
     return (
       <Image
         src={story.image_url}
-        alt=""
+        alt={story.image_alt || story.title}
         fill
         sizes="(max-width: 720px) 100vw, 50vw"
         style={{ objectFit: "cover" }}
