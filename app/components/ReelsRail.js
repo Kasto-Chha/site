@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 import { IconPlay } from "./icons";
 import { toEmbedUrl, toThumbUrl } from "../../lib/embeds";
@@ -30,7 +31,7 @@ export default function ReelsRail({ reels = [] }) {
   return (
     <>
       <div className="reel-rail">
-        {reels.map((reel) => {
+        {reels.map((reel, index) => {
           const accent = reel.accent || "#3a2a2a";
           const link = reel.video_url || reel.channel_url || "";
           const embed = toEmbedUrl(reel.video_url) || toEmbedUrl(reel.channel_url);
@@ -55,8 +56,24 @@ export default function ReelsRail({ reels = [] }) {
               target={!embed && link.startsWith("http") ? "_blank" : undefined}
               rel={!embed && link.startsWith("http") ? "noopener noreferrer" : undefined}
               onClick={onClick}
-              style={{ backgroundImage: thumb ? `url(${thumb}), ${gradient}` : gradient }}
+              // The gradient is the permanent base layer either way: it is
+              // what shows through if `thumb` is unset, and it is also what
+              // shows for the instant before the Image below finishes
+              // loading, and forever if that image 404s (a proxied
+              // TikTok/Instagram/Facebook cover can fail upstream — see
+              // app/api/embeds/thumb — with nothing else here to fall back on).
+              style={{ backgroundImage: gradient }}
             >
+              {thumb ? (
+                <Image
+                  src={thumb}
+                  alt=""
+                  fill
+                  sizes="224px"
+                  style={{ objectFit: "cover" }}
+                  priority={index === 0}
+                />
+              ) : null}
               <span className="reel-tag">{reel.tag}</span>
               <span className="reel-play" aria-hidden>
                 <IconPlay className="icon" />

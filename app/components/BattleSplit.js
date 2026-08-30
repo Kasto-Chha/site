@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import ShareRow from "./ShareRow";
 import useCardVotes from "./useCardVotes";
 import useRevealOnce from "./useRevealOnce";
@@ -16,14 +18,10 @@ const VOTE_CONFIG = {
 
 const fmt = (n) => (n || 0).toLocaleString("en-US");
 
-// Build the full-bleed background for one side: a product photo if provided,
-// otherwise a brand-coloured gradient fading into near-black for legibility.
-function sideStyle(image, color, fallback) {
-  if (image) {
-    return {
-      backgroundImage: `linear-gradient(180deg, rgba(8,6,5,.18) 0%, rgba(8,6,5,.66) 100%), url(${image})`
-    };
-  }
+// The no-photo fallback: a brand-coloured gradient fading into near-black for
+// legibility. Used as-is via inline style, since it is CSS, not an image —
+// nothing here for next/image to optimize.
+function fallbackStyle(color, fallback) {
   const c = color || fallback;
   return { backgroundImage: `linear-gradient(150deg, ${c} 0%, rgba(10,8,7,.74) 118%)` };
 }
@@ -56,6 +54,39 @@ function BattleCard({ battle, index, myVote, busy, error, onVote }) {
     </button>
   );
 
+  // A photo, if one was set, plus the text. The image and the darkening
+  // overlay are both absolutely positioned behind the text (see
+  // .bsplit-side's position:relative in globals.css) — previously this whole
+  // stack was a single CSS background-image, which next/image cannot
+  // optimize; `fill` is next/image's way of taking over exactly that same
+  // absolutely-positioned-backdrop role.
+  const renderSide = (image, color, fallback, title, desc, category, side) => (
+    <div
+      className={`bsplit-side ${side} ${image ? "has-photo" : ""}`}
+      style={image ? undefined : fallbackStyle(color, fallback)}
+    >
+      {image ? (
+        <Image
+          src={image}
+          alt=""
+          fill
+          sizes="(max-width: 720px) 100vw, 50vw"
+          style={{ objectFit: "cover" }}
+          // Every visible battle card is above the fold on a page with very
+          // little else on it — this is exactly the kind of image `priority`
+          // exists for, not a default to reach for everywhere.
+          priority={index === 0}
+        />
+      ) : null}
+      <div className="bsplit-side-content">
+        <span className="bsplit-cat">{category}</span>
+        <h3 className="bsplit-name">{title}</h3>
+        {desc ? <p className="bsplit-desc">{desc}</p> : null}
+        {sideButton(side === "left" ? "a" : "b", title)}
+      </div>
+    </div>
+  );
+
   return (
     <article
       ref={revealRef}
@@ -64,19 +95,24 @@ function BattleCard({ battle, index, myVote, busy, error, onVote }) {
       }`}
     >
       <div className="bsplit-stage">
-        <div className="bsplit-side left" style={sideStyle(battle.left_image, battle.left_color, "#c8102e")}>
-          <span className="bsplit-cat">{battle.category}</span>
-          <h3 className="bsplit-name">{battle.left_title}</h3>
-          {battle.left_desc ? <p className="bsplit-desc">{battle.left_desc}</p> : null}
-          {sideButton("a", battle.left_title)}
-        </div>
-
-        <div className="bsplit-side right" style={sideStyle(battle.right_image, battle.right_color, "#1f5fae")}>
-          <span className="bsplit-cat">{battle.category}</span>
-          <h3 className="bsplit-name">{battle.right_title}</h3>
-          {battle.right_desc ? <p className="bsplit-desc">{battle.right_desc}</p> : null}
-          {sideButton("b", battle.right_title)}
-        </div>
+        {renderSide(
+          battle.left_image,
+          battle.left_color,
+          "#c8102e",
+          battle.left_title,
+          battle.left_desc,
+          battle.category,
+          "left"
+        )}
+        {renderSide(
+          battle.right_image,
+          battle.right_color,
+          "#1f5fae",
+          battle.right_title,
+          battle.right_desc,
+          battle.category,
+          "right"
+        )}
 
         <span className="bsplit-pct left">{leftPct}%</span>
         <span className="bsplit-pct right">{rightPct}%</span>

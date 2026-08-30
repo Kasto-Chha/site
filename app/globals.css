@@ -1931,6 +1931,16 @@ ol.chat-md-list li{list-style:decimal}
 	position:relative;padding:32px 36px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;
 	background-size:cover;background-position:center;color:#fff;overflow:hidden;
 }
+/* The photo is a next/image `fill` element — position:absolute, painted as
+   this element's first child. A positioned element paints above static
+   in-flow siblings regardless of DOM order (CSS stacking rule, not a DOM-order
+   thing), so the text needs its own explicit stacking layer above the photo
+   and its darkening overlay, not just "comes later in the markup". */
+.bsplit-side.has-photo::before{
+	content:"";position:absolute;inset:0;z-index:1;
+	background:linear-gradient(180deg, rgba(8,6,5,.18) 0%, rgba(8,6,5,.66) 100%);
+}
+.bsplit-side-content{position:relative;z-index:2;display:flex;flex-direction:column;gap:8px}
 .bsplit-side.right{align-items:flex-end;text-align:right}
 .bsplit-cat{font-family:var(--font-mono),monospace;font-size:.58rem;letter-spacing:2.4px;text-transform:uppercase;color:rgba(255,255,255,.72)}
 .bsplit-name{font-family:var(--font-serif),serif;font-size:clamp(1.6rem,2.6vw,2.3rem);font-weight:900;letter-spacing:-.6px;line-height:1.04;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.35)}

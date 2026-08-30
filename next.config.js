@@ -40,6 +40,24 @@ const nextConfig = {
   // chunk files that no longer exist ("Cannot find module './8948.js'").
   distDir: process.env.NEXT_DIST_DIR || ".next",
 
+  // Battle images are a free-text URL typed into /admin/content/battles — any
+  // https host, chosen per-entry by whoever is curating that battle, with no
+  // way to know the list of hosts in advance. A fixed per-host allowlist here
+  // would need a code change and a redeploy every time a new entry used a
+  // host that hadn't been added yet.
+  //
+  // The wildcard is safe specifically because that field is admin-only —
+  // confirmed locked to ROLE.ADMIN at every method of every
+  // /api/admin/content route — not something a public visitor can reach. The
+  // CSP's `img-src ... https:` already permits an <img> tag to load from any
+  // https host today; this only extends that same, already-accepted trust
+  // boundary to next/image's optimizer, which then actually resizes and
+  // re-encodes whatever arbitrary size or format the source happens to serve,
+  // rather than shipping it to every visitor untouched.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "**" }]
+  },
+
   async headers() {
     return [
       {
