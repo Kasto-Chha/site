@@ -254,11 +254,24 @@ export default function HomeClient({
     submitSearch();
   };
 
+  // Grows the box to fit what's typed instead of scrolling the start of a
+  // long query out of view — reset to "auto" first so it can shrink back
+  // down too, not just grow. Capped by max-height in CSS, past which it
+  // scrolls internally rather than growing indefinitely.
+  const autoResizeSearch = (el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   const fillSearch = (text, el) => {
     const input = document.getElementById("srch");
     if (input) {
       input.value = text;
       input.focus();
+      // Setting .value directly doesn't fire input/resize either — same
+      // reason the line below already stands in for onInput's other job.
+      autoResizeSearch(input);
     }
     // Setting .value in code doesn't fire onInput, so tell the placeholder
     // animation to stand down here too.
@@ -658,15 +671,16 @@ export default function HomeClient({
 
         <div className="search-wrap">
           <div className="search-inner">
-            <input
+            <textarea
               id="srch"
-              type="text"
+              rows={1}
               placeholder={searchPlaceholder}
               autoComplete="off"
               onKeyDown={handleSearchKey}
-              onInput={(event) =>
-                setHasQuery(event.currentTarget.value.trim().length > 0)
-              }
+              onInput={(event) => {
+                setHasQuery(event.currentTarget.value.trim().length > 0);
+                autoResizeSearch(event.currentTarget);
+              }}
             />
             <button
               type="button"

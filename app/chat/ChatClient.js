@@ -139,6 +139,21 @@ export default function ChatClient({
   const startedRef = useRef(false);
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Grows the composer to fit what's typed instead of scrolling within a
+  // fixed single line — the CSS (max-height, resize:none, the form's
+  // align-items:flex-end) was already built for this, this is the missing
+  // piece that actually resizes it. A useEffect keyed on `input` rather than
+  // doing this inline in onChange, because this is a controlled textarea —
+  // measuring scrollHeight needs to happen after React has already painted
+  // the new value, not before. Also correctly shrinks the box back down
+  // when input is cleared after sending, for the same reason.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
   // send() is called from a mount effect that closes over the first render's
   // state, so the conversation it should append to is read through a ref.
   const activeIdRef = useRef("");
@@ -194,6 +209,11 @@ export default function ChatClient({
     setMessages([...base, assistantMsg]);
     setInput("");
     setStreaming(true);
+    // Sending a message is you saying "show me what happens next" — re-engage
+    // auto-follow even if you'd scrolled up to reread something earlier,
+    // same as Claude's and ChatGPT's own interfaces do on your own send.
+    isAtBottomRef.current = true;
+    setShowJumpButton(false);
 
     try {
       const response = await fetch("/api/chat", {
@@ -272,10 +292,68 @@ export default function ChatClient({
     setActiveTopic("");
   }, [signedIn]);
 
-  // Keep the conversation scrolled to the latest message.
+  // Keep the conversation scrolled to the latest message — but only while
+  // the user is already following along at the bottom. The previous version
+  // forced this unconditionally on every streamed chunk, which fought anyone
+  // who deliberately scrolled up mid-answer to re-read something — the exact
+  // opposite of how Claude's or ChatGPT's own interface behaves: auto-follow
+  // while at the bottom, hands off the moment you scroll away, until you
+  // scroll back yourself or tap the jump-to-latest button below.
+  //
+  // isAtBottomRef, not state, so this effect keeps depending only on
+  // `messages` — reading the ref's current value when new content arrives,
+  // rather than also re-firing every time the user's scroll position itself
+  // changes.
+  const isAtBottomRef = useRef(true);
+  const [showJumpButton, setShowJumpButton] = useState(false);
+
+  // Tracks the composer's real, current height (it can grow past one line —
+  // see the auto-grow patch) so the jump button can float just above it
+  // exactly, rather than sitting at a fixed distance from the bottom of the
+  // screen that would put it behind an expanded composer instead of above
+  // it. Measures the whole .chat-composer wrapper, padding included, rather
+  // than just the inner form, so this doesn't need to separately hardcode
+  // that padding as a number that could silently drift from the CSS later.
+  // ResizeObserver rather than a resize/input event, since it also catches
+  // the composer growing on window resize or font load, not just typing.
+  const composerRef = useRef(null);
+  const [composerHeight, setComposerHeight] = useState(0);
+
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setComposerHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return undefined;
+    const onScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const atBottom = distanceFromBottom < 80;
+      isAtBottomRef.current = atBottom;
+      setShowJumpButton(!atBottom);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const jumpToBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    isAtBottomRef.current = true;
+    setShowJumpButton(false);
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && isAtBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Drawer: close on Escape, and don't let the thread behind it scroll.
@@ -778,7 +856,23 @@ export default function ChatClient({
           </div>
         </div>
 
-        <div className="chat-composer">
+        {showJumpButton ? (
+          <button
+            type="button"
+            className="chat-jump-bottom"
+            onClick={jumpToBottom}
+            aria-label="Jump to latest message"
+            // 20px real gap above the composer's actual current height,
+            // falling back to CSS's fixed 96px only for the brief instant
+            // before ResizeObserver's first measurement lands (composerHeight
+            // still 0 then).
+            style={composerHeight ? { bottom: composerHeight + 20 } : undefined}
+          >
+            ↓ New message
+          </button>
+        ) : null}
+
+        <div className="chat-composer" ref={composerRef}>
           {dailyLimitHit ? (
             // Signed in, but today's quota is spent. Nothing to sign up for
             // here — it just needs time, so the copy says so.

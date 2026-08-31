@@ -255,23 +255,34 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 
 .search-wrap{width:100%;max-width:620px;margin:0 auto 16px;position:relative}
 .search-inner{
-	display:flex;align-items:center;
+	display:flex;align-items:flex-end;
 	background:var(--card);border:1.5px solid var(--border2);
-	border-radius:100px;transition:border-color .25s,box-shadow .25s;
+	/* A full pill (100px) suits exactly one line; a growing box needs a more
+	   moderate radius so it still reads as one rounded field once it's two or
+	   three lines tall, rather than looking like a pill stretched out of
+	   shape. Matches how most auto-growing chat inputs (Claude's own
+	   included) handle this — a consistent rounded-rectangle radius rather
+	   than a shape-shifting one. */
+	border-radius:28px;transition:border-color .25s,box-shadow .25s;
 	box-shadow:0 14px 36px rgba(12,11,9,.06);
 }
 .search-inner:focus-within{
 	border-color:var(--red);
 	box-shadow:0 0 0 4px var(--red-mid),0 14px 36px rgba(12,11,9,.06);
 }
-.search-inner input{
+.search-inner textarea{
 	flex:1;min-width:0;padding:17px 10px 17px 28px;background:transparent;border:none;outline:none;
 	color:var(--ink);font-family:var(--font-sans), sans-serif;font-size:1rem;
+	resize:none;line-height:1.4;
+	/* Roughly 6-7 lines before it scrolls internally instead of growing
+	   further — long enough for a real question, capped so a large paste
+	   can't push the button off-screen. */
+	max-height:200px;overflow-y:auto;
 }
 /* --muted2 sits at 2.7:1 on the card background — under the 4.5:1 floor, and
    this is the one hint that tells a first-time visitor what to type. --muted
    clears it at 4.4:1 while staying clearly lighter than entered text. */
-.search-inner input::placeholder{color:var(--muted);opacity:1}
+.search-inner textarea::placeholder{color:var(--muted);opacity:1}
 .s-btn{
 	margin:5px;width:42px;height:42px;border-radius:50%;
 	background:var(--red);border:none;
@@ -1533,7 +1544,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.hero{min-height:auto;padding:22px 14px 48px}
 	.hero h1{font-size:clamp(1.85rem,7.6vw,2.55rem);margin-bottom:14px}
 	.hero-sub{max-width:300px;margin-bottom:20px}
-	.search-inner input{font-size:.9rem;padding:14px 6px 14px 18px}
+	.search-inner textarea{font-size:.9rem;padding:14px 6px 14px 18px}
 	.s-btn{width:38px;height:38px}
 	.chips-row{gap:6px}
 	.chip{padding:6px 13px;font-size:.76rem}
@@ -1542,10 +1553,10 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
    narrow screens — the full phrase fits instead of being cut short, and typed
    text stays at a comfortable size. */
 @media(max-width:480px){
-	.search-inner input::placeholder{font-size:.78rem}
+	.search-inner textarea::placeholder{font-size:.78rem}
 }
 @media(max-width:380px){
-	.search-inner input::placeholder{font-size:.7rem}
+	.search-inner textarea::placeholder{font-size:.7rem}
 }
 /* ============ KastoChha Assist — AI chat ============ */
 .chat-app{
@@ -1645,7 +1656,19 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .chat-side-home{font-size:.86rem;color:var(--muted);text-decoration:none}
 .chat-side-home:hover{color:var(--red)}
 
-.chat-main{display:flex;flex-direction:column;min-width:0;height:100vh;height:100dvh}
+.chat-main{display:flex;flex-direction:column;min-width:0;height:100vh;height:100dvh;position:relative}
+/* bottom:96px here is only the fallback for the instant before
+   ResizeObserver's first measurement lands — the real position is set
+   dynamically via inline style once the composer's actual height is known,
+   so this button always floats just above it regardless of how tall the
+   composer currently is. */
+.chat-jump-bottom{
+	position:absolute;bottom:96px;left:50%;transform:translateX(-50%);z-index:20;
+	display:flex;align-items:center;gap:6px;padding:9px 18px;border-radius:999px;
+	background:var(--ink);color:#fff;border:none;font-size:.85rem;font-weight:600;
+	box-shadow:0 8px 24px rgba(12,11,9,.18);cursor:pointer;transition:transform .14s, box-shadow .14s;
+}
+.chat-jump-bottom:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 12px 28px rgba(12,11,9,.24)}
 .chat-topbar{
 	display:flex;align-items:center;justify-content:space-between;gap:12px;
 	padding:14px 24px;border-bottom:1px solid var(--border);background:rgba(245,240,232,.82);
@@ -1745,7 +1768,7 @@ ol.chat-md-list li{list-style:decimal}
 .chat-input{
 	flex:1;border:none;background:transparent;resize:none;outline:none;
 	font-family:var(--font-sans), sans-serif;font-size:1rem;line-height:1.5;color:var(--ink);
-	max-height:180px;padding:8px 0;
+	max-height:180px;overflow-y:auto;padding:8px 0;
 }
 .chat-input::placeholder{color:var(--muted2)}
 .chat-send{
