@@ -1412,7 +1412,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 
 @media(max-width:480px){
-	.hero{min-height:auto;padding:28px 16px 56px}
+	.hero{min-height:auto;padding:28px 16px 32px}
 	.hero-heading{font-size:clamp(2.2rem,8.5vw,3rem);margin-bottom:16px}
 	.hero-sub{font-size:.96rem;max-width:340px;margin-bottom:22px}
 	.kicker{margin-bottom:18px}
