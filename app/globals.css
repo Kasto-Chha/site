@@ -1541,7 +1541,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 
 @media(max-width:420px){
-	.hero{min-height:auto;padding:22px 14px 48px}
+	.hero{min-height:auto;padding:22px 14px 28px}
 	.hero-heading{font-size:clamp(1.85rem,7.6vw,2.55rem);margin-bottom:14px}
 	.hero-sub{max-width:300px;margin-bottom:20px}
 	.search-inner textarea{font-size:.9rem;padding:14px 6px 14px 18px}
