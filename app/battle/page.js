@@ -8,9 +8,9 @@ import { getBattles, getUserVotes } from "../../lib/supabase/queries";
 // one ("Yango vs InDrive") belongs in Featured as a researched article, which
 // is the format those queries actually reward.
 export const metadata = {
-  title: "KastoChha Battle - Nepal Votes, Head to Head | KastoChha",
+  title: "KastoChha Battle - Vote Nepal's Biggest Debates",
   description:
-    "Two options, one winner, decided by Nepal. Vote on the match-ups everyone is arguing about this week.",
+    "Cast your vote, see what Nepalis think, and join head-to-head battles on products, brands, and more. Two sides, one winner, decided by real votes.",
   alternates: { canonical: "/battle" }
 };
 

@@ -33,9 +33,9 @@ export const metadata = {
   // The homepage had no canonical tag at all — every other page emitted one.
   // Pages that need their own override this via their alternates.
   alternates: { canonical: "/" },
-  title: "KastoChha - Nepal's Curious Community Network | Real Reviews, Opinions & Answers",
+  title: "KastoChha - Nepal's Curious Community Network",
   description:
-    "From momo to mausam, gadgets to careers — KastoChha answers every Nepali curiosity with real reviews, honest opinions, and community experiences. No filter, no sponsored posts.",
+    "KastoChha is Nepal's community-powered review platform for asking, sharing, and exploring honest opinions and real experiences to make better decisions.",
   openGraph: {
     title: "KastoChha - Nepal's Curious Community Network",
     description:

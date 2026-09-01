@@ -17,8 +17,8 @@ export default function TrendingClient({ topics = [], myVotes = {} }) {
           <div className="page-head">
             <div>
               <div className="page-kicker">LIVE SIGNALS</div>
-              <h1 className="page-title">Trending KastoChha</h1>
-              <p className="page-sub">Questions, Debates, and Decisions - What Nepal is talking about right now.</p>
+              <h1 className="page-title">KastoChha Trending - Live Topics &amp; Debates</h1>
+              <p className="page-sub">The real-time pulse of what Nepal actually cares about, not what a newsroom decided was important. Cast your vote and take your side.</p>
             </div>
             <div className="page-actions">
               <a className="btn-outline" href="/chat">Ask community</a>

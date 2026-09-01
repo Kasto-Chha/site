@@ -227,17 +227,17 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	border-radius:100px;padding:5px 16px;
 	font-family:var(--font-mono), monospace;font-size:.62rem;font-weight:500;
 	letter-spacing:2px;text-transform:uppercase;color:var(--saffron);
-	margin-bottom:28px;
+	margin:0 0 28px;
 }
 .kicker-dot{width:5px;height:5px;border-radius:50%;background:var(--saffron);animation:blink 1.6s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-.hero h1{
+.hero-heading{
 	font-family:var(--font-serif), serif;
 	font-size:clamp(3rem,7.5vw,6.4rem);font-weight:900;letter-spacing:-.045em;line-height:1;
 	margin-bottom:22px;
 }
-.hero h1 em{font-style:italic;color:var(--red)}
+.hero-heading em{font-style:italic;color:var(--red)}
 .hero-logo{height:.95em;width:auto;max-width:100%;display:inline-block;vertical-align:middle;margin-top:.1em}
 .hero-sub{
 	font-size:1.02rem;color:var(--muted);font-weight:400;
@@ -247,7 +247,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 /* Staggered hero entrance */
 @keyframes heroUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 .hero .kicker{animation:heroUp .55s ease .05s both}
-.hero h1{animation:heroUp .6s ease .12s both}
+.hero-heading{animation:heroUp .6s ease .12s both}
 .hero-sub{animation:heroUp .6s ease .22s both}
 .hero .search-wrap{animation:heroUp .6s ease .3s both}
 .hero .chips-row{animation:heroUp .6s ease .38s both}
@@ -1208,7 +1208,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	font-family:var(--font-serif), serif;font-size:clamp(2.4rem,5.4vw,4rem);font-weight:900;
 	letter-spacing:-.03em;line-height:1;text-align:center;color:var(--ink);margin:34px 0 12px;
 }
-.np-nameplate em{font-style:italic;color:var(--red)}
+.np-nameplate em{font-style:normal;color:var(--red)}
 .np-motto{
 	text-align:center;font-size:.95rem;color:var(--muted);margin-bottom:26px;
 }
@@ -1413,7 +1413,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 
 @media(max-width:480px){
 	.hero{min-height:auto;padding:28px 16px 56px}
-	.hero h1{font-size:clamp(2.2rem,8.5vw,3rem);margin-bottom:16px}
+	.hero-heading{font-size:clamp(2.2rem,8.5vw,3rem);margin-bottom:16px}
 	.hero-sub{font-size:.96rem;max-width:340px;margin-bottom:22px}
 	.kicker{margin-bottom:18px}
 	.chips-row{margin-bottom:24px}
@@ -1542,7 +1542,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 
 @media(max-width:420px){
 	.hero{min-height:auto;padding:22px 14px 48px}
-	.hero h1{font-size:clamp(1.85rem,7.6vw,2.55rem);margin-bottom:14px}
+	.hero-heading{font-size:clamp(1.85rem,7.6vw,2.55rem);margin-bottom:14px}
 	.hero-sub{max-width:300px;margin-bottom:20px}
 	.search-inner textarea{font-size:.9rem;padding:14px 6px 14px 18px}
 	.s-btn{width:38px;height:38px}

@@ -655,17 +655,17 @@ export default function HomeClient({
 
       <section className="hero" id="hero">
         <div className="hero-glow"></div>
-        <div className="kicker">
+        <h1 className="kicker">
           <span className="kicker-dot"></span>
-          Nepal&apos;s Curious Community Network
-        </div>
-        <h1>
+          Nepal&apos;s Independent Community-Powered Review Platform
+        </h1>
+        <h2 className="hero-heading">
           Nepal ma sabai kura...
           <br />
           <img src="/kastochha-logo.svg" alt="KastoChha?" className="hero-logo" />
-        </h1>
+        </h2>
         <p className="hero-sub">
-          From momo to mausam, gadgets to careers — real opinions, honest
+          From momo to movies, gadgets to gaadi. Real opinions, honest
           experiences, and community answers.
         </p>
 
@@ -731,7 +731,7 @@ export default function HomeClient({
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">Trending <em>KastoChha</em></h2>
-              <p className="sec-sub">Questions, Debates, and Decisions - What Nepal is talking about right now.</p>
+              <p className="sec-sub">Hot topics, debates, and questions Nepalis are talking about, updated live as the community votes.</p>
             </div>
             <a href="/trending" className="sec-all">View all -&gt;</a>
           </div>
@@ -748,7 +748,7 @@ export default function HomeClient({
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">KastoChha <em>Battle</em></h2>
-              <p className="sec-sub">Vote and Decide - Make your decision from experiences.</p>
+              <p className="sec-sub">Vote on head-to-head battles: phones, cars, matches, and more, decided by real Nepali votes.</p>
             </div>
             <a href="/battle" className="sec-all">All battles -&gt;</a>
           </div>
@@ -765,7 +765,7 @@ export default function HomeClient({
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">KastoChha <em>Discussions</em></h2>
-              <p className="sec-sub">Reviews and Opinions from people across Nepal.</p>
+              <p className="sec-sub">Real reviews, honest opinions, and experiences from Nepalis on everything that matters in everyday life.</p>
             </div>
             <a href="/discussions" className="sec-all">All discussions -&gt;</a>
           </div>
@@ -785,8 +785,7 @@ export default function HomeClient({
                 </div>
                 <h2 className="sec-title">Community is <em>Asking</em></h2>
                 <p className="sec-sub">
-                  Real questions from people across Nepal, still waiting on
-                  someone who has been there. Tapai lai thaha chha bhane, bhanidinus.
+                  Real questions from Nepalis, still waiting on someone who has been there.
                 </p>
               </div>
               <button type="button" className="sec-all" onClick={() => openModal("ask")}>
@@ -847,7 +846,7 @@ export default function HomeClient({
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">KastoChha <em>Reels</em></h2>
-              <p className="sec-sub">Explore our reels across different niche channels and stay updated.</p>
+              <p className="sec-sub">Watch real reviews and reactions across our niche channels, from tech to travel.</p>
             </div>
             <a href={youtubeChannelUrl()} target="_blank" rel="noopener noreferrer" className="sec-all">Follow us on YouTube -&gt;</a>
           </div>
@@ -865,7 +864,7 @@ export default function HomeClient({
                   <div className="sec-rule"></div>
                 </div>
                 <h2 className="sec-title">Featured <em>KastoChha</em></h2>
-                <p className="sec-sub">Curated Reviews and In-Depth Editorial Opinions.</p>
+                <p className="sec-sub">Curated Reviews and In-Depth Editorial Opinions. Deep dives into the trends shaping everyday life in Nepal, grounded in real community insights.</p>
               </div>
               <a href="/featured" className="sec-all">Front page -&gt;</a>
             </div>

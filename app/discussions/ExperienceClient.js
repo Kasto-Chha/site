@@ -282,11 +282,13 @@ export default function ExperienceClient({
           <div className="page-head">
             <div>
               <div className="page-kicker">NEPAL&apos;S CURIOUS COMMUNITY</div>
-              <h1 className="page-title upright">KastoChha <em>Experience</em></h1>
+              <h1 className="page-title upright">KastoChha Discussions - Real Reviews &amp; Experiences</h1>
               <p className="page-sub">
-                From momo to mausam, gadgets to careers — real experiences from
-                people across Nepal, grouped by topic. Vote, reply, and post
-                yours; it joins everyone talking about the same thing.
+                Whether it&apos;s a phone, an EV, a restaurant, or a college, if
+                you&apos;re asking &quot;Kasto Chha?&quot; you&apos;ll find real
+                conversations where the community weighs in, not just one
+                person&apos;s opinion. Ask your own question, share an
+                experience, or explore what others have found.
               </p>
             </div>
             <div className="page-actions">

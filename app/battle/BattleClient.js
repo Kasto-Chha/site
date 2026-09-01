@@ -17,8 +17,8 @@ export default function BattleClient({ battles = [], myVotes = {} }) {
           <div className="page-head">
             <div>
               <div className="page-kicker">VOTE NOW</div>
-              <h1 className="page-title">KastoChha Battle</h1>
-              <p className="page-sub">Vote and Decide - Make your decision from experiences.</p>
+              <h1 className="page-title">KastoChha Battle - Head-to-Head Comparisons</h1>
+              <p className="page-sub">Whether it&apos;s InDrive vs Yango, Samsung vs iPhone camera, or Nepal vs UAE match, vote for who you support, decided by real votes, not one person&apos;s pick. Cast your vote and see which side Nepal backs.</p>
             </div>
             <div className="page-actions">
               <a className="btn-outline" href="/chat">Ask community</a>

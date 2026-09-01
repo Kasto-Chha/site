@@ -36,12 +36,12 @@ function pageNumber(value) {
 
 export async function generateMetadata({ searchParams }) {
   const page = pageNumber(searchParams?.page);
-  const suffix = page > 1 ? ` — page ${page}` : "";
+  const suffix = page > 1 ? `, page ${page}` : "";
 
   return {
-    title: `Discussions${suffix} - Real Nepali Experiences on Everything | KastoChha`,
+    title: `KastoChha Discussions - Real Nepali Opinions & Experiences${suffix}`,
     description:
-      "What Nepalis actually think. Ask a kasto chha, share your own experience, and read honest opinions on products, services and places across Nepal.",
+      "Ask, share, and explore honest opinions, real experiences and perspectives from Nepalis on products, services, places, and everything else that matters.",
     // Each page canonicals to itself. Pointing page 2 at page 1 would tell
     // Google the threads on it are duplicates of threads it has never seen.
     alternates: { canonical: page > 1 ? `/discussions?page=${page}` : "/discussions" },

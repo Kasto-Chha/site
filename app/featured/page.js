@@ -29,12 +29,12 @@ function pageNumber(value) {
 
 export async function generateMetadata({ searchParams }) {
   const page = pageNumber(searchParams?.page);
-  const suffix = page > 1 ? ` — page ${page}` : "";
+  const suffix = page > 1 ? `, page ${page}` : "";
 
   return {
-    title: `Featured${suffix} - KastoChha News`,
+    title: `KastoChha Featured - In-Depth Nepal Stories & Reviews${suffix}`,
     description:
-      "Editor's picks from KastoChha — the stories, topics and threads worth your time.",
+      "Deep dives, explainers, and honest reviews on the products and trends shaping everyday life in Nepal, grounded in real community experiences.",
     // Each page canonicals to itself. Pointing page 2 at page 1 would tell
     // Google the stories on it are duplicates of stories it has never seen —
     // same reasoning as /discussions.
@@ -86,9 +86,9 @@ export default async function FeaturedPage({ searchParams }) {
             <span className="np-dateline-right">Nepal&apos;s Curious Community Network</span>
           </div>
           <h1 className="np-nameplate">
-            Featured <em>KastoChha</em>
+            KastoChha Featured - In-Depth Stories &amp; Reviews
           </h1>
-          <p className="np-motto">Editor&apos;s picks — hand-curated, updated regularly.</p>
+          <p className="np-motto">Not just headlines. Real stories that go beyond the surface to uncover the topics worth knowing about. Editorial opinions derived from community insights.</p>
           <div className="np-rule-double" aria-hidden="true"></div>
         </div>
       </header>

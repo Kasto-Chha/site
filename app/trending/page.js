@@ -12,9 +12,9 @@ import { getTrendingTopics, getUserVotes } from "../../lib/supabase/queries";
 // The topics it links to keep "follow", so link equity still flows through
 // to the discussions underneath them.
 export const metadata = {
-  title: "Trending in Nepal - What Everyone's Talking About | KastoChha",
+  title: "KastoChha Trending - What Nepal is Talking About Right Now",
   description:
-    "The conversations Nepal is having right now. Vote on the topics of the moment and see where the country lands.",
+    "Vote on hot topics, debates, and questions Nepal is talking about, and see where Nepalis stand, updated live as more people vote.",
   alternates: { canonical: "/trending" }
 };
 
