@@ -4,7 +4,7 @@ import { permanentRedirect } from "next/navigation";
 import SiteNav from "../../components/SiteNav";
 import BattleSplit from "../../components/BattleSplit";
 import SharePanel from "../../components/SharePanel";
-import { getBattleById, getUserVotes } from "../../../lib/supabase/queries";
+import { getBattleById, getBattleBySlug, getUserVotes } from "../../../lib/supabase/queries";
 import { shareMetadata } from "../../../lib/share";
 import { NOINDEX_FOLLOW } from "../../../lib/seo/indexable";
 

@@ -146,9 +146,6 @@ export default async function FeaturedPermalink({ params }) {
                 />
               </div>
             ) : null}
-            <span className="fc-why">{story.why_text || "Featured"}</span>
-            <h2 className="story-headline">{story.title}</h2>
-            {story.description ? <p className="story-standfirst">{story.description}</p> : null}
 
             {/* The article itself. Stories written before the body column
                 existed (or curated purely as a link out) have none, so the
