@@ -4,6 +4,7 @@ import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 
 import TermsGate from "./components/TermsGate";
 import { jsonLd, organizationSchema, websiteSchema } from "../lib/seo/schema";
+import { clerkAppearance } from "../lib/clerkAppearance";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -60,7 +61,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={clerkAppearance}>
       <html lang="en">
         <body className={`${stixTwoText.variable} ${dmSans.variable} ${dmMono.variable}`}>
           {/* .fi elements (every card grid) start at opacity:0 and only reach

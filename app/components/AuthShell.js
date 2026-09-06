@@ -20,9 +20,9 @@ export default function AuthShell({ children }) {
             experiences, and community answers.
           </p>
           <ul className="auth-points">
-            <li>Real reviews from real Nepalis — no filter, no sponsored posts</li>
+            <li>Get instant KastoChha Answers from ChatBot.</li>
             <li>Vote in battles and trending debates</li>
-            <li>Ask anything. The community answers.</li>
+            <li>Ask, Share and Explore KastoChha Experiences.</li>
           </ul>
         </div>
         <div className="auth-brand-foot">Built for Nepalis, by Nepalis</div>
