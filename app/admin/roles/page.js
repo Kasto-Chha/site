@@ -16,7 +16,7 @@ export default async function AdminRolesPage() {
       <div className="admin-page">
         <h1>Admin access required</h1>
         <p>You need admin access to view this page.</p>
-        <a className="btn-outline" href="/sign-in">Sign in</a>
+        <a className="btn-outline" href="/sign-in?redirect_url=/admin/roles">Sign in</a>
       </div>
     );
   }
