@@ -1,7 +1,8 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 // Admin stays reachable at /admin directly (server-side role gate);
 // it is intentionally not linked from the nav.
@@ -20,9 +21,7 @@ export default function NavAuth() {
   return (
     <div className="nav-auth">
       <SignedOut>
-        <SignInButton mode="modal">
-          <button type="button" className="btn-outline">Sign in</button>
-        </SignInButton>
+        <Link href="/sign-in" className="btn-outline">Sign in</Link>
       </SignedOut>
       <SignedIn>
         <UserButton afterSignOutUrl={afterSignOutUrl} />
