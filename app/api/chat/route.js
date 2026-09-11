@@ -92,17 +92,20 @@ async function getCommunityContext(query) {
         .select("title, description, votes_yes, votes_no")
         .order("rank", { ascending: true })
         .limit(5),
-      // Wider than the 5 that reach the prompt: rank first, then take the best.
-      reviewQuery.limit(20)
+      // Ranked below by relevance; the budget-based loop decides how many
+      // actually make it into the prompt, so this just needs to be generous
+      // enough that a genuinely relevant review is never excluded at the
+      // database-query stage before it even gets considered.
+      reviewQuery.limit(50)
     ]);
 
     const lines = [];
 
-    // Rank by how much of the question each experience actually addresses, then
-    // keep the best few. Matching on any single word is deliberately generous —
-    // this is where that generosity gets paid back.
+    // Rank by how much of the question each experience actually addresses.
+    // Matching on any single word is deliberately generous — this is where
+    // that generosity gets paid back.
     const tokens2 = searchTokens(query);
-    const reviews = (reviewsRes.data || [])
+    const rankedReviews = (reviewsRes.data || [])
       .map((review) => ({
         review,
         score: relevanceScore(tokens2, {
@@ -110,20 +113,33 @@ async function getCommunityContext(query) {
           body: review.summary
         })
       }))
+      .filter((entry) => entry.score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         // Equal relevance: newer first.
         return new Date(b.review.created_at) - new Date(a.review.created_at);
-      })
-      .slice(0, 5)
-      .map((entry) => entry.review);
+      });
+
+    // Include every relevant review in full, not just a fixed top-N — capped
+    // by total characters sent, not by count, so a topic with many genuine
+    // matches isn't arbitrarily cut off at whatever number happened to be
+    // picked. A single review is never dropped just for being long: the
+    // budget only stops adding the *next* one once it's already spent.
+    const REVIEW_CONTEXT_BUDGET = 6000;
+    let budgetUsed = 0;
+    const reviews = [];
+    for (const entry of rankedReviews) {
+      if (budgetUsed >= REVIEW_CONTEXT_BUDGET && reviews.length > 0) break;
+      reviews.push(entry.review);
+      budgetUsed += (entry.review.summary || "").length;
+    }
 
     if (reviews.length) {
       lines.push("Recent community experiences matching the question:");
       for (const r of reviews) {
         const heading = r.topic || r.title || "";
         const verdict = r.verdict ? ` [${r.verdict}]` : "";
-        lines.push(`- ${heading}${verdict}: ${(r.summary || "").slice(0, 240)}`);
+        lines.push(`- ${heading}${verdict}: ${r.summary || ""}`);
       }
     }
 

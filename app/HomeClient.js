@@ -740,23 +740,6 @@ export default function HomeClient({
         </div>
       </section>
 
-      <section className="section section-alt" id="battle">
-        <div className="container">
-          <div className="sec-head">
-            <div className="sec-head-left">
-              <div className="sec-eyebrow">
-                <div className="sec-rule"></div>
-              </div>
-              <h2 className="sec-title">KastoChha <em>Battle</em></h2>
-              <p className="sec-sub">Vote on head-to-head battles: phones, cars, matches, and more, decided by real Nepali votes.</p>
-            </div>
-            <a href="/battle" className="sec-all">All battles -&gt;</a>
-          </div>
-
-          <BattleSplit battles={battles} myVotes={battleVotes} />
-        </div>
-      </section>
-
       <section className="section section-deep" id="discussions">
         <div className="container">
           <div className="sec-head">
@@ -835,6 +818,23 @@ export default function HomeClient({
               ))}
             </div>
           ) : null}
+        </div>
+      </section>
+
+      <section className="section section-alt" id="battle">
+        <div className="container">
+          <div className="sec-head">
+            <div className="sec-head-left">
+              <div className="sec-eyebrow">
+                <div className="sec-rule"></div>
+              </div>
+              <h2 className="sec-title">KastoChha <em>Battle</em></h2>
+              <p className="sec-sub">Vote on head-to-head battles: phones, cars, matches, and more, decided by real Nepali votes.</p>
+            </div>
+            <a href="/battle" className="sec-all">All battles -&gt;</a>
+          </div>
+
+          <BattleSplit battles={battles} myVotes={battleVotes} />
         </div>
       </section>
 

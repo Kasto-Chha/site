@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 import TermsGate from "./components/TermsGate";
 import { jsonLd, organizationSchema, websiteSchema } from "../lib/seo/schema";
@@ -43,13 +44,24 @@ export const metadata = {
       "Nepal's most curious community — real reviews, honest opinions, and answers on everything that matters in Nepal. Built for Nepalis, by Nepalis.",
     url: siteUrl,
     siteName: "KastoChha",
-    type: "website"
+    type: "website",
+    images: [
+      {
+        url: "/api/og?kicker=Nepal%27s+Independent+Community-Powered+Review+Platform&title=Nepal+ma+sabai+kura...+KastoChha%3F",
+        width: 1200,
+        height: 630,
+        alt: "KastoChha - Nepal's Curious Community Network"
+      }
+    ]
   },
   twitter: {
     card: "summary_large_image",
     title: "KastoChha - Nepal's Curious Community Network",
     description:
-      "Real reviews, honest opinions, and answers on everything that matters in Nepal."
+      "Real reviews, honest opinions, and answers on everything that matters in Nepal.",
+    images: [
+      "/api/og?kicker=Nepal%27s+Independent+Community-Powered+Review+Platform&title=Nepal+ma+sabai+kura...+KastoChha%3F"
+    ]
   }
 };
 
@@ -91,6 +103,9 @@ export default function RootLayout({ children }) {
           <TermsGate />
         </body>
       </html>
+      {/* Loaded after hydration, outside the render-blocking path — standard
+          placement per Next.js's own docs for this component. */}
+      <GoogleAnalytics gaId="G-YEHEX8EXWM" />
     </ClerkProvider>
   );
 }

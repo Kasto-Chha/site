@@ -15,6 +15,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
     "@clerk/nextjs": "6.39.4",
+    "@next/third-parties": "^16.3.4",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "@upstash/ratelimit": "^2.0.8",
