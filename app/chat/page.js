@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import ChatClient from "./ChatClient";
 import { TRIAL_LIMIT, trialRemaining } from "../../lib/chatTrial";
-import { QUOTA_WARN_AT, checkChatQuota } from "../../lib/chatQuota";
+import { QUOTA_WARN_AT, dailyLimit, peekChatQuota, userIdentity } from "../../lib/chatQuota";
 import { createServerSupabase } from "../../lib/supabase/server";
 import { getUserRole, hasRole, ROLE } from "../../lib/auth/roles";
 import { NOINDEX_FOLLOW } from "../../lib/seo/indexable";
@@ -31,7 +31,10 @@ function uniqueStrings(values) {
 async function chatQuotaLeft(userId) {
   if (!userId) return null;
 
-  const quota = await checkChatQuota(createServerSupabase(), userId);
+  // peek, not consume: rendering the page must never spend a question.
+  const quota = await peekChatQuota(createServerSupabase(), userIdentity(userId), {
+    limit: dailyLimit()
+  });
   if (quota.remaining === null || quota.remaining > QUOTA_WARN_AT) return null;
 
   const isAdmin = hasRole(await getUserRole(userId), ROLE.ADMIN);

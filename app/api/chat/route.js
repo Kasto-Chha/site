@@ -4,9 +4,16 @@ import { createServerSupabase } from "../../../lib/supabase/server";
 import { searchTokens, ilikeAnyClause, relevanceScore } from "../../../lib/search";
 import { geminiConfigured, geminiStream } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
+import { clientIp } from "../../../lib/clientIp";
 import { TRIAL_LIMIT, readTrialCount, trialCookieHeader } from "../../../lib/chatTrial";
 import { topicTitle } from "../../../lib/chatTopics";
-import { checkChatQuota, dailyLimit } from "../../../lib/chatQuota";
+import {
+  consumeChatQuota,
+  dailyLimit,
+  guestDailyLimit,
+  guestIdentity,
+  userIdentity
+} from "../../../lib/chatQuota";
 import { getUserRole, hasRole, ROLE } from "../../../lib/auth/roles";
 
 function jsonResponse(body, status, extraHeaders = {}) {
@@ -228,12 +235,12 @@ export async function POST(request) {
     );
   }
 
-  // Anonymous callers share no user id, so bucket them by client IP.
-  const clientIp =
-    (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-  const rl = await checkRateLimit("chat", userId || `anon:${clientIp}`);
+  // Anonymous callers share no user id, so bucket them by client address —
+  // read via lib/clientIp.js, which deliberately ignores the caller-supplied
+  // end of X-Forwarded-For so the bucket can't be rotated per request. Both
+  // ceilings below key off this, so it is read once.
+  const address = clientIp(request);
+  const rl = await checkRateLimit("chat", userId || `anon:${address}`);
   if (!rl.ok) {
     return jsonResponse(
       { error: "Dami! Ek chin pachi feri sodhnus — too many messages right now." },
@@ -242,9 +249,9 @@ export async function POST(request) {
     );
   }
 
-  // One client for the quota count and the message storage below. Constructing
+  // One client for the quota ledger and the message storage below. Constructing
   // it throws when the Supabase env vars are missing, which must not 500 the
-  // endpoint — chat degrades to unstored and unmetered instead.
+  // endpoint — chat degrades to unstored instead.
   let supabase = null;
   try {
     supabase = createServerSupabase();
@@ -252,40 +259,10 @@ export async function POST(request) {
     console.error("chat storage unavailable:", error?.message || error);
   }
 
-  // Volume quota for signed-in accounts, counted from chat_messages so it holds
-  // even when Upstash isn't configured and the window above waved everything
-  // through (rl.skipped). In that case this also covers the per-minute burst,
-  // which is why the extra count is only asked for then.
-  let dailyRemaining = null;
-  if (userId && supabase) {
-    const isAdmin = hasRole(await getUserRole(userId), ROLE.ADMIN);
-    const quota = await checkChatQuota(supabase, userId, {
-      checkBurst: Boolean(rl.skipped),
-      exempt: isAdmin
-    });
-
-    if (!quota.ok) {
-      const limit = dailyLimit();
-      return jsonResponse(
-        {
-          error:
-            quota.scope === "day"
-              ? `Aaja ko ${limit} questions sakiyo. Bholi feri sodhnus hai — limit har din reset huncha.`
-              : "Dami! Ek chin pachi feri sodhnus — too many messages right now.",
-          dailyLimit: limit,
-          limitReached: quota.scope === "day"
-        },
-        429,
-        {
-          "Retry-After": String(quota.retryAfter || 60),
-          "X-Chat-Daily-Remaining": String(quota.remaining ?? 0)
-        }
-      );
-    }
-
-    dailyRemaining = quota.remaining;
-  }
-
+  // Validate before spending anything. The burst window above deliberately
+  // charges for junk too — that is the flood guard — but the volume quota
+  // below reserves a question the moment it is consulted, and a malformed
+  // request must not cost the visitor one of theirs.
   const payload = await request.json().catch(() => ({}));
   const messages = normalizeMessages(payload.messages);
   const requestedTopicId = (payload.topicId || "").toString().trim();
@@ -296,6 +273,77 @@ export async function POST(request) {
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const query = lastUser?.content || "";
+
+  // Volume quota, counted in the chat_usage ledger (see lib/chatQuota.js). It
+  // covers guests as well as accounts, which matters because a guest's trial
+  // cookie costs nothing to clear. When Upstash waved the window above through
+  // (rl.skipped) this also covers the per-minute burst, which is why the extra
+  // count is only asked for then.
+  const isAdmin = userId ? hasRole(await getUserRole(userId), ROLE.ADMIN) : false;
+  const limit = userId ? dailyLimit() : guestDailyLimit();
+  const identity = userId ? userIdentity(userId) : guestIdentity(address);
+
+  const quota = supabase
+    ? await consumeChatQuota(supabase, identity, {
+        limit,
+        checkBurst: Boolean(rl.skipped),
+        exempt: isAdmin
+      })
+    : { ok: true, remaining: null, skipped: true };
+
+  if (!quota.ok) {
+    const spentForTheDay = quota.scope === "day";
+
+    // A guest who has spent the day has spent their *address's* allowance,
+    // which they may well be sharing with a whole office or campus. Telling
+    // them to come back tomorrow would be the wrong advice: an account gets
+    // them their own allowance right now.
+    const error = spentForTheDay
+      ? userId
+        ? `Aaja ko ${limit} questions sakiyo. Bholi feri sodhnus hai — limit har din reset huncha.`
+        : "Yo network bata aajako free questions sakiyo. Sign up garnus — free chha — ani continue garnus."
+      : "Dami! Ek chin pachi feri sodhnus — too many messages right now.";
+
+    return jsonResponse(
+      {
+        error,
+        dailyLimit: limit,
+        // Both lock the composer, but they say different things: one waits for
+        // the clock, the other is one sign-up away.
+        limitReached: spentForTheDay && Boolean(userId),
+        signUpRequired: spentForTheDay && !userId
+      },
+      429,
+      {
+        "Retry-After": String(quota.retryAfter || 60),
+        ...(userId ? { "X-Chat-Daily-Remaining": String(quota.remaining ?? 0) } : {})
+      }
+    );
+  }
+
+  // Nothing counted this request and nothing limited it either: the ledger is
+  // unreachable AND Upstash is absent. A signed-in account is still bounded —
+  // it is one identity, and the outage is visible in the logs — but a guest at
+  // that point has no ceiling of any kind beyond a cookie they can delete, so
+  // this is the one case where chat closes rather than risking an open tap on
+  // a paid model.
+  if (!userId && quota.skipped && rl.skipped) {
+    console.error("chat: no limiter available, refusing guest traffic");
+    return jsonResponse(
+      {
+        // signUpRequired locks the composer client-side, so this must point at
+        // the door that is actually open: a signed-in account can be counted,
+        // and is served even while the ledger is down.
+        error: "Assistant abhi ekdam busy chha. Sign up garnus — free chha — ani continue garnus.",
+        signUpRequired: true,
+        trialLimit: TRIAL_LIMIT
+      },
+      503,
+      { "Retry-After": "60" }
+    );
+  }
+
+  const dailyRemaining = quota.remaining;
 
   // File the question under a conversation (best effort — a storage failure
   // must never cost the visitor their answer). The id goes back in a header so
@@ -410,10 +458,11 @@ export async function POST(request) {
       // Guests get this too: it is how their follow-ups stay in one thread for
       // the session, even though they have no sidebar to see it in.
       ...(topicId ? { "X-Chat-Topic-Id": topicId } : {}),
-      // Counted before this message was stored, so spend it here — the client
-      // shows a warning as the quota runs down rather than only at zero.
+      // Already net of this question: the ledger reserved it when the quota was
+      // consulted, so this is what will be left afterwards. The client shows a
+      // warning as the number runs down rather than only at zero.
       ...(dailyRemaining !== null
-        ? { "X-Chat-Daily-Remaining": String(Math.max(0, dailyRemaining - 1)) }
+        ? { "X-Chat-Daily-Remaining": String(Math.max(0, dailyRemaining)) }
         : {})
     }
   });

@@ -126,10 +126,22 @@ create table if not exists chat_messages (
   created_at timestamptz not null default now()
 );
 
+-- Assistant usage, counted apart from the conversation it produced. Deleting
+-- your chat history must not also delete the record that you used your quota,
+-- and a guest has no user_id to count against — so this is keyed by an opaque
+-- identity ('user:<clerk id>' or 'ip:<sha256>') and cascaded from nothing. See
+-- supabase/migrations/0013_chat_usage_ledger.sql for the full rationale.
+create table if not exists chat_usage (
+  id uuid primary key default gen_random_uuid(),
+  identity text not null,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_chat_topics_user on chat_topics(user_id, last_message_at desc);
 create index if not exists idx_chat_topics_created on chat_topics(created_at desc);
 create index if not exists idx_chat_messages_topic on chat_messages(topic_id, created_at);
 create index if not exists idx_chat_messages_user on chat_messages(user_id, created_at desc);
+create index if not exists idx_chat_usage_identity on chat_usage(identity, created_at desc);
 
 -- Indexed title search for the sidebar; falls back to a scan without pg_trgm.
 do $$
@@ -234,7 +246,73 @@ alter table public.questions       enable row level security;
 alter table public.author_profiles enable row level security;
 alter table public.chat_topics     enable row level security;
 alter table public.chat_messages   enable row level security;
+alter table public.chat_usage      enable row level security;
 alter table public.user_votes      enable row level security;
+
+-- Check both assistant windows and reserve a slot, atomically. The advisory
+-- lock serializes callers sharing an identity, so concurrent requests cannot
+-- all read the same count and all find room. Full rationale, including why the
+-- quota is not counted from chat_messages any more, in migration 0013.
+create or replace function public.consume_chat_quota(
+  p_identity text,
+  p_day_limit int,
+  p_burst_limit int,
+  p_check_burst boolean default false
+)
+returns table (allowed boolean, remaining int, scope text, retry_after int)
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_day_used int;
+  v_burst_used int;
+  v_oldest timestamptz;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(p_identity, 0));
+
+  -- Rows outside the widest window can never change an answer again.
+  delete from public.chat_usage
+   where identity = p_identity
+     and created_at < now() - interval '24 hours';
+
+  select count(*) into v_day_used
+    from public.chat_usage where identity = p_identity;
+
+  if v_day_used >= p_day_limit then
+    select min(created_at) into v_oldest
+      from public.chat_usage where identity = p_identity;
+    return query select false, 0, 'day'::text,
+      greatest(1, ceil(extract(epoch from
+        (v_oldest + interval '24 hours' - now())))::int);
+    return;
+  end if;
+
+  if p_check_burst then
+    select count(*), min(created_at) into v_burst_used, v_oldest
+      from public.chat_usage
+     where identity = p_identity
+       and created_at >= now() - interval '1 minute';
+
+    if v_burst_used >= p_burst_limit then
+      return query select false, p_day_limit - v_day_used, 'burst'::text,
+        greatest(1, ceil(extract(epoch from
+          (v_oldest + interval '1 minute' - now())))::int);
+      return;
+    end if;
+  end if;
+
+  insert into public.chat_usage (identity) values (p_identity);
+  return query select true, p_day_limit - v_day_used - 1, null::text, 0;
+end;
+$$;
+
+-- The limits are arguments, so anyone able to call this could simply ask for a
+-- bigger one. Same posture as the vote counters above: revoked from public,
+-- granted only to the service role, so it is reachable from our server and not
+-- over /rest/v1/rpc with the publishable key.
+revoke all on function public.consume_chat_quota(text, int, int, boolean) from public;
+grant execute on function public.consume_chat_quota(text, int, int, boolean) to service_role;
 
 -- Atomic vote counters (see migration 0003 for details). p_old is the user's
 -- previous choice and p_new their new one, so a single statement can move both
