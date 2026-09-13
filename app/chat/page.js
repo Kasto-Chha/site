@@ -2,10 +2,12 @@ import { auth } from "@clerk/nextjs/server";
 
 import ChatClient from "./ChatClient";
 import { TRIAL_LIMIT, trialRemaining } from "../../lib/chatTrial";
+
 import { QUOTA_WARN_AT, dailyLimit, peekChatQuota, userIdentity } from "../../lib/chatQuota";
 import { createServerSupabase } from "../../lib/supabase/server";
 import { getUserRole, hasRole, ROLE } from "../../lib/auth/roles";
 import { NOINDEX_FOLLOW } from "../../lib/seo/indexable";
+import { HISTORY_PAGE_SIZE } from "../../lib/chatTopics";
 import {
   getRecentChatTopics,
   getRecentQuestions,
@@ -50,7 +52,7 @@ export default async function ChatPage() {
       getReviews(8),
       getRecentChatTopics(8),
       getRecentQuestions(6),
-      getUserChatTopics(userId, 40),
+      getUserChatTopics(userId, HISTORY_PAGE_SIZE),
       chatQuotaLeft(userId)
     ]);
 
@@ -65,6 +67,13 @@ export default async function ChatPage() {
       message_count: item.message_count || 0,
       last_message_at: item.last_message_at || item.created_at
     }));
+
+  // Where the sidebar's infinite scroll picks up. A short first page is the
+  // whole history, so there is nothing to continue from. Taken from `topics`
+  // rather than `userTopics` so a row dropped by the filter above can't leave
+  // a cursor pointing at a conversation the client never received.
+  const topicCursor =
+    topics.length === HISTORY_PAGE_SIZE ? topics[topics.length - 1].last_message_at : null;
   // Questions people actually posted lead the rail — the whole point of "Ask a
   // KastoChha" is that someone else sees the question — with trending polls and
   // recent experiences filling the rest out.
@@ -114,6 +123,7 @@ export default async function ChatPage() {
   return (
     <ChatClient
       topics={topics}
+      initialTopicCursor={topicCursor}
       recent={recent}
       prompts={prompts}
       assistantFallback={assistantFallback}

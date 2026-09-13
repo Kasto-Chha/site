@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 const STUBS = {
   "@clerk/nextjs/server": "./stubs/clerk.mjs",
   "next/headers": "./stubs/next-headers.mjs",
+  "next/cache": "./stubs/next-cache.mjs",
   "@upstash/ratelimit": "./stubs/upstash-ratelimit.mjs",
   "@upstash/redis": "./stubs/upstash-redis.mjs"
 };

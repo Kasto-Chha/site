@@ -1612,6 +1612,22 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	text-transform:uppercase;color:var(--muted2);padding:0 2px;
 }
 .chat-history-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px}
+/* Foot of the history list. It is both the "there is more" hint and the
+   element the IntersectionObserver watches, so it needs real height — a
+   zero-height sentinel inside a scroll container never reliably intersects. */
+.chat-history-more{
+	display:flex;align-items:center;justify-content:center;
+	min-height:40px;padding:10px 2px 2px;
+}
+.chat-history-more-label{
+	font-family:var(--font-mono), monospace;font-size:.55rem;letter-spacing:1.2px;
+	text-transform:uppercase;color:var(--muted2);
+}
+.chat-history-retry{
+	background:none;border:none;cursor:pointer;padding:4px 6px;
+	font-family:var(--font-mono), monospace;font-size:.55rem;letter-spacing:1.2px;
+	text-transform:uppercase;color:var(--red);
+}
 .chat-history-item{display:flex;align-items:stretch;gap:2px;border-radius:9px;transition:background .14s}
 .chat-history-item:hover{background:var(--card)}
 /* The conversation currently on screen — follow-ups append to this one. */

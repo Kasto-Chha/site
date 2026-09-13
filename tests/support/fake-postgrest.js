@@ -249,8 +249,43 @@ function matches(row, params) {
     if (op === "lte" && !(cell <= value)) return false;
     if (op === "gt" && !(cell > value)) return false;
     if (op === "lt" && !(cell < value)) return false;
+    if (op === "is" && !isMatch(cell, value)) return false;
+    if (op === "ilike" && !ilikeMatch(cell, value)) return false;
+    if (op === "in" && !inMatch(cell, value)) return false;
   }
   return true;
+}
+
+function isMatch(cell, value) {
+  if (value === "null") return cell === null || cell === undefined;
+  if (value === "true") return cell === true;
+  if (value === "false") return cell === false;
+  return String(cell) === value;
+}
+
+// PostgREST's ilike. % is any run of characters and _ is any single one, and
+// PostgREST additionally rewrites * to % before the query reaches Postgres —
+// so * is a third wildcard that a caller-supplied term has to account for.
+// Modelling that here is the point: a substring check would quietly pass a
+// term that matches everything in production.
+function ilikeMatch(cell, pattern) {
+  if (cell === null || cell === undefined) return false;
+  const escaped = pattern
+    .replace(/\*/g, "%")
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/%/g, "[\\s\\S]*")
+    .replace(/_/g, "[\\s\\S]");
+  return new RegExp(`^${escaped}$`, "i").test(String(cell));
+}
+
+// in.(a,b,c) — PostgREST quotes values that need it.
+function inMatch(cell, value) {
+  const inner = value.replace(/^\(/, "").replace(/\)$/, "");
+  const items = inner
+    .split(",")
+    .map((item) => item.trim().replace(/^"(.*)"$/, "$1"))
+    .filter(Boolean);
+  return items.includes(String(cell));
 }
 
 function send(res, status, payload) {

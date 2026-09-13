@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import ChatText from "./ChatText";
 import { formatTimeAgo } from "../../lib/topics";
-import { TOPIC_TITLE_MAX, topicTitle } from "../../lib/chatTopics";
+import { TOPIC_TITLE_MAX, groupByDate, mergeTopics, topicTitle } from "../../lib/chatTopics";
 
 // Starter topics, not full questions — the empty state tells people to name a
 // thing and the assistant gives the verdict. The chip shows the bare topic but
@@ -22,47 +22,6 @@ const SUGGESTIONS = [
 
 const asQuestion = (topic) => `${topic} kasto chha?`;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Conversations are stored per user and listed newest-active first; the sidebar
-// splits that one ordered list into the usual date buckets so a long history
-// stays scannable.
-function groupByDate(items) {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const buckets = [
-    { label: "Today", items: [] },
-    { label: "Yesterday", items: [] },
-    { label: "Previous 7 days", items: [] },
-    { label: "Older", items: [] }
-  ];
-
-  for (const item of items) {
-    const at = new Date(item.last_message_at || 0).getTime();
-    if (!at || Number.isNaN(at)) buckets[3].items.push(item);
-    else if (at >= startOfToday) buckets[0].items.push(item);
-    else if (at >= startOfToday - DAY_MS) buckets[1].items.push(item);
-    else if (at >= startOfToday - 7 * DAY_MS) buckets[2].items.push(item);
-    else buckets[3].items.push(item);
-  }
-
-  return buckets.filter((bucket) => bucket.items.length);
-}
-
-// Union by id, newest activity first. Search can surface conversations older
-// than the page's first slice, so results are folded into the same list rather
-// than kept in a second one that rename/delete would have to stay in sync with.
-function mergeTopics(current, incoming) {
-  const byId = new Map(current.map((topic) => [topic.id, topic]));
-  for (const row of incoming) {
-    if (!row?.id) continue;
-    byId.set(row.id, { ...byId.get(row.id), ...row });
-  }
-  return Array.from(byId.values()).sort(
-    (a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
-  );
-}
-
 function describeTopic(topic) {
   const parts = [];
   if (topic.last_message_at) parts.push(formatTimeAgo(topic.last_message_at));
@@ -74,6 +33,9 @@ function describeTopic(topic) {
 
 export default function ChatClient({
   topics: initialTopics = [],
+  // Where the next page of conversations starts, or null when the first page
+  // was already all of them. See the sidebar's infinite scroll below.
+  initialTopicCursor = null,
   recent = [],
   prompts = [],
   // Whether the server resolved a signed-in user for this request. See the
@@ -114,6 +76,17 @@ export default function ChatClient({
   // Ids returned by the server for the current search, or null while the
   // search hasn't answered yet (we fall back to filtering what's loaded).
   const [matchIds, setMatchIds] = useState(null);
+  // Paging state for the history list. A null cursor means every conversation
+  // this user has is already loaded.
+  const [topicCursor, setTopicCursor] = useState(initialTopicCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  // The marker at the end of the history list, held as state rather than a ref
+  // so the observer below is rebuilt when it mounts and unmounts. It comes and
+  // goes — it is not rendered while searching — and a ref would not re-run the
+  // effect, leaving a freshly remounted sentinel unwatched after a search is
+  // cleared.
+  const [loadMoreSentinel, setLoadMoreSentinel] = useState(null);
   const [renamingId, setRenamingId] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [clearing, setClearing] = useState(false);
@@ -158,6 +131,8 @@ export default function ChatClient({
   // state, so the conversation it should append to is read through a ref.
   const activeIdRef = useRef("");
   const skipRenameBlurRef = useRef(false);
+  // The sidebar's scrolling element.
+  const sideScrollRef = useRef(null);
 
   const nextId = () => {
     idRef.current += 1;
@@ -403,6 +378,69 @@ export default function ChatClient({
     };
   }, [search, signedIn]);
 
+  // Load the next page of conversations.
+  //
+  // The in-flight guard is a ref, not the loadingMore state: the observer
+  // below can fire several times before React has re-rendered with the new
+  // state, and each of those would start its own request from the same cursor
+  // and append the same page twice.
+  const loadingMoreRef = useRef(false);
+
+  const loadMoreTopics = useCallback(async () => {
+    if (loadingMoreRef.current || !topicCursor || !signedIn) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setHistoryError("");
+
+    try {
+      const response = await fetch(
+        `/api/chat/history?cursor=${encodeURIComponent(topicCursor)}`,
+        { credentials: "include" }
+      );
+      if (!response.ok) throw new Error(`history ${response.status}`);
+
+      const data = await response.json().catch(() => ({}));
+      const rows = Array.isArray(data.topics) ? data.topics : [];
+
+      setTopics((prev) => mergeTopics(prev, rows));
+      // Trust the server's own answer about whether more remain. Inferring it
+      // from rows.length here would have to duplicate the page size, and the
+      // two would drift.
+      setTopicCursor(data.nextCursor || null);
+    } catch {
+      // Leave the cursor alone so the next scroll retries from the same place.
+      setHistoryError("Couldn't load older chats.");
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [topicCursor, signedIn]);
+
+  // Pull the next page in as the bottom of the list comes into view, so the
+  // sidebar scrolls through everything the user has rather than stopping at
+  // whatever the first page happened to contain.
+  useEffect(() => {
+    // No sentinel while searching (the server returns the whole match set) or
+    // once every conversation is loaded.
+    if (!loadMoreSentinel || !topicCursor) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMoreTopics();
+      },
+      {
+        root: sideScrollRef.current,
+        // Start fetching a little before the sentinel is actually on screen,
+        // so a steady scroll doesn't stall at the bottom waiting for it.
+        rootMargin: "300px 0px"
+      }
+    );
+
+    observer.observe(loadMoreSentinel);
+    return () => observer.disconnect();
+  }, [loadMoreSentinel, topicCursor, loadMoreTopics]);
+
   const handleSubmit = (event) => {
     event.preventDefault();
     send(input);
@@ -519,8 +557,12 @@ export default function ChatClient({
   const clearHistory = async () => {
     if (clearing || topics.length === 0) return;
     const previous = topics;
+    const previousCursor = topicCursor;
     setClearing(true);
     setTopics([]);
+    // Nothing is left to page through. Without this the sentinel would still
+    // be live and immediately pull the just-deleted pages back onto the screen.
+    setTopicCursor(null);
     setMessages([]);
     setActiveTopic("");
     try {
@@ -530,9 +572,13 @@ export default function ChatClient({
         credentials: "include",
         body: JSON.stringify({ all: true })
       });
-      if (!response.ok) setTopics(previous);
+      if (!response.ok) {
+        setTopics(previous);
+        setTopicCursor(previousCursor);
+      }
     } catch {
       setTopics(previous);
+      setTopicCursor(previousCursor);
     } finally {
       setClearing(false);
     }
@@ -588,7 +634,7 @@ export default function ChatClient({
           </button>
         </div>
 
-        <div className="chat-side-scroll">
+        <div className="chat-side-scroll" ref={sideScrollRef}>
           {!signedIn ? (
             <div className="chat-side-block">
               <div className="chat-signin-card">
@@ -722,6 +768,27 @@ export default function ChatClient({
                   </div>
                 ))
               )}
+
+              {/* Paging only applies to the full list — a search returns its
+                  whole match set in one response, so there is nothing after
+                  it to fetch. */}
+              {!term && topicCursor ? (
+                <div className="chat-history-more" ref={setLoadMoreSentinel}>
+                  {historyError ? (
+                    <button
+                      type="button"
+                      className="chat-history-retry"
+                      onClick={loadMoreTopics}
+                    >
+                      {historyError} Retry
+                    </button>
+                  ) : (
+                    <span className="chat-history-more-label">
+                      {loadingMore ? "Loading older chats…" : "Scroll for older chats"}
+                    </span>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : null}
 

@@ -1,8 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
-import { getChatTopicMessages, searchUserChatTopics } from "../../../../lib/supabase/queries";
-import { topicTitle } from "../../../../lib/chatTopics";
+import {
+  getChatTopicMessages,
+  getUserChatTopics,
+  searchUserChatTopics
+} from "../../../../lib/supabase/queries";
+import { HISTORY_PAGE_SIZE, topicTitle } from "../../../../lib/chatTopics";
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -16,7 +20,8 @@ export const dynamic = "force-dynamic";
 // A signed-in user's own chat conversations.
 //
 //   GET    ?topicId=<id>   -> every turn in that conversation, oldest first
-//   GET    ?q=<term>       -> their conversations whose title matches
+//   GET    ?q=<term>       -> their conversations matching by title or content
+//   GET    ?cursor=<ts>    -> the next page of conversations, newest first
 //   PATCH  { id, title }   -> rename a conversation
 //   DELETE { id }          -> delete a conversation and its messages
 //   DELETE { all: true }   -> delete all of them
@@ -24,6 +29,11 @@ export const dynamic = "force-dynamic";
 // Every one of these is scoped to the caller's own user_id, so a guessed or
 // replayed topic id belonging to someone else reads and writes nothing — even
 // though the service-role client we use here bypasses RLS.
+
+// An explicit ?limit= is allowed but capped, so a caller cannot ask for one
+// page containing every conversation they have ever had.
+const MAX_PAGE_SIZE = 100;
+
 export async function GET(request) {
   const { userId } = await auth();
   if (!userId) {
@@ -33,6 +43,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const topicId = (searchParams.get("topicId") || "").trim();
   const term = (searchParams.get("q") || "").trim();
+  const cursor = (searchParams.get("cursor") || "").trim();
 
   if (topicId) {
     const messages = await getChatTopicMessages(topicId, userId);
@@ -44,7 +55,29 @@ export async function GET(request) {
     return jsonResponse({ topics });
   }
 
-  return jsonResponse({ error: "Provide a topicId or a q search term." }, 400);
+  // Paging through everything the user has. A cursor is the last_message_at of
+  // the oldest row they already hold; its absence just means the first page,
+  // so "load older" and "reload the list" are the same request.
+  const requested = Number.parseInt(searchParams.get("limit") || "", 10);
+  const limit = Number.isInteger(requested)
+    ? Math.min(Math.max(requested, 1), MAX_PAGE_SIZE)
+    : HISTORY_PAGE_SIZE;
+
+  // A cursor that isn't a date would be dropped silently by PostgREST and
+  // quietly hand back page one forever, which reads as an infinite scroll that
+  // never advances. Rejecting it makes that a visible error instead.
+  if (cursor && Number.isNaN(Date.parse(cursor))) {
+    return jsonResponse({ error: "cursor must be an ISO timestamp." }, 400);
+  }
+
+  const topics = await getUserChatTopics(userId, limit, { before: cursor || undefined });
+
+  // A short page means there is nothing after it. A full one carries the
+  // cursor to continue from, so the client never has to guess.
+  const nextCursor =
+    topics.length === limit ? topics[topics.length - 1]?.last_message_at || null : null;
+
+  return jsonResponse({ topics, nextCursor });
 }
 
 export async function PATCH(request) {
