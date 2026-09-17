@@ -2,6 +2,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import TermsGate from "./components/TermsGate";
 import { jsonLd, organizationSchema, websiteSchema } from "../lib/seo/schema";
@@ -106,6 +107,7 @@ export default function RootLayout({ children }) {
       {/* Loaded after hydration, outside the render-blocking path — standard
           placement per Next.js's own docs for this component. */}
       <GoogleAnalytics gaId="G-YEHEX8EXWM" />
+      <Analytics />
     </ClerkProvider>
   );
 }
