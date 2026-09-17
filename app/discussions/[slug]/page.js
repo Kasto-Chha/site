@@ -46,7 +46,15 @@ async function resolveSlug(param) {
   const raw = decodeURIComponent(param || "");
 
   if (!UUID_RE.test(raw)) {
-    return { slug: raw, redirect: false };
+    // Stored slugs are always lowercase (topicSlug() in lib/slug.js forces
+    // this), but a visitor can arrive with different casing — typed from
+    // memory, or retyped by an external source instead of copy-pasted. A
+    // case-sensitive match against the database would silently 404 on a
+    // thread that genuinely exists. Canonicalizing here fixes the lookup;
+    // redirecting (like the uuid case below) keeps one single URL as the
+    // real one rather than leaving mixed-case duplicates un-redirected.
+    const canonical = raw.toLowerCase();
+    return { slug: canonical, redirect: canonical !== raw };
   }
 
   // An old per-experience link, still live in shared posts and old messages.
