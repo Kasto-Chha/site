@@ -72,6 +72,14 @@ export default function ReelsRail({ reels = [] }) {
                   sizes="224px"
                   style={{ objectFit: "cover" }}
                   priority={index === 0}
+                  // These thumbnails are already small and proxied through
+                  // /api/embeds/thumb, which does its own 24h edge caching.
+                  // Routing them through Vercel's optimizer too was burning
+                  // through the Hobby plan's monthly transformation quota —
+                  // a handful of reels alone accounted for ~300 of the ~1,000
+                  // allowed. Skipping optimization here has little real cost:
+                  // there's minimal size to save on an image this small.
+                  unoptimized
                 />
               ) : null}
               <span className="reel-tag">{reel.tag}</span>

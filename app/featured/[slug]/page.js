@@ -5,7 +5,8 @@ import { permanentRedirect } from "next/navigation";
 
 import {
   getFeaturedStoryById,
-  getFeaturedStoryBySlug
+  getFeaturedStoryBySlug,
+  getFeaturedStoryByOldSlug
 } from "../../../lib/supabase/queries";
 import { shareMetadata } from "../../../lib/share";
 import { storyParagraphs } from "../../../lib/featured";
@@ -34,7 +35,17 @@ async function resolveStory(param) {
   const raw = decodeURIComponent(param || "");
 
   if (!UUID_RE.test(raw)) {
-    return { story: await getFeaturedStoryBySlug(raw), redirect: false };
+    const story = await getFeaturedStoryBySlug(raw);
+    if (story) return { story, redirect: false };
+
+    // Not a story's current slug — check whether it's a slug the story used
+    // to have before being renamed. If so, send the visitor to the current
+    // URL instead of a dead "not found" page. Confirmed real: renaming
+    // /featured/which-is-the-best-ride-sharing-app-in-nepal broke that link
+    // entirely with no way back to the article.
+    const history = await getFeaturedStoryByOldSlug(raw);
+    const renamed = history?.featured_stories || null;
+    return { story: renamed, redirect: Boolean(renamed?.slug) };
   }
 
   const story = await getFeaturedStoryById(raw);
