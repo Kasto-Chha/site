@@ -56,7 +56,7 @@ export class FakePostgrest {
   }
 
   // The Postgres side of consume_chat_quota, kept deliberately close to
-  // supabase/migrations/0013_chat_usage_ledger.sql. The advisory lock has no
+  // supabase/migrations/0014_chat_usage_ledger.sql. The advisory lock has no
   // analogue here — node runs this handler to completion without interleaving,
   // which is exactly the serialization the lock buys in Postgres.
   #consumeChatQuota(args) {

@@ -3,7 +3,7 @@
 // The chat tests elsewhere run a JavaScript re-implementation of
 // consume_chat_quota, which proves the route uses it correctly but would
 // happily agree with a typo in the migration. PGlite is Postgres compiled to
-// WASM, so this file runs supabase/migrations/0013_chat_usage_ledger.sql as
+// WASM, so this file runs supabase/migrations/0014_chat_usage_ledger.sql as
 // written and checks the function's actual behaviour.
 //
 // What it cannot check is concurrency: PGlite is a single connection, so the
@@ -44,7 +44,7 @@ before(async () => {
   `);
 
   const sql = await readFile(
-    new URL("../supabase/migrations/0013_chat_usage_ledger.sql", import.meta.url),
+    new URL("../supabase/migrations/0014_chat_usage_ledger.sql", import.meta.url),
     "utf8"
   );
   // service_role does not exist in a bare Postgres; the grant is Supabase's.
@@ -262,7 +262,7 @@ test("the function takes a per-identity advisory lock", async () => {
 
 test("the migration is safe to replay", async () => {
   const sql = await readFile(
-    new URL("../supabase/migrations/0013_chat_usage_ledger.sql", import.meta.url),
+    new URL("../supabase/migrations/0014_chat_usage_ledger.sql", import.meta.url),
     "utf8"
   );
   await db.exec(sql);
