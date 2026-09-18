@@ -399,6 +399,23 @@ export default function HomeClient({
     }
   };
 
+  // Lets an external link (the embeddable badge widget on a business's own
+  // site — see public/badge-widget.js) open straight into the share flow
+  // with that business's name already filled in, e.g.
+  // kastochhanepal.com/?share=XYZ+Trekking. Read directly from
+  // window.location rather than useSearchParams, since this only needs to
+  // run once on the client after mount, not react to further navigation.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prefill = params.get("share");
+    if (!prefill || !prefill.trim()) return;
+    answerQuestion({ title: prefill.trim() });
+    // Deliberately once-on-mount only, reading whatever the URL was when the
+    // page first loaded — not meant to react to answerQuestion being
+    // recreated on every render, which is what including it would trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // One request path for both tabs. Errors are shown inline in the modal now:
   // window.alert() sat behind the modal backdrop on some mobile browsers, and a
   // 401 used to hard-navigate to /sign-in, throwing away whatever had just been
