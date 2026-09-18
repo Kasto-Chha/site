@@ -9,7 +9,6 @@ import { getUserRole, hasRole, ROLE } from "../../lib/auth/roles";
 import { NOINDEX_FOLLOW } from "../../lib/seo/indexable";
 import { HISTORY_PAGE_SIZE } from "../../lib/chatTopics";
 import {
-  getRecentChatTopics,
   getRecentQuestions,
   getReviews,
   getTrendingTopics,
@@ -46,17 +45,15 @@ async function chatQuotaLeft(userId) {
 export default async function ChatPage() {
   const { userId } = await auth();
 
-  const [trending, reviews, recentTopics, questions, userTopics, dailyLeft] =
+  const [trending, reviews, questions, userTopics, dailyLeft] =
     await Promise.all([
       getTrendingTopics(),
       getReviews(8),
-      getRecentChatTopics(8),
       getRecentQuestions(6),
       getUserChatTopics(userId, HISTORY_PAGE_SIZE),
       chatQuotaLeft(userId)
     ]);
 
-  const recent = uniqueStrings(recentTopics.map((item) => item.title));
   // The user's own conversations, newest activity first. Full rows so the
   // sidebar can group them by date, reopen, rename and delete them.
   const topics = userTopics
@@ -75,13 +72,14 @@ export default async function ChatPage() {
   const topicCursor =
     topics.length === HISTORY_PAGE_SIZE ? topics[topics.length - 1].last_message_at : null;
   // Questions people actually posted lead the rail — the whole point of "Ask a
-  // KastoChha" is that someone else sees the question — with trending polls and
-  // recent experiences filling the rest out.
+  // KastoChha" is that someone else sees the question. Trending polls and
+  // shared-experience topics used to pad this out too, but neither is
+  // actually a question, and doing so contradicted the section's own
+  // "Community is asking" label. Same source the homepage's own "Community
+  // is Asking" section uses (getRecentQuestions), just capped tighter here.
   const prompts = uniqueStrings([
-    ...questions.map((item) => item.question),
-    ...trending.map((topic) => topic.title),
-    ...reviews.map((review) => review.topic || review.title)
-  ]).slice(0, 6);
+    ...questions.map((item) => item.question)
+  ]).slice(0, 4);
 
   const fallbackCards = [];
   if (trending[0]) {
@@ -102,13 +100,6 @@ export default async function ChatPage() {
       sub: `net ${score >= 0 ? "+" : ""}${score} community score`
     });
   }
-  if (recent[0]) {
-    fallbackCards.push({
-      title: "Recent question",
-      value: recent[0],
-      sub: "Latest community query"
-    });
-  }
 
   const assistantFallback = {
     summary: fallbackCards.length
@@ -124,7 +115,6 @@ export default async function ChatPage() {
     <ChatClient
       topics={topics}
       initialTopicCursor={topicCursor}
-      recent={recent}
       prompts={prompts}
       assistantFallback={assistantFallback}
       // auth() has already run here, so the first paint can show the signed-in

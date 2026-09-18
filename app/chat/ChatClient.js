@@ -36,7 +36,6 @@ export default function ChatClient({
   // Where the next page of conversations starts, or null when the first page
   // was already all of them. See the sidebar's infinite scroll below.
   initialTopicCursor = null,
-  recent = [],
   prompts = [],
   // Whether the server resolved a signed-in user for this request. See the
   // `signedIn` note below for why the client can't just ask Clerk.
@@ -584,9 +583,9 @@ export default function ChatClient({
     }
   };
 
-  const railPrompts = Array.from(new Set([...prompts, ...recent]))
+  const railPrompts = Array.from(new Set(prompts))
     .filter(Boolean)
-    .slice(0, 6);
+    .slice(0, 4);
 
   const term = search.trim().toLowerCase();
   const visibleTopics = !term

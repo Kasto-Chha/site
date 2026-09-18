@@ -1585,9 +1585,21 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .chat-side-scroll::-webkit-scrollbar{width:8px}
 .chat-side-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 .chat-side-scroll::-webkit-scrollbar-track{background:transparent}
+/* Bounded to comfortably fit up to 4 items at their max (2-line, ~56px each)
+   height, so this section can never grow large enough to push "Your Chats"
+   out of room or get clipped by .chat-app's fixed 100vh + overflow: hidden —
+   that's what caused items to vanish with no way to reach them. min() rather
+   than a flat px value: on a short screen (a small phone in landscape, a
+   short browser window), 280px flat would still eat a large share of the
+   whole sidebar and crowd out the chat list even at this reduced size; 35vh
+   scales the cap down with the actual viewport instead, so it stays a small,
+   predictable fraction of the space on any screen, not just tall ones.
+   Deliberately not scrollable itself: a fixed, predictable size here, with
+   the chat list above as the only part of the sidebar that scrolls. */
 .chat-side-pinned{
 	flex-shrink:0;display:flex;flex-direction:column;gap:8px;
 	padding-top:14px;border-top:1px solid var(--border);
+	max-height:min(280px, 35vh);overflow:hidden;
 }
 .chat-side-block{display:flex;flex-direction:column;gap:8px}
 .chat-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
