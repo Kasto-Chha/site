@@ -15,6 +15,11 @@
  *   <script src="https://www.kastochhanepal.com/badge-widget.js"
  *           data-business="XYZ Trekking Agency"></script>
  *
+ * Only shows for a business name on the approved allowlist — see
+ * app/api/badge/check/route.js and the badge_businesses table. Approving a
+ * new business is a single row added in Supabase's own table editor; the
+ * widget itself never needs to change or redeploy.
+ *
  * Vanilla JS, no dependencies, self-contained styles scoped under a "kc-"
  * prefix — this has to work correctly on any host site regardless of what
  * it's built with, without colliding with that site's own CSS.
@@ -125,9 +130,30 @@
     document.body.appendChild(overlay);
   }
 
+  // Confirms this business is on the approved list (see
+  // app/api/badge/check/route.js and the badge_businesses table) before
+  // showing anything at all. Without this, the widget would respond to any
+  // data-business value on any page — including a plain test file — with no
+  // way to know it's happening or which names it's actually meant to serve.
+  // Fails silently either way: a network error or a "not approved" result
+  // both just mean nothing renders, not a visible error on someone's site.
+  function checkAndMount() {
+    fetch(SITE_URL + "/api/badge/check?business=" + encodeURIComponent(business))
+      .then(function (res) {
+        return res.json();
+      })
+      .then(function (data) {
+        if (data && data.allowed) mount();
+      })
+      .catch(function () {
+        // Network error, CORS issue, endpoint down — do not show an
+        // unverified badge just because the check itself failed.
+      });
+  }
+
   if (document.body) {
-    mount();
+    checkAndMount();
   } else {
-    document.addEventListener("DOMContentLoaded", mount);
+    document.addEventListener("DOMContentLoaded", checkAndMount);
   }
 })();
