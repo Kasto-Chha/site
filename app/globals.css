@@ -1563,9 +1563,20 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	display:grid;grid-template-columns:264px minmax(0,1fr);
 	height:100vh;height:100dvh;background:var(--paper);overflow:hidden;
 }
+/* height + min-height:0 here is the actual fix for the sidebar not
+   scrolling and "Community is asking" never appearing at all: .chat-sidebar
+   is a grid item inside .chat-app (height:100vh), but without its own
+   height set, it was growing to fit ALL its content instead of being held
+   to the screen's actual height — so .chat-side-scroll's overflow-y:auto
+   below never had anything to actually scroll within, and everything past
+   the visible viewport (including the pinned section) was silently clipped
+   by .chat-app's overflow:hidden. Confirmed on a real recording: a sidebar
+   with 10+ chats never scrolled at all, and "Community is asking" never
+   appeared, no matter how far down the mouse moved. */
 .chat-sidebar{
 	display:flex;flex-direction:column;gap:18px;padding:20px 16px;
 	background:var(--paper2);border-right:1px solid var(--border);min-width:0;
+	height:100%;min-height:0;
 }
 .chat-side-top{display:flex;flex-direction:column;gap:14px}
 .chat-logo{display:block;text-decoration:none}
