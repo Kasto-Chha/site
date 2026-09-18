@@ -36,7 +36,7 @@
 
   var SITE_URL = "https://www.kastochhanepal.com";
   var shareUrl = SITE_URL + "/?share=" + encodeURIComponent(business);
-  var askUrl = SITE_URL + "/chat?q=" + encodeURIComponent("Kasto chha " + business + "?");
+  var askUrl = SITE_URL + "/chat?q=" + encodeURIComponent(business);
 
   var style = document.createElement("style");
   style.textContent = [
