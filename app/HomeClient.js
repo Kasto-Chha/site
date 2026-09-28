@@ -144,6 +144,10 @@ function FeaturedVisual({ story }) {
         fill
         sizes="(max-width: 720px) 100vw, 50vw"
         style={{ objectFit: "cover" }}
+        // See BattleSplit.js: Vercel's image optimization quota was
+        // exceeded (5.3K/5K), breaking images going through the standard
+        // optimizer.
+        unoptimized
       />
     );
   }

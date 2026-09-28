@@ -122,6 +122,10 @@ export default async function FeaturedPage({ searchParams }) {
                           sizes="(max-width: 900px) 100vw, 900px"
                           style={{ objectFit: "cover" }}
                           priority
+                          // See BattleSplit.js: Vercel's image optimization
+                          // quota was exceeded (5.3K/5K), breaking images
+                          // going through the standard optimizer.
+                          unoptimized
                         />
                       </div>
                     ) : null}
@@ -151,6 +155,11 @@ export default async function FeaturedPage({ searchParams }) {
                                 fill
                                 sizes="(max-width: 720px) 50vw, 280px"
                                 style={{ objectFit: "cover" }}
+                                // See BattleSplit.js: Vercel's image
+                                // optimization quota was exceeded (5.3K/5K),
+                                // breaking images going through the standard
+                                // optimizer.
+                                unoptimized
                               />
                             </div>
                           ) : null}

@@ -76,6 +76,13 @@ function BattleCard({ battle, index, myVote, busy, error, onVote }) {
           // little else on it — this is exactly the kind of image `priority`
           // exists for, not a default to reach for everywhere.
           priority={index === 0}
+          // Vercel's Hobby-plan image optimization quota (5,000/month) was
+          // exceeded — confirmed directly in the dashboard (5.3K/5K) — and
+          // battle photos, going through the standard optimizer, started
+          // failing outright and showing broken. Same trade-off already
+          // accepted for Reels thumbnails: skip optimization here entirely
+          // rather than risk a battle card silently breaking again.
+          unoptimized
         />
       ) : null}
       <div className="bsplit-side-content">

@@ -154,6 +154,10 @@ export default async function FeaturedPermalink({ params }) {
                   sizes="720px"
                   style={{ objectFit: "cover" }}
                   priority
+                  // See BattleSplit.js: Vercel's image optimization quota
+                  // was exceeded (5.3K/5K), breaking images going through
+                  // the standard optimizer.
+                  unoptimized
                 />
               </div>
             ) : null}
