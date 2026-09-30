@@ -30,9 +30,11 @@ export async function resolve(specifier, context, next) {
   try {
     return await next(specifier, context);
   } catch (error) {
-    // Next resolves extensionless relative imports ("../../lib/supabase/server");
-    // plain node does not. Retry with the extensions Next would have tried.
-    if (error?.code !== "ERR_MODULE_NOT_FOUND" || !specifier.startsWith(".")) throw error;
+    // Next resolves extensionless relative imports ("../../lib/supabase/server")
+    // and its own deep imports ("next/server", which has no exports map); plain
+    // node does neither. Retry with the extensions Next would have tried.
+    const retryable = specifier.startsWith(".") || specifier.startsWith("next/");
+    if (error?.code !== "ERR_MODULE_NOT_FOUND" || !retryable) throw error;
     for (const ext of [".js", ".mjs", "/index.js"]) {
       try {
         return await next(specifier + ext, context);

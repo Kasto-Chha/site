@@ -1,4 +1,5 @@
 import "./globals.css";
+import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -72,8 +73,16 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
+  // The per-request CSP nonce minted in middleware.js (see lib/csp.js). Reading
+  // it makes every page render per request, which a nonce requires anyway: a
+  // page cached as static HTML would carry a stale nonce, or none.
+  const nonce = headers().get("x-nonce") || undefined;
+
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    // `dynamic` is what lets ClerkProvider read the nonce and stamp it on the
+    // clerk-js <script> it renders; without it that tag is blocked and sign-in
+    // never loads.
+    <ClerkProvider appearance={clerkAppearance} dynamic>
       <html lang="en">
         <body className={`${stixTwoText.variable} ${dmSans.variable} ${dmMono.variable}`}>
           {/* .fi elements (every card grid) start at opacity:0 and only reach
@@ -105,7 +114,7 @@ export default function RootLayout({ children }) {
       </html>
       {/* Loaded after hydration, outside the render-blocking path — standard
           placement per Next.js's own docs for this component. */}
-      <GoogleAnalytics gaId="G-YEHEX8EXWM" />
+      <GoogleAnalytics gaId="G-YEHEX8EXWM" nonce={nonce} />
     </ClerkProvider>
   );
 }

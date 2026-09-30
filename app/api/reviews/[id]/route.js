@@ -5,6 +5,7 @@ import { createServerSupabase } from "../../../../lib/supabase/server";
 import { getUserRole, hasRole, ROLE } from "../../../../lib/auth/roles";
 import { LIMITS, lengthError } from "../../../../lib/validate";
 import { checkRateLimit, retryAfterSeconds } from "../../../../lib/ratelimit";
+import { BODY_LIMITS, readJsonBody } from "../../../../lib/requestBody";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -66,7 +67,9 @@ export async function PATCH(request, { params }) {
     );
   }
 
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.form);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   const summary = (payload.summary || "").toString().trim();
   const verdict = (payload.verdict || "").toString().trim();
 

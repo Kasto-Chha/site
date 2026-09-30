@@ -50,18 +50,3 @@ export function initials(name) {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
-
-// Build a small, stable set of participant initials for a discussion avatar
-// stack. Seeds from the author plus a deterministic spread so the stack looks
-// populated without inventing real people.
-const FILLERS = ["R", "S", "A", "P", "K", "M", "B", "D", "N", "J", "T"];
-
-export function avatarStack(seedName, count = 3) {
-  const out = [initials(seedName).slice(0, 1) || "?"];
-  let cursor = (seedName || "").length;
-  while (out.length < count) {
-    out.push(FILLERS[cursor % FILLERS.length]);
-    cursor += 3;
-  }
-  return out.slice(0, count);
-}

@@ -345,6 +345,27 @@ test("ledger unreachable AND no Upstash: guests are refused", async () => {
   assert.equal((await chat({ cookie: null })).status, 200);
 });
 
+test("service role key missing: chat closes for everyone, never unmetered", async () => {
+  // A blip (above) fails open for accounts. A missing key is not a blip: the
+  // old client fell back to the publishable key, the quota RPC was refused,
+  // and every account was served with no daily ceiling until someone noticed.
+  const saved = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    for (const key of ["", "sb_publishable_pasted_by_mistake"]) {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = key;
+
+      const account = await chat({ userId: USER });
+      assert.equal(account.status, 503, `account, key ${JSON.stringify(key)}`);
+      const guest = await chat({ cookie: null });
+      assert.equal(guest.status, 503, `guest, key ${JSON.stringify(key)}`);
+    }
+    assert.equal(state().geminiCalls, 0, "nothing reached the paid model");
+    assert.equal(db.countUsage(IDENTITY), 0);
+  } finally {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = saved;
+  }
+});
+
 test("message storage down: the question is still charged for", async () => {
   db.failWritesTo = "chat_messages";
 
@@ -383,6 +404,28 @@ test("a payload that normalizes to nothing cannot spend a question either", asyn
   }
   assert.equal(db.countUsage(IDENTITY), 0);
   assert.equal(state().geminiCalls, 0);
+});
+
+test("an oversized body is refused before it is parsed or charged", async () => {
+  const res = await chat({
+    userId: USER,
+    body: { messages: [{ role: "user", content: "x".repeat(600 * 1024) }] }
+  });
+
+  assert.equal(res.status, 413);
+  assert.equal(db.countUsage(IDENTITY), 0, "no daily question spent");
+  assert.equal(state().geminiCalls, 0);
+});
+
+test("a long conversation, trimmed the way the client sends it, fits the ceiling", async () => {
+  // The client sends the last CONTEXT_TURNS turns at TURN_MAX_CHARS each —
+  // everything the server would keep, and nothing more.
+  const messages = Array.from({ length: 20 }, (_, i) => ({
+    role: i % 2 ? "assistant" : "user",
+    content: "Nepali ma lamo jawaf ".repeat(200).slice(0, 4000)
+  }));
+  const res = await chat({ userId: USER, body: { messages } });
+  assert.equal(res.status, 200);
 });
 
 test("parallel requests cannot overspend the daily quota", async () => {

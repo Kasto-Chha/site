@@ -4,6 +4,8 @@ import { auth } from "@clerk/nextjs/server";
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { LIMITS, lengthError } from "../../../lib/validate";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
+import { BODY_LIMITS, readJsonBody } from "../../../lib/requestBody";
+import { logDbError } from "../../../lib/dbError";
 
 export async function POST(request) {
   const { userId } = await auth();
@@ -19,7 +21,9 @@ export async function POST(request) {
     );
   }
 
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.small);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   const question = (payload.question || "").toString().trim();
   const category = (payload.category || "").toString().trim();
 
@@ -48,11 +52,13 @@ export async function POST(request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logDbError("POST /api/questions", error);
+      return NextResponse.json({ error: "Failed to save question." }, { status: 500 });
     }
 
     return NextResponse.json({ question: data });
   } catch (error) {
+    console.error("POST /api/questions failed:", error?.message || error);
     return NextResponse.json({ error: "Failed to save question." }, { status: 500 });
   }
 }

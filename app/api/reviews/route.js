@@ -8,6 +8,8 @@ import { LIMITS, lengthError } from "../../../lib/validate";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 import { pingIndexNow } from "../../../lib/seo/indexnow";
 import { isDiscussionIndexable } from "../../../lib/seo/indexable";
+import { BODY_LIMITS, readJsonBody } from "../../../lib/requestBody";
+import { logDbError } from "../../../lib/dbError";
 
 // Detects the "column does not exist" error so we can keep working against a
 // database that has not had the topic_slug migration applied yet.
@@ -34,7 +36,9 @@ export async function POST(request) {
     );
   }
 
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.form);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   const title = (payload.title || "").toString().trim();
   const summary = (payload.summary || "").toString().trim();
   let category = (payload.category || "").toString().trim();
@@ -158,7 +162,8 @@ export async function POST(request) {
     }
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logDbError("POST /api/reviews", error);
+      return NextResponse.json({ error: "Failed to save your post. Please try again." }, { status: 500 });
     }
 
     // Ensure the client always receives a slug to group on, even on old DBs.
@@ -189,8 +194,7 @@ export async function POST(request) {
 
     return NextResponse.json({ review });
   } catch (error) {
-    const message = error?.message || "Failed to save review.";
-    console.error("POST /api/reviews failed:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("POST /api/reviews failed:", error?.message || error);
+    return NextResponse.json({ error: "Failed to save your post. Please try again." }, { status: 500 });
   }
 }

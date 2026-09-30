@@ -1,23 +1,6 @@
-// Content-Security-Policy allowlist. Shipped in Report-Only mode first so we can
-// watch the browser console for violations from Clerk / Supabase / embeds before
-// switching it to the enforcing "Content-Security-Policy" header. Tighten the
-// 'unsafe-inline'/'unsafe-eval' allowances once violations are understood.
-const csp = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.clerk.accounts.dev https://clerk-telemetry.com",
-  "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://www.instagram.com https://www.tiktok.com https://player.vimeo.com https://www.facebook.com https://challenges.cloudflare.com https://*.clerk.accounts.dev",
-  "worker-src 'self' blob:",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-  "object-src 'none'"
-].join("; ");
-
-// Baseline security headers applied to every response.
+// Baseline security headers applied to every response. The
+// Content-Security-Policy is not here: it carries a per-request nonce, so
+// middleware.js builds it (lib/csp.js).
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -29,9 +12,26 @@ const securityHeaders = [
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload"
-  },
-  { key: "Content-Security-Policy-Report-Only", value: csp }
+  }
 ];
+
+// Exact hostnames only: YouTube's thumbnail CDN (reel covers), this project's
+// Supabase host (storage), and whatever IMAGE_HOSTS adds, comma-separated.
+function optimizedImageHosts() {
+  const hosts = new Set(["i.ytimg.com"]);
+  try {
+    hosts.add(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname);
+  } catch {
+    // Not configured; nothing to add.
+  }
+  for (const entry of (process.env.IMAGE_HOSTS || "").split(",")) {
+    const host = entry.trim().toLowerCase();
+    if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host)) hosts.add(host);
+  }
+  return [...hosts];
+}
+
+const OPTIMIZED_IMAGE_HOSTS = optimizedImageHosts();
 
 const nextConfig = {
   // Defaults to ".next" for dev and for real deploys. Set NEXT_DIST_DIR to send
@@ -40,22 +40,23 @@ const nextConfig = {
   // chunk files that no longer exist ("Cannot find module './8948.js'").
   distDir: process.env.NEXT_DIST_DIR || ".next",
 
-  // Battle images are a free-text URL typed into /admin/content/battles — any
-  // https host, chosen per-entry by whoever is curating that battle, with no
-  // way to know the list of hosts in advance. A fixed per-host allowlist here
-  // would need a code change and a redeploy every time a new entry used a
-  // host that hadn't been added yet.
+  // Hosts the image optimizer may fetch from. This was every https host, on
+  // the reasoning that only admins choose image URLs. But the optimizer is
+  // /_next/image?url=..., and anyone can call it with any url: a wildcard made
+  // our server fetch and re-encode arbitrary URLs on request, internal
+  // addresses included.
   //
-  // The wildcard is safe specifically because that field is admin-only —
-  // confirmed locked to ROLE.ADMIN at every method of every
-  // /api/admin/content route — not something a public visitor can reach. The
-  // CSP's `img-src ... https:` already permits an <img> tag to load from any
-  // https host today; this only extends that same, already-accepted trust
-  // boundary to next/image's optimizer, which then actually resizes and
-  // re-encodes whatever arbitrary size or format the source happens to serve,
-  // rather than shipping it to every visitor untouched.
+  // Editors can still use any https image — <RemoteImage> renders hosts not
+  // listed here unoptimized, loaded by the browser rather than by us. Add a
+  // host to IMAGE_HOSTS to have it resized and re-encoded again.
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "**" }]
+    remotePatterns: OPTIMIZED_IMAGE_HOSTS.map((hostname) => ({ protocol: "https", hostname }))
+  },
+
+  // The same list, inlined for lib/images.js so components know which sources
+  // may go to the optimizer.
+  env: {
+    OPTIMIZED_IMAGE_HOSTS: OPTIMIZED_IMAGE_HOSTS.join(",")
   },
 
   async headers() {

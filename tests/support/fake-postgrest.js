@@ -1,5 +1,5 @@
-// A minimal in-memory PostgREST, enough for the queries lib/chatQuota.js and
-// app/api/chat/route.js actually make.
+// A minimal in-memory PostgREST, enough for the queries lib/chatQuota.js,
+// app/api/chat/route.js and the vote routes actually make.
 //
 // Why a real HTTP server instead of a stubbed supabase client: the quota is
 // only correct if the *filters* it builds are correct — user_id, role, and the
@@ -14,14 +14,24 @@
 
 import http from "node:http";
 
+// What cast_vote (migration 0014) accepts per target type, and the counter
+// column each choice moves.
+const VOTE_TARGETS = {
+  trending: { table: "trending_topics", columns: { yes: "votes_yes", mid: "votes_mid", no: "votes_no" } },
+  battle: { table: "battles", columns: { a: "left_votes", b: "right_votes" } },
+  review: { table: "reviews", columns: { up: "upvotes", down: "downvotes" } }
+};
+
 export class FakePostgrest {
   constructor() {
     this.tables = {
+      battles: [],
       chat_messages: [],
       chat_topics: [],
       chat_usage: [],
       reviews: [],
-      trending_topics: []
+      trending_topics: [],
+      user_votes: []
     };
     this.requests = [];
     // Set to a table name to make every write to it fail, so the tests can
@@ -30,6 +40,9 @@ export class FakePostgrest {
     // Set to make consume_chat_quota fail the way an unreachable database
     // would, which is what sends lib/chatQuota.js down its fail-open path.
     this.failQuotaRpc = false;
+    // Set to answer cast_vote the way PostgREST does before migration 0014 has
+    // been applied: the function does not exist.
+    this.missingVoteRpc = false;
     this.nextId = 1;
   }
 
@@ -38,7 +51,68 @@ export class FakePostgrest {
     this.requests = [];
     this.failWritesTo = null;
     this.failQuotaRpc = false;
+    this.missingVoteRpc = false;
     this.nextId = 1;
+  }
+
+  // The Postgres side of cast_vote, kept close to
+  // supabase/migrations/0014_atomic_votes.sql. Argument names are checked
+  // exactly: PostgREST resolves a function by them, so a renamed parameter is
+  // "function not found" in production and should be here too. The row lock
+  // has no analogue — node runs this handler to completion without
+  // interleaving, which is the serialization the lock buys in Postgres.
+  #castVote(args) {
+    const notFound = {
+      status: 404,
+      body: { code: "PGRST202", message: "Could not find the function public.cast_vote" }
+    };
+    const names = Object.keys(args || {}).sort().join(",");
+    if (this.missingVoteRpc || names !== "p_target_id,p_target_type,p_user_id,p_value") {
+      return notFound;
+    }
+
+    const target = VOTE_TARGETS[args.p_target_type];
+    if (!args.p_user_id || !target || !target.columns[args.p_value]) {
+      return { status: 400, body: { code: "22023", message: "cast_vote: invalid vote" } };
+    }
+
+    const row = this.tables[target.table].find((r) => r.id === args.p_target_id);
+    if (!row) return { status: 200, body: { found: false, vote: null, row: null } };
+
+    const ledger = this.tables.user_votes;
+    const index = ledger.findIndex(
+      (v) =>
+        v.user_id === args.p_user_id &&
+        v.target_type === args.p_target_type &&
+        v.target_id === args.p_target_id
+    );
+    const previous = index >= 0 ? ledger[index].value : "";
+    const next = args.p_value === previous ? "" : args.p_value;
+
+    if (!next) {
+      if (index >= 0) ledger.splice(index, 1);
+    } else if (index >= 0) {
+      ledger[index].value = next;
+    } else {
+      ledger.push({
+        id: `vote-${this.nextId++}`,
+        user_id: args.p_user_id,
+        target_type: args.p_target_type,
+        target_id: args.p_target_id,
+        value: next
+      });
+    }
+
+    if (previous) {
+      const column = target.columns[previous];
+      row[column] = Math.max(0, (row[column] || 0) - 1);
+    }
+    if (next) {
+      const column = target.columns[next];
+      row[column] = (row[column] || 0) + 1;
+    }
+
+    return { status: 200, body: { found: true, vote: next || null, row: { ...row } } };
   }
 
   seedUsage(identity, count, { spreadMs = 1000, endingAt = Date.now() } = {}) {
@@ -156,6 +230,10 @@ export class FakePostgrest {
         return send(res, 500, { code: "XX000", message: "simulated database outage" });
       }
       return send(res, 200, this.#consumeChatQuota(body || {}));
+    }
+    if (table === "rpc/cast_vote") {
+      const { status, body: payload } = this.#castVote(body);
+      return send(res, status, payload);
     }
 
     const rows = this.tables[table];

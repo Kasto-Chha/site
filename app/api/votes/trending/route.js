@@ -4,9 +4,7 @@ import { createVoteHandler } from "../../../../lib/voteRoute";
 // voting a different one moves your vote across.
 export const POST = createVoteHandler({
   targetType: "trending",
-  table: "trending_topics",
-  rpc: "apply_trending_vote",
-  columns: { yes: "votes_yes", mid: "votes_mid", no: "votes_no" },
+  choices: ["yes", "mid", "no"],
   field: "side",
   resultKey: "topic",
   missingLabel: "Topic"

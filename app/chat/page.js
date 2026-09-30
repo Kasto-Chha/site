@@ -33,8 +33,18 @@ function uniqueStrings(values) {
 async function chatQuotaLeft(userId) {
   if (!userId) return null;
 
+  // A misconfigured key only hides the warning here. The chat endpoint is what
+  // refuses to answer without one.
+  let supabase;
+  try {
+    supabase = createServerSupabase();
+  } catch (error) {
+    console.error("chat quota peek unavailable:", error?.message || error);
+    return null;
+  }
+
   // peek, not consume: rendering the page must never spend a question.
-  const quota = await peekChatQuota(createServerSupabase(), userIdentity(userId), {
+  const quota = await peekChatQuota(supabase, userIdentity(userId), {
     limit: dailyLimit()
   });
   if (quota.remaining === null || quota.remaining > QUOTA_WARN_AT) return null;

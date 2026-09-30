@@ -7,7 +7,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ChatText from "./ChatText";
 import { formatTimeAgo } from "../../lib/topics";
-import { TOPIC_TITLE_MAX, groupByDate, mergeTopics, topicTitle } from "../../lib/chatTopics";
+import {
+  CONTEXT_TURNS,
+  TOPIC_TITLE_MAX,
+  TURN_MAX_CHARS,
+  groupByDate,
+  mergeTopics,
+  topicTitle
+} from "../../lib/chatTopics";
 
 // Starter topics, not full questions — the empty state tells people to name a
 // thing and the assistant gives the verdict. The chip shows the bare topic but
@@ -196,7 +203,10 @@ export default function ChatClient({
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          messages: base.map(({ role, content }) => ({ role, content })),
+          messages: base
+            .filter(({ content }) => content)
+            .slice(-CONTEXT_TURNS)
+            .map(({ role, content }) => ({ role, content: content.slice(0, TURN_MAX_CHARS) })),
           // Blank on the first message of a chat — the server opens a new
           // conversation and hands its id back below.
           topicId: activeIdRef.current || ""

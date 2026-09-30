@@ -7,6 +7,8 @@ import {
   searchUserChatTopics
 } from "../../../../lib/supabase/queries";
 import { HISTORY_PAGE_SIZE, topicTitle } from "../../../../lib/chatTopics";
+import { BODY_LIMITS, readJsonBody } from "../../../../lib/requestBody";
+import { logDbError } from "../../../../lib/dbError";
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -86,7 +88,9 @@ export async function PATCH(request) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.small);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   const id = (payload.id || "").toString().trim();
   const title = topicTitle((payload.title || "").toString());
 
@@ -108,14 +112,16 @@ export async function PATCH(request) {
       .maybeSingle();
 
     if (error) {
-      return jsonResponse({ error: error.message }, 500);
+      logDbError("PATCH /api/chat/history", error);
+      return jsonResponse({ error: "Rename failed." }, 500);
     }
     if (!data) {
       return jsonResponse({ error: "Not found." }, 404);
     }
     return jsonResponse({ ok: true, topic: data });
   } catch (error) {
-    return jsonResponse({ error: error?.message || "Rename failed." }, 500);
+    console.error("PATCH /api/chat/history failed:", error?.message || error);
+    return jsonResponse({ error: "Rename failed." }, 500);
   }
 }
 
@@ -125,7 +131,9 @@ export async function DELETE(request) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.small);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   const id = (payload.id || "").toString().trim();
   const all = payload.all === true;
 
@@ -142,10 +150,12 @@ export async function DELETE(request) {
 
     const { error } = await query;
     if (error) {
-      return jsonResponse({ error: error.message }, 500);
+      logDbError("DELETE /api/chat/history", error);
+      return jsonResponse({ error: "Delete failed." }, 500);
     }
     return jsonResponse({ ok: true });
   } catch (error) {
-    return jsonResponse({ error: error?.message || "Delete failed." }, 500);
+    console.error("DELETE /api/chat/history failed:", error?.message || error);
+    return jsonResponse({ error: "Delete failed." }, 500);
   }
 }

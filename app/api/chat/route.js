@@ -6,7 +6,7 @@ import { geminiConfigured, geminiStream } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 import { clientIp } from "../../../lib/clientIp";
 import { TRIAL_LIMIT, readTrialCount, trialCookieHeader } from "../../../lib/chatTrial";
-import { topicTitle } from "../../../lib/chatTopics";
+import { CONTEXT_TURNS, TURN_MAX_CHARS, topicTitle } from "../../../lib/chatTopics";
 import {
   consumeChatQuota,
   dailyLimit,
@@ -15,6 +15,7 @@ import {
   userIdentity
 } from "../../../lib/chatQuota";
 import { getUserRole, hasRole, ROLE } from "../../../lib/auth/roles";
+import { BODY_LIMITS, readJsonBody } from "../../../lib/requestBody";
 
 function jsonResponse(body, status, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
@@ -172,10 +173,10 @@ function normalizeMessages(raw) {
   const cleaned = raw
     .map((m) => ({
       role: m?.role === "assistant" ? "assistant" : "user",
-      content: (m?.content || "").toString().trim().slice(0, 4000)
+      content: (m?.content || "").toString().trim().slice(0, TURN_MAX_CHARS)
     }))
     .filter((m) => m.content)
-    .slice(-20);
+    .slice(-CONTEXT_TURNS);
 
   // The API requires the conversation to start with a user turn.
   while (cleaned.length && cleaned[0].role !== "user") cleaned.shift();
@@ -250,20 +251,31 @@ export async function POST(request) {
   }
 
   // One client for the quota ledger and the message storage below. Constructing
-  // it throws when the Supabase env vars are missing, which must not 500 the
-  // endpoint — chat degrades to unstored instead.
-  let supabase = null;
+  // it throws when the service role key is missing or wrong, and that closes
+  // chat for everyone. It used to degrade to "unstored" instead, which also
+  // meant unmetered: with no client there is no ledger, and a signed-in account
+  // then had no daily ceiling at all. A transient database error is different
+  // and still fails open for accounts (see lib/chatQuota.js) — this is a
+  // configuration fault, and it will not fix itself.
+  let supabase;
   try {
     supabase = createServerSupabase();
   } catch (error) {
-    console.error("chat storage unavailable:", error?.message || error);
+    console.error("chat unavailable, storage misconfigured:", error?.message || error);
+    return jsonResponse(
+      { error: "Assistant abhi available chhaina. Ek chin pachi feri try garnus." },
+      503,
+      { "Retry-After": "60" }
+    );
   }
 
   // Validate before spending anything. The burst window above deliberately
   // charges for junk too — that is the flood guard — but the volume quota
   // below reserves a question the moment it is consulted, and a malformed
   // request must not cost the visitor one of theirs.
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.chat);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   const messages = normalizeMessages(payload.messages);
   const requestedTopicId = (payload.topicId || "").toString().trim();
 
@@ -283,13 +295,11 @@ export async function POST(request) {
   const limit = userId ? dailyLimit() : guestDailyLimit();
   const identity = userId ? userIdentity(userId) : guestIdentity(address);
 
-  const quota = supabase
-    ? await consumeChatQuota(supabase, identity, {
-        limit,
-        checkBurst: Boolean(rl.skipped),
-        exempt: isAdmin
-      })
-    : { ok: true, remaining: null, skipped: true };
+  const quota = await consumeChatQuota(supabase, identity, {
+    limit,
+    checkBurst: Boolean(rl.skipped),
+    exempt: isAdmin
+  });
 
   if (!quota.ok) {
     const spentForTheDay = quota.scope === "day";
@@ -351,7 +361,6 @@ export async function POST(request) {
   // new conversation appears in the sidebar without a refetch.
   let topicId = "";
   try {
-    if (!supabase) throw new Error("no storage");
     topicId = await resolveTopic(supabase, {
       topicId: requestedTopicId,
       userId,
@@ -423,7 +432,7 @@ export async function POST(request) {
         );
       } finally {
         // A half-written answer is still worth keeping; an empty one is not.
-        if (supabase && topicId && answer.trim()) {
+        if (topicId && answer.trim()) {
           try {
             await supabase.from("chat_messages").insert({
               topic_id: topicId,
