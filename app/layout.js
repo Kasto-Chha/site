@@ -1,7 +1,7 @@
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 
 import TermsGate from "./components/TermsGate";
@@ -9,6 +9,8 @@ import { jsonLd, organizationSchema, websiteSchema } from "../lib/seo/schema";
 import { clerkAppearance } from "../lib/clerkAppearance";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+const GA_ID = "G-YEHEX8EXWM";
 
 // Editorial serif used for the wordmark, headings, and italics. Exposed as
 // --font-serif so all existing CSS keeps working unchanged. Variable font,
@@ -102,12 +104,30 @@ export default function RootLayout({ children }) {
           {children}
           {/* Renders nothing unless the signed-in user still owes consent. */}
           <TermsGate />
+          {/* <Analytics /> renders a <Suspense> boundary (it reads the route),
+              so it has to live inside <body>. It used to sit after </html>,
+              outside the document: the server put that boundary's marker in
+              the body while the client looked for it at the document root, so
+              hydration failed on every page load and React threw away the
+              server HTML and rebuilt the whole page in the browser. */}
+          <Analytics />
+          {/* Google Analytics, loaded late on purpose. lazyOnload waits for the
+              window load event and then browser idle time, so its ~200 KB
+              download and ~0.6 s of parsing no longer compete with the page's
+              own start-up. Trade-off: a visitor who leaves before it loads
+              (the first second or two) is not counted by Google Analytics;
+              Vercel Analytics above still counts every visit. This is the
+              standard gtag snippet; the ready-made <GoogleAnalytics> component
+              has no option to delay itself. */}
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+            strategy="lazyOnload"
+          />
+          <Script id="ga-init" strategy="lazyOnload">
+            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
+          </Script>
         </body>
       </html>
-      {/* Loaded after hydration, outside the render-blocking path — standard
-          placement per Next.js's own docs for this component. */}
-      <GoogleAnalytics gaId="G-YEHEX8EXWM" />
-      <Analytics />
     </ClerkProvider>
   );
 }
