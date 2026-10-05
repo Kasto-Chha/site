@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { STIX_Two_Text, DM_Sans, DM_Mono } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import TermsGate from "./components/TermsGate";
 import { jsonLd, organizationSchema, websiteSchema } from "../lib/seo/schema";
@@ -111,6 +112,10 @@ export default function RootLayout({ children }) {
               hydration failed on every page load and React threw away the
               server HTML and rebuilt the whole page in the browser. */}
           <Analytics />
+          {/* Records real-visitor load speed (Core Web Vitals) for the Speed Insights
+              tab in the Vercel dashboard. Like <Analytics />, it renders a
+              <Suspense> boundary, so it has to stay inside <body>. */}
+          <SpeedInsights />
           {/* Google Analytics, loaded late on purpose. lazyOnload waits for the
               window load event and then browser idle time, so its ~200 KB
               download and ~0.6 s of parsing no longer compete with the page's

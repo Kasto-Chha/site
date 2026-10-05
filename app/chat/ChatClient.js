@@ -14,9 +14,9 @@ import { TOPIC_TITLE_MAX, groupByDate, mergeTopics, topicTitle } from "../../lib
 // sends it as a "kasto chha?" question, so the model reliably answers in the
 // verdict-first house style instead of writing an encyclopedia entry.
 const SUGGESTIONS = [
-  "CBR 600 RR",
+  "Yatri P2",
   "Sandaar ko Momo",
-  "iPhone 17 Pro Max",
+  "iPhone 18 Series",
   "Hilux Gaadi"
 ];
 
