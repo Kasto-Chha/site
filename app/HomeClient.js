@@ -162,6 +162,7 @@ export default function HomeClient({
   stats = [],
   reels = [],
   questions = [],
+  trendingSearches = [],
   trendingVotes = {},
   battleVotes = {}
 }) {
@@ -585,7 +586,10 @@ export default function HomeClient({
     "Sandar ko momo",
     "IPO parne chance"
   ];
-  const searchItems = uniqueTitles.slice(0, 5);
+  // What people have actually been asking the assistant, most-asked first —
+  // ranked on the server (getTrendingChatSearches). The row hides itself until
+  // there is something to show.
+  const searchItems = trendingSearches;
   // Prefill chips for the Ask tab: what people have actually asked, falling
   // back to trending poll titles before any question has been posted.
   const askedQuestions = Array.from(
