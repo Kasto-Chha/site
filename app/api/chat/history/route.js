@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { revalidateTag } from "next/cache";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import {
@@ -9,6 +10,7 @@ import {
 import { HISTORY_PAGE_SIZE, topicTitle } from "../../../../lib/chatTopics";
 import { BODY_LIMITS, readJsonBody } from "../../../../lib/requestBody";
 import { logDbError } from "../../../../lib/dbError";
+import { TRENDING_SEARCH_TAG } from "../../../../lib/trendingSearches";
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -153,6 +155,10 @@ export async function DELETE(request) {
       logDbError("DELETE /api/chat/history", error);
       return jsonResponse({ error: "Delete failed." }, 500);
     }
+    // The homepage's "Trending searches" is ranked from conversations and
+    // cached. Someone deleting a chat because of what it says should not keep
+    // seeing it counted until the cache happens to expire.
+    revalidateTag(TRENDING_SEARCH_TAG);
     return jsonResponse({ ok: true });
   } catch (error) {
     console.error("DELETE /api/chat/history failed:", error?.message || error);

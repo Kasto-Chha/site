@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { createServerSupabase } from "../../../../../lib/supabase/server";
 import { requireRole, ROLE } from "../../../../../lib/auth/roles";
@@ -9,6 +9,14 @@ import { adminSaveMessage, logDbError } from "../../../../../lib/dbError";
 import { pingIndexNow } from "../../../../../lib/seo/indexnow";
 import { isFeaturedIndexable } from "../../../../../lib/seo/indexable";
 import { BODY_LIMITS, readJsonBody } from "../../../../../lib/requestBody";
+import { TRENDING_SEARCH_TAG } from "../../../../../lib/trendingSearches";
+
+// Rules for the homepage's "Trending searches" row. The list is cached (see
+// getTrendingChatSearches), and a hide rule exists to take something down now,
+// not when the cache next expires.
+function refreshTrendingSearches(type) {
+  if (type === "searches") revalidateTag(TRENDING_SEARCH_TAG);
+}
 
 // GET  /api/admin/content/<type>      -> list rows
 // POST /api/admin/content/<type>      -> create a row
@@ -87,6 +95,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: adminSaveMessage(error) }, { status: 500 });
   }
   await closeAuditEntry(supabase, auditId, { applied: true, after: data });
+  refreshTrendingSearches(params.type);
 
   if (params.type === "featured") {
     // Featured pages are cached (revalidate = 300). Without this, a newly

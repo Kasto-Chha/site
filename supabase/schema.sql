@@ -113,7 +113,28 @@ create table if not exists chat_topics (
   last_message_at timestamptz not null default now(),
   archived_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- How the conversation was opened, for the homepage's "Trending searches":
+  -- the question as first asked (title can be renamed), where it came from
+  -- when it was clicked rather than typed, and a key that tells guests apart.
+  -- See supabase/migrations/0016_trending_searches.sql.
+  opening_query text,
+  source text,
+  guest_key text
+);
+alter table chat_topics add column if not exists opening_query text;
+alter table chat_topics add column if not exists source text;
+alter table chat_topics add column if not exists guest_key text;
+
+-- An editor's controls over "Trending searches": hide a term, or add one to
+-- show while few real searches qualify. See migration 0016.
+create table if not exists trending_search_rules (
+  id uuid primary key default gen_random_uuid(),
+  term text not null,
+  action text not null default 'hide' check (action in ('hide', 'fallback')),
+  rank int not null default 1,
+  note text,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists chat_messages (
@@ -248,6 +269,7 @@ alter table public.chat_topics     enable row level security;
 alter table public.chat_messages   enable row level security;
 alter table public.chat_usage      enable row level security;
 alter table public.user_votes      enable row level security;
+alter table public.trending_search_rules enable row level security;
 
 -- Check both assistant windows and reserve a slot, atomically. The advisory
 -- lock serializes callers sharing an identity, so concurrent requests cannot

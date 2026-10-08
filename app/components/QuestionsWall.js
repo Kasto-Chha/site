@@ -3,6 +3,7 @@
 import useRevealOnce from "./useRevealOnce";
 import { delayClass, formatTimeAgo, isoTime } from "./sectionHelpers";
 import { categoryLabel, categoryTone } from "../../lib/categories";
+import { CHAT_SOURCE, chatHref } from "../../lib/chatTopics";
 import { IconChat, IconQuestion, IconReply } from "./icons";
 
 // The open-questions wall: what people have asked through "Ask a KastoChha"
@@ -70,7 +71,7 @@ function QuestionCard({ item, index, onAnswer }) {
         </button>
         <a
           className="qcard-alt"
-          href={`/chat?q=${encodeURIComponent(item.question)}`}
+          href={chatHref(item.question, CHAT_SOURCE.QUESTION)}
         >
           Ask Assist
         </a>

@@ -9,8 +9,8 @@
 // worth catching.
 //
 // Supported: select (incl. head + count=exact), eq/gte/lt filters, order,
-// limit, single/maybeSingle via the pgrst.object accept header, and insert
-// with return=representation.
+// limit, single/maybeSingle via the pgrst.object accept header, insert with
+// return=representation, and delete by filter.
 
 import http from "node:http";
 
@@ -30,6 +30,7 @@ export class FakePostgrest {
       chat_topics: [],
       chat_usage: [],
       reviews: [],
+      trending_search_rules: [],
       trending_topics: [],
       user_votes: []
     };
@@ -37,12 +38,19 @@ export class FakePostgrest {
     // Set to a table name to make every write to it fail, so the tests can
     // check what the route does when storage is broken.
     this.failWritesTo = null;
+    // Set to a table name to make every read of it fail the way an unreachable
+    // database would — a real error, not "this table does not exist".
+    this.failReadsFrom = null;
     // Set to make consume_chat_quota fail the way an unreachable database
     // would, which is what sends lib/chatQuota.js down its fail-open path.
     this.failQuotaRpc = false;
     // Set to answer cast_vote the way PostgREST does before migration 0014 has
     // been applied: the function does not exist.
     this.missingVoteRpc = false;
+    // Set to answer the way a database does before migration 0016 has been
+    // applied: chat_topics has no opening_query / source / guest_key, and
+    // trending_search_rules does not exist.
+    this.beforeTrendingMigration = false;
     this.nextId = 1;
   }
 
@@ -50,8 +58,10 @@ export class FakePostgrest {
     for (const name of Object.keys(this.tables)) this.tables[name] = [];
     this.requests = [];
     this.failWritesTo = null;
+    this.failReadsFrom = null;
     this.failQuotaRpc = false;
     this.missingVoteRpc = false;
+    this.beforeTrendingMigration = false;
     this.nextId = 1;
   }
 
@@ -236,14 +246,38 @@ export class FakePostgrest {
       return send(res, status, payload);
     }
 
+    if (this.beforeTrendingMigration) {
+      const refusal = beforeTrendingMigration(req.method, table, url, body);
+      if (refusal) return send(res, refusal.status, refusal.body);
+    }
+
     const rows = this.tables[table];
     if (!rows) return send(res, 404, { message: `no such table ${table}` });
 
     if (req.method === "POST") return this.#insert(res, req, table, body);
     if (req.method === "GET" || req.method === "HEAD") {
+      if (this.failReadsFrom === table) {
+        return send(res, 500, { code: "XX000", message: "simulated read failure" });
+      }
       return this.#select(res, req, url, rows);
     }
+    if (req.method === "DELETE") return this.#delete(res, table, url);
     return send(res, 405, { message: "not supported by the fake" });
+  }
+
+  // Delete by filter. chat_messages go with their topic, the way the
+  // on-delete-cascade foreign key takes them in Postgres.
+  #delete(res, table, url) {
+    if (this.failWritesTo === table) {
+      return send(res, 500, { code: "XX000", message: "simulated write failure" });
+    }
+    const doomed = this.tables[table].filter((row) => matches(row, url.searchParams));
+    this.tables[table] = this.tables[table].filter((row) => !doomed.includes(row));
+    if (table === "chat_topics") {
+      const ids = new Set(doomed.map((row) => row.id));
+      this.tables.chat_messages = this.tables.chat_messages.filter((m) => !ids.has(m.topic_id));
+    }
+    return send(res, 204, null);
   }
 
   #insert(res, req, table, body) {
@@ -299,6 +333,47 @@ export class FakePostgrest {
     res.setHeader("Content-Range", `0-${Math.max(0, out.length - 1)}/${total}`);
     return sendRows(res, req, out, 200);
   }
+}
+
+// What PostgREST says about the 0016 columns and table on a database that
+// does not have them yet. The codes are the point: the app tells "not migrated"
+// from "broken" by them, so a made-up error here would test nothing.
+const TRENDING_COLUMNS = ["opening_query", "source", "guest_key"];
+
+function beforeTrendingMigration(method, table, url, body) {
+  if (table === "trending_search_rules") {
+    return {
+      status: 404,
+      body: {
+        code: "PGRST205",
+        message: "Could not find the table 'public.trending_search_rules' in the schema cache"
+      }
+    };
+  }
+  if (table !== "chat_topics") return null;
+
+  if (method === "POST") {
+    const rows = Array.isArray(body) ? body : [body || {}];
+    const column = TRENDING_COLUMNS.find((name) => rows.some((row) => name in row));
+    if (!column) return null;
+    return {
+      status: 400,
+      body: {
+        code: "PGRST204",
+        message: `Could not find the '${column}' column of 'chat_topics' in the schema cache`
+      }
+    };
+  }
+
+  const selected = (url.searchParams.get("select") || "").split(",").map((name) => name.trim());
+  const column = TRENDING_COLUMNS.find(
+    (name) => selected.includes(name) || url.searchParams.has(name)
+  );
+  if (!column) return null;
+  return {
+    status: 400,
+    body: { code: "42703", message: `column chat_topics.${column} does not exist` }
+  };
 }
 
 // single()/maybeSingle() ask for one object rather than an array. Older

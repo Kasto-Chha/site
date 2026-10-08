@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ChatText from "./ChatText";
 import { formatTimeAgo } from "../../lib/topics";
 import {
+  CHAT_SOURCE,
   CONTEXT_TURNS,
   TOPIC_TITLE_MAX,
   TURN_MAX_CHARS,
@@ -57,6 +58,9 @@ export default function ChatClient({
 }) {
   const searchParams = useSearchParams();
   const initialQuery = (searchParams.get("q") || "").trim();
+  // Set by links that hand the visitor a question (chatHref); absent when they
+  // typed it into the homepage search box.
+  const initialSource = (searchParams.get("src") || "").trim();
   // `isSignedIn` is undefined until Clerk hydrates on the client, and the whole
   // sidebar keys off it: the history block renders only when it is true, and
   // the "Sign in to KastoChha" card renders whenever it is falsy. Undefined is
@@ -180,7 +184,9 @@ export default function ChatClient({
     });
   };
 
-  const send = async (text) => {
+  // `source` is one of CHAT_SOURCE when the question was clicked rather than
+  // typed. The server keeps it only on the message that opens a conversation.
+  const send = async (text, source = "") => {
     const content = (text || "").trim();
     if (!content || streaming || locked) return;
 
@@ -209,7 +215,8 @@ export default function ChatClient({
             .map(({ role, content }) => ({ role, content: content.slice(0, TURN_MAX_CHARS) })),
           // Blank on the first message of a chat — the server opens a new
           // conversation and hands its id back below.
-          topicId: activeIdRef.current || ""
+          topicId: activeIdRef.current || "",
+          source
         })
       });
 
@@ -262,7 +269,7 @@ export default function ChatClient({
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    if (initialQuery) send(initialQuery);
+    if (initialQuery) send(initialQuery, initialSource);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -818,7 +825,7 @@ export default function ChatClient({
                     type="button"
                     onClick={() => {
                       setDrawerOpen(false);
-                      send(item);
+                      send(item, CHAT_SOURCE.PROMPT);
                     }}
                     disabled={streaming}
                     title={item}
@@ -884,7 +891,7 @@ export default function ChatClient({
                       key={topic}
                       type="button"
                       className="chat-suggest"
-                      onClick={() => send(asQuestion(topic))}
+                      onClick={() => send(asQuestion(topic), CHAT_SOURCE.PROMPT)}
                     >
                       {topic}
                     </button>

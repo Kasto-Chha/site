@@ -6,10 +6,11 @@ import { geminiConfigured, geminiStream } from "../../../lib/gemini";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 import { clientIp } from "../../../lib/clientIp";
 import { TRIAL_LIMIT, readTrialCount, trialCookieHeader } from "../../../lib/chatTrial";
-import { CONTEXT_TURNS, TURN_MAX_CHARS, topicTitle } from "../../../lib/chatTopics";
+import { CONTEXT_TURNS, TURN_MAX_CHARS, chatSource, topicTitle } from "../../../lib/chatTopics";
 import {
   consumeChatQuota,
   dailyLimit,
+  guestAskerKey,
   guestDailyLimit,
   guestIdentity,
   userIdentity
@@ -191,7 +192,13 @@ function normalizeMessages(raw) {
 // only allowed to continue an ownerless one — grouping, not a security
 // boundary; the trial cap and per-IP rate limit are what bound guest writes.
 // Anything that fails the check silently starts a fresh topic instead.
-async function resolveTopic(supabase, { topicId, userId, title }) {
+//
+// A new topic also records how it was opened, for the homepage's "Trending
+// searches" (lib/trendingSearches.js):
+//   opening_query  the question as first asked — title can be renamed later
+//   source         set when the question was clicked rather than typed
+//   guest_key      tells guests apart, so one visitor is not counted as many
+async function resolveTopic(supabase, { topicId, userId, title, source, guestKey }) {
   if (topicId) {
     const { data } = await supabase
       .from("chat_topics")
@@ -203,11 +210,19 @@ async function resolveTopic(supabase, { topicId, userId, title }) {
     if (owned) return data.id;
   }
 
-  const { data } = await supabase
+  const topic = { user_id: userId || null, title };
+  const created = await supabase
     .from("chat_topics")
-    .insert({ user_id: userId || null, title })
+    .insert({ ...topic, opening_query: title, source, guest_key: guestKey })
     .select("id")
     .single();
+  if (created.data?.id) return created.data.id;
+
+  // Those three columns arrive with migration 0016. Until it has been applied
+  // the insert above is refused outright, and a conversation that is not
+  // counted towards trending is a far smaller loss than one that is not saved
+  // at all — so try again with the columns every database has.
+  const { data } = await supabase.from("chat_topics").insert(topic).select("id").single();
 
   return data?.id || "";
 }
@@ -278,6 +293,8 @@ export async function POST(request) {
   const payload = parsed.data;
   const messages = normalizeMessages(payload.messages);
   const requestedTopicId = (payload.topicId || "").toString().trim();
+  // Only read when this message opens a conversation; null for a typed one.
+  const source = chatSource(payload.source);
 
   if (!messages.length) {
     return jsonResponse({ error: "No message provided." }, 400);
@@ -361,10 +378,14 @@ export async function POST(request) {
   // new conversation appears in the sidebar without a refetch.
   let topicId = "";
   try {
+    const title = topicTitle(query);
     topicId = await resolveTopic(supabase, {
       topicId: requestedTopicId,
       userId,
-      title: topicTitle(query)
+      title,
+      source,
+      // Accounts are told apart by user_id already.
+      guestKey: userId ? null : guestAskerKey(address, title)
     });
     if (topicId) {
       await supabase
