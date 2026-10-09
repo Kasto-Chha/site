@@ -3,6 +3,7 @@ import { createServerSupabase } from "../../../../../lib/supabase/server";
 import { requireRole, ROLE } from "../../../../../lib/auth/roles";
 import { getContentType } from "../../../../../lib/admin/contentTypes";
 import { NOINDEX_NOFOLLOW } from "../../../../../lib/seo/indexable";
+import { logDbError } from "../../../../../lib/dbError";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,15 @@ export default async function AdminContentEditorPage({ params }) {
         .select("*")
         .eq("id", params.id)
         .single();
-      if (error) loadError = error.message;
-      else row = data;
+      if (error) {
+        logDbError(`admin edit page ${params.type}`, error);
+        loadError = "Failed to load this entry.";
+      } else {
+        row = data;
+      }
     } catch (err) {
-      loadError = err?.message || "Failed to load.";
+      console.error(`admin edit page ${params.type}:`, err?.message || err);
+      loadError = "Failed to load this entry.";
     }
   }
 

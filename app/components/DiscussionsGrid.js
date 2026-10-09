@@ -2,11 +2,11 @@
 
 import ShareRow from "./ShareRow";
 import {
-  avatarStack,
   catLabel,
   catTone,
   delayClass,
   formatTimeAgo,
+  initials,
   isoTime
 } from "./sectionHelpers";
 import { IconThumb } from "./icons";
@@ -22,11 +22,18 @@ const slugOf = (review) =>
 // and reply / upvote / time meta. Clicking a card opens the full thread page.
 export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
   // Real reply counts: how many other rows share each card's topic within the
-  // loaded pool (rather than the seeded comment_count column).
+  // loaded pool (rather than the seeded comment_count column). The same pass
+  // collects each thread's distinct authors for the avatar stack, newest first.
   const threadSize = new Map();
+  const participants = new Map();
   for (const review of reviews) {
     const slug = slugOf(review);
     threadSize.set(slug, (threadSize.get(slug) || 0) + 1);
+    const name = (review.author_name || "").trim();
+    if (!name) continue;
+    if (!participants.has(slug)) participants.set(slug, []);
+    const names = participants.get(slug);
+    if (!names.includes(name)) names.push(name);
   }
 
   // One card per THREAD, not per row.
@@ -64,7 +71,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
         const replies = Math.max((threadSize.get(slugOf(review)) || 1) - 1, 0);
         const likes = review.upvotes || 0;
         const time = formatTimeAgo(review.created_at);
-        const stack = avatarStack(review.author_name, 3);
+        const stack = (participants.get(slugOf(review)) || []).slice(0, 3);
 
         return (
           <article className={`disc-card bento-card ${delayClass(index)}`} key={review.id}>
@@ -73,11 +80,19 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
                 <span className="tcard-glyph" style={{ background: tone }} aria-hidden />
                 {catLabel(review.category)}
               </div>
-              <div className="disc-avatars" aria-hidden>
-                {stack.map((ch, i) => (
-                  <span className={`disc-av ${AV_CLASSES[i % AV_CLASSES.length]}`} key={i}>{ch}</span>
-                ))}
-              </div>
+              {stack.length > 0 ? (
+                <div className="disc-avatars" aria-hidden>
+                  {stack.map((name, i) => (
+                    <span
+                      className={`disc-av ${AV_CLASSES[i % AV_CLASSES.length]}`}
+                      key={name}
+                      title={name}
+                    >
+                      {initials(name).slice(0, 1)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <h3 className="disc-title">

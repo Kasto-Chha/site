@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getClerkClient, getClerkUser } from "../../../../lib/auth/clerk";
 import { TERMS_VERSION, hasAcceptedTerms } from "../../../../lib/terms";
 import { checkRateLimit, retryAfterSeconds } from "../../../../lib/ratelimit";
+import { BODY_LIMITS, readJsonBody } from "../../../../lib/requestBody";
 
 // Records that the signed-in user accepted the current terms. The acceptance
 // lives in Clerk publicMetadata so it travels with the account and is readable
@@ -24,7 +25,9 @@ export async function POST(request) {
 
   // The box has to actually be ticked. Consent is never inferred from the
   // request simply having been sent.
-  const payload = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.small);
+  if (parsed.response) return parsed.response;
+  const payload = parsed.data;
   if (payload.accepted !== true) {
     return NextResponse.json(
       { error: "Please tick the box to continue." },

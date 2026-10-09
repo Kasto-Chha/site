@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { fieldMaxLength } from "../../../../../lib/admin/contentTypes";
+
 function initialValues(config, row) {
   const values = {};
   for (const field of config.fields) {
@@ -20,12 +22,28 @@ function initialValues(config, row) {
 
 function Field({ field, value, onChange }) {
   const common = { id: `f-${field.name}`, value, onChange: (e) => onChange(field.name, e.target.value) };
+  // The same ceilings the API enforces (lib/admin/contentTypes.js), so the
+  // form stops an over-long value before a save round-trip does.
+  const maxLength = fieldMaxLength(field);
 
   if (field.type === "textarea") {
-    return <textarea className="admin-textarea" placeholder={field.placeholder || ""} {...common} />;
+    return <textarea className="admin-textarea" placeholder={field.placeholder || ""} maxLength={maxLength} {...common} />;
   }
   if (field.type === "number") {
-    return <input className="admin-input" type="number" placeholder={field.placeholder || ""} {...common} />;
+    return (
+      <input
+        className="admin-input"
+        type="number"
+        step={1}
+        min={field.min}
+        max={field.max}
+        placeholder={field.placeholder || ""}
+        {...common}
+      />
+    );
+  }
+  if (field.type === "url") {
+    return <input className="admin-input" type="text" inputMode="url" placeholder={field.placeholder || ""} maxLength={maxLength} {...common} />;
   }
   if (field.type === "select") {
     return (
@@ -47,11 +65,11 @@ function Field({ field, value, onChange }) {
           style={{ width: 44, height: 40, padding: 2, borderRadius: 8, border: "1px solid var(--border2)", background: "var(--paper)", cursor: "pointer" }}
           aria-label={`${field.label} colour picker`}
         />
-        <input className="admin-input" placeholder="#c8102e" {...common} />
+        <input className="admin-input" placeholder="#c8102e" maxLength={maxLength} {...common} />
       </div>
     );
   }
-  return <input className="admin-input" type="text" placeholder={field.placeholder || ""} {...common} />;
+  return <input className="admin-input" type="text" placeholder={field.placeholder || ""} maxLength={maxLength} {...common} />;
 }
 
 export default function ContentEditorClient({ type, id, config, row, loadError = "" }) {

@@ -52,6 +52,10 @@ export default async function AdminHome() {
           <h3>Reels</h3>
           <p>Embedded video reels — link only, no storage.</p>
         </a>
+        <a className="admin-card" href="/admin/content/searches">
+          <h3>Trending search rules</h3>
+          <p>Hide a search from the homepage row, or add one to fill it.</p>
+        </a>
         <a className="admin-card" href="/admin/roles">
           <h3>User roles</h3>
           <p>

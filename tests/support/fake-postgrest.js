@@ -1,5 +1,5 @@
-// A minimal in-memory PostgREST, enough for the queries lib/chatQuota.js and
-// app/api/chat/route.js actually make.
+// A minimal in-memory PostgREST, enough for the queries lib/chatQuota.js,
+// app/api/chat/route.js and the vote routes actually make.
 //
 // Why a real HTTP server instead of a stubbed supabase client: the quota is
 // only correct if the *filters* it builds are correct — user_id, role, and the
@@ -9,27 +9,48 @@
 // worth catching.
 //
 // Supported: select (incl. head + count=exact), eq/gte/lt filters, order,
-// limit, single/maybeSingle via the pgrst.object accept header, and insert
-// with return=representation.
+// limit, single/maybeSingle via the pgrst.object accept header, insert with
+// return=representation, and delete by filter.
 
 import http from "node:http";
+
+// What cast_vote (migration 0014) accepts per target type, and the counter
+// column each choice moves.
+const VOTE_TARGETS = {
+  trending: { table: "trending_topics", columns: { yes: "votes_yes", mid: "votes_mid", no: "votes_no" } },
+  battle: { table: "battles", columns: { a: "left_votes", b: "right_votes" } },
+  review: { table: "reviews", columns: { up: "upvotes", down: "downvotes" } }
+};
 
 export class FakePostgrest {
   constructor() {
     this.tables = {
+      battles: [],
       chat_messages: [],
       chat_topics: [],
       chat_usage: [],
       reviews: [],
-      trending_topics: []
+      trending_search_rules: [],
+      trending_topics: [],
+      user_votes: []
     };
     this.requests = [];
     // Set to a table name to make every write to it fail, so the tests can
     // check what the route does when storage is broken.
     this.failWritesTo = null;
+    // Set to a table name to make every read of it fail the way an unreachable
+    // database would — a real error, not "this table does not exist".
+    this.failReadsFrom = null;
     // Set to make consume_chat_quota fail the way an unreachable database
     // would, which is what sends lib/chatQuota.js down its fail-open path.
     this.failQuotaRpc = false;
+    // Set to answer cast_vote the way PostgREST does before migration 0014 has
+    // been applied: the function does not exist.
+    this.missingVoteRpc = false;
+    // Set to answer the way a database does before migration 0016 has been
+    // applied: chat_topics has no opening_query / source / guest_key, and
+    // trending_search_rules does not exist.
+    this.beforeTrendingMigration = false;
     this.nextId = 1;
   }
 
@@ -37,8 +58,71 @@ export class FakePostgrest {
     for (const name of Object.keys(this.tables)) this.tables[name] = [];
     this.requests = [];
     this.failWritesTo = null;
+    this.failReadsFrom = null;
     this.failQuotaRpc = false;
+    this.missingVoteRpc = false;
+    this.beforeTrendingMigration = false;
     this.nextId = 1;
+  }
+
+  // The Postgres side of cast_vote, kept close to
+  // supabase/migrations/0014_atomic_votes.sql. Argument names are checked
+  // exactly: PostgREST resolves a function by them, so a renamed parameter is
+  // "function not found" in production and should be here too. The row lock
+  // has no analogue — node runs this handler to completion without
+  // interleaving, which is the serialization the lock buys in Postgres.
+  #castVote(args) {
+    const notFound = {
+      status: 404,
+      body: { code: "PGRST202", message: "Could not find the function public.cast_vote" }
+    };
+    const names = Object.keys(args || {}).sort().join(",");
+    if (this.missingVoteRpc || names !== "p_target_id,p_target_type,p_user_id,p_value") {
+      return notFound;
+    }
+
+    const target = VOTE_TARGETS[args.p_target_type];
+    if (!args.p_user_id || !target || !target.columns[args.p_value]) {
+      return { status: 400, body: { code: "22023", message: "cast_vote: invalid vote" } };
+    }
+
+    const row = this.tables[target.table].find((r) => r.id === args.p_target_id);
+    if (!row) return { status: 200, body: { found: false, vote: null, row: null } };
+
+    const ledger = this.tables.user_votes;
+    const index = ledger.findIndex(
+      (v) =>
+        v.user_id === args.p_user_id &&
+        v.target_type === args.p_target_type &&
+        v.target_id === args.p_target_id
+    );
+    const previous = index >= 0 ? ledger[index].value : "";
+    const next = args.p_value === previous ? "" : args.p_value;
+
+    if (!next) {
+      if (index >= 0) ledger.splice(index, 1);
+    } else if (index >= 0) {
+      ledger[index].value = next;
+    } else {
+      ledger.push({
+        id: `vote-${this.nextId++}`,
+        user_id: args.p_user_id,
+        target_type: args.p_target_type,
+        target_id: args.p_target_id,
+        value: next
+      });
+    }
+
+    if (previous) {
+      const column = target.columns[previous];
+      row[column] = Math.max(0, (row[column] || 0) - 1);
+    }
+    if (next) {
+      const column = target.columns[next];
+      row[column] = (row[column] || 0) + 1;
+    }
+
+    return { status: 200, body: { found: true, vote: next || null, row: { ...row } } };
   }
 
   seedUsage(identity, count, { spreadMs = 1000, endingAt = Date.now() } = {}) {
@@ -157,15 +241,43 @@ export class FakePostgrest {
       }
       return send(res, 200, this.#consumeChatQuota(body || {}));
     }
+    if (table === "rpc/cast_vote") {
+      const { status, body: payload } = this.#castVote(body);
+      return send(res, status, payload);
+    }
+
+    if (this.beforeTrendingMigration) {
+      const refusal = beforeTrendingMigration(req.method, table, url, body);
+      if (refusal) return send(res, refusal.status, refusal.body);
+    }
 
     const rows = this.tables[table];
     if (!rows) return send(res, 404, { message: `no such table ${table}` });
 
     if (req.method === "POST") return this.#insert(res, req, table, body);
     if (req.method === "GET" || req.method === "HEAD") {
+      if (this.failReadsFrom === table) {
+        return send(res, 500, { code: "XX000", message: "simulated read failure" });
+      }
       return this.#select(res, req, url, rows);
     }
+    if (req.method === "DELETE") return this.#delete(res, table, url);
     return send(res, 405, { message: "not supported by the fake" });
+  }
+
+  // Delete by filter. chat_messages go with their topic, the way the
+  // on-delete-cascade foreign key takes them in Postgres.
+  #delete(res, table, url) {
+    if (this.failWritesTo === table) {
+      return send(res, 500, { code: "XX000", message: "simulated write failure" });
+    }
+    const doomed = this.tables[table].filter((row) => matches(row, url.searchParams));
+    this.tables[table] = this.tables[table].filter((row) => !doomed.includes(row));
+    if (table === "chat_topics") {
+      const ids = new Set(doomed.map((row) => row.id));
+      this.tables.chat_messages = this.tables.chat_messages.filter((m) => !ids.has(m.topic_id));
+    }
+    return send(res, 204, null);
   }
 
   #insert(res, req, table, body) {
@@ -221,6 +333,47 @@ export class FakePostgrest {
     res.setHeader("Content-Range", `0-${Math.max(0, out.length - 1)}/${total}`);
     return sendRows(res, req, out, 200);
   }
+}
+
+// What PostgREST says about the 0016 columns and table on a database that
+// does not have them yet. The codes are the point: the app tells "not migrated"
+// from "broken" by them, so a made-up error here would test nothing.
+const TRENDING_COLUMNS = ["opening_query", "source", "guest_key"];
+
+function beforeTrendingMigration(method, table, url, body) {
+  if (table === "trending_search_rules") {
+    return {
+      status: 404,
+      body: {
+        code: "PGRST205",
+        message: "Could not find the table 'public.trending_search_rules' in the schema cache"
+      }
+    };
+  }
+  if (table !== "chat_topics") return null;
+
+  if (method === "POST") {
+    const rows = Array.isArray(body) ? body : [body || {}];
+    const column = TRENDING_COLUMNS.find((name) => rows.some((row) => name in row));
+    if (!column) return null;
+    return {
+      status: 400,
+      body: {
+        code: "PGRST204",
+        message: `Could not find the '${column}' column of 'chat_topics' in the schema cache`
+      }
+    };
+  }
+
+  const selected = (url.searchParams.get("select") || "").split(",").map((name) => name.trim());
+  const column = TRENDING_COLUMNS.find(
+    (name) => selected.includes(name) || url.searchParams.has(name)
+  );
+  if (!column) return null;
+  return {
+    status: 400,
+    body: { code: "42703", message: `column chat_topics.${column} does not exist` }
+  };
 }
 
 // single()/maybeSingle() ask for one object rather than an array. Older

@@ -10,6 +10,7 @@ import useRequireSignIn from "../components/useRequireSignIn";
 import TopicSuggest from "../components/TopicSuggest";
 import { topicSlug } from "../../lib/slug";
 import { buildTopics } from "../../lib/topics";
+import { CHAT_SOURCE, chatHref } from "../../lib/chatTopics";
 import {
   CATEGORY_LABELS,
   categoryLabel,
@@ -540,7 +541,7 @@ export default function ExperienceClient({
                           </button>
                           <a
                             className="open-q-link"
-                            href={`/chat?q=${encodeURIComponent(item.question)}`}
+                            href={chatHref(item.question, CHAT_SOURCE.QUESTION)}
                           >
                             Ask Assist
                           </a>

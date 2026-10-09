@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { createServerSupabase } from "../../../../../lib/supabase/server";
 import { requireRole, ROLE } from "../../../../../lib/auth/roles";
 import { getContentType, sanitizeContent } from "../../../../../lib/admin/contentTypes";
+import { closeAuditEntry, openAuditEntry } from "../../../../../lib/admin/audit";
+import { adminSaveMessage, logDbError } from "../../../../../lib/dbError";
 import { pingIndexNow } from "../../../../../lib/seo/indexnow";
 import { isFeaturedIndexable } from "../../../../../lib/seo/indexable";
+import { BODY_LIMITS, readJsonBody } from "../../../../../lib/requestBody";
+import { TRENDING_SEARCH_TAG } from "../../../../../lib/trendingSearches";
+
+// Rules for the homepage's "Trending searches" row. The list is cached (see
+// getTrendingChatSearches), and a hide rule exists to take something down now,
+// not when the cache next expires.
+function refreshTrendingSearches(type) {
+  if (type === "searches") revalidateTag(TRENDING_SEARCH_TAG);
+}
 
 // GET  /api/admin/content/<type>      -> list rows
 // POST /api/admin/content/<type>      -> create a row
@@ -27,7 +38,8 @@ export async function GET(request, { params }) {
     .order(config.order.column, { ascending: config.order.ascending });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logDbError(`admin list ${params.type}`, error);
+    return NextResponse.json({ error: "Could not load content." }, { status: 500 });
   }
 
   return NextResponse.json({ rows: data });
@@ -44,18 +56,46 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "Unknown content type." }, { status: 404 });
   }
 
-  const body = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody(request, BODY_LIMITS.admin);
+  if (parsed.response) return parsed.response;
+  const body = parsed.data;
   const { values, error: validationError } = sanitizeContent(params.type, body);
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
   const supabase = createServerSupabase();
-  const { data, error } = await supabase.from(config.table).insert(values).select().single();
+
+  // The id is chosen here rather than by the database so the audit entry,
+  // which is written first, can name the row it is about.
+  const row = { id: crypto.randomUUID(), ...values };
+
+  let auditId;
+  try {
+    auditId = await openAuditEntry(supabase, {
+      actorId: authResult.userId,
+      action: "content.create",
+      targetType: params.type,
+      targetId: row.id,
+      after: row
+    });
+  } catch (error) {
+    console.error(`admin create ${params.type}:`, error.message);
+    return NextResponse.json(
+      { error: "Could not record this change in the audit log, so nothing was saved." },
+      { status: 500 }
+    );
+  }
+
+  const { data, error } = await supabase.from(config.table).insert(row).select().single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    await closeAuditEntry(supabase, auditId, { applied: false });
+    logDbError(`admin create ${params.type}`, error);
+    return NextResponse.json({ error: adminSaveMessage(error) }, { status: 500 });
   }
+  await closeAuditEntry(supabase, auditId, { applied: true, after: data });
+  refreshTrendingSearches(params.type);
 
   if (params.type === "featured") {
     // Featured pages are cached (revalidate = 300). Without this, a newly

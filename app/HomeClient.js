@@ -26,11 +26,24 @@ import { CATEGORY_LABELS, categoryLabel } from "../lib/categories";
 import { topicSlug } from "../lib/slug";
 import { CHANNELS, SOCIALS, liveLinks, youtubeChannelUrl } from "../lib/channels";
 import { storyHref } from "../lib/featured";
+import { CHAT_SOURCE, chatHref } from "../lib/chatTopics";
 
 // Typed one at a time into the hero search bar, so the first thing a visitor
 // sees is the shape of a real query. Module scope keeps the array identity
 // stable across renders.
 const SEARCH_EXAMPLES = ["iPhone 17", "BYD ko Atto 3", "MacBook Air M5"];
+
+// Curated quick-search chips under the hero search bar. Bare topics, not
+// "<topic> kasto chha?" questions: clicking a chip drops its text straight
+// into the search box, so a suffix here would show up twice over — once on
+// the chip and again in the input the visitor is about to send.
+const SEARCH_CHIPS = [
+  "Loksewa exam",
+  "BYD ko gaadi",
+  "ABC Trek",
+  "Sandar ko momo",
+  "IPO parne chance"
+];
 
 // Maps the modal's verdict keys onto the canonical labels the reviews/Experience
 // feed groups and colours by.
@@ -166,6 +179,7 @@ export default function HomeClient({
   stats = [],
   reels = [],
   questions = [],
+  trendingSearches = [],
   trendingVotes = {},
   battleVotes = {}
 }) {
@@ -247,8 +261,12 @@ export default function HomeClient({
     const input = document.getElementById("srch");
     const value = input ? input.value.trim() : "";
     if (!value) return;
+    // A chip sent as it was filled in is our suggestion, not the visitor's
+    // search, and is tagged so "Trending searches" doesn't count it — otherwise
+    // that row would just repeat the chips above it. Edited, it is theirs.
+    const isChip = SEARCH_CHIPS.some((chip) => chip.toLowerCase() === value.toLowerCase());
     startSearch(() => {
-      router.push(`/chat?q=${encodeURIComponent(value)}`);
+      router.push(chatHref(value, isChip ? CHAT_SOURCE.CHIP : null));
     });
   };
 
@@ -595,18 +613,10 @@ export default function HomeClient({
   const uniqueTitles = Array.from(
     new Set(trending.map((topic) => topic.title).filter((title) => Boolean(title)))
   );
-  // Curated quick-search chips under the hero search bar. Bare topics, not
-  // "<topic> kasto chha?" questions: clicking a chip drops its text straight
-  // into the search box, so a suffix here would show up twice over — once on
-  // the chip and again in the input the visitor is about to send.
-  const chipItems = [
-    "Loksewa exam",
-    "BYD ko gaadi",
-    "ABC Trek",
-    "Sandar ko momo",
-    "IPO parne chance"
-  ];
-  const searchItems = uniqueTitles.slice(0, 5);
+  // What people have actually been asking the assistant — chosen and ordered on
+  // the server (lib/trendingSearches.js). The row hides itself until there is
+  // something to show.
+  const searchItems = trendingSearches;
   // Prefill chips for the Ask tab: what people have actually asked, falling
   // back to trending poll titles before any question has been posted.
   const askedQuestions = Array.from(
@@ -715,9 +725,9 @@ export default function HomeClient({
           </div>
         </div>
 
-        {chipItems.length > 0 ? (
+        {SEARCH_CHIPS.length > 0 ? (
           <div className="chips-row">
-            {chipItems.map((label) => (
+            {SEARCH_CHIPS.map((label) => (
               <button
                 key={label}
                 type="button"
@@ -736,7 +746,7 @@ export default function HomeClient({
             <ul>
               {searchItems.map((label) => (
                 <li key={label}>
-                  <a href={`/chat?q=${encodeURIComponent(label)}`}>{label}</a>
+                  <a href={chatHref(label, CHAT_SOURCE.TRENDING)}>{label}</a>
                 </li>
               ))}
             </ul>

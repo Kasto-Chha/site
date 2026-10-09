@@ -3,6 +3,7 @@ import { createServerSupabase } from "../../../../lib/supabase/server";
 import { requireRole, ROLE, hasRole } from "../../../../lib/auth/roles";
 import { getContentType } from "../../../../lib/admin/contentTypes";
 import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
+import { logDbError } from "../../../../lib/dbError";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +47,15 @@ export default async function AdminContentListPage({ params }) {
       .from(config.table)
       .select("*")
       .order(config.order.column, { ascending: config.order.ascending });
-    if (error) loadError = error.message;
-    else rows = data || [];
+    if (error) {
+      logDbError(`admin list page ${params.type}`, error);
+      loadError = "Failed to load content.";
+    } else {
+      rows = data || [];
+    }
   } catch (err) {
-    loadError = err?.message || "Failed to load.";
+    console.error(`admin list page ${params.type}:`, err?.message || err);
+    loadError = "Failed to load content.";
   }
 
   return (
