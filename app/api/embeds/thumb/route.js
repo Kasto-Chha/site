@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { shrinkThumbnail } from "../../../../lib/imageShrink";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,9 @@ export const runtime = "nodejs";
 const CRAWLER_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
-const CACHE_HIT = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+// Browser cache raised from 1 hour to 1 day: the bytes for a given reel rarely
+// change, and Lighthouse flagged the short lifetime for returning visitors.
+const CACHE_HIT = "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800";
 const CACHE_MISS = "public, max-age=300";
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -58,8 +61,18 @@ async function streamImage(imageUrl, userAgent) {
   } catch {
     return null;
   }
-  return new NextResponse(res.body, {
-    headers: { "Content-Type": type, "Cache-Control": CACHE_HIT }
+
+  // The host check above has to pass before a single byte is read. Then shrink
+  // the cover (see lib/imageShrink.js). Keep whichever copy is smaller, and
+  // fall back to the untouched original if shrinking fails or doesn't help.
+  const original = Buffer.from(await res.arrayBuffer());
+  const shrunk = await shrinkThumbnail(original);
+  const useShrunk = shrunk && shrunk.length < original.length;
+  return new NextResponse(useShrunk ? shrunk : original, {
+    headers: {
+      "Content-Type": useShrunk ? "image/webp" : type,
+      "Cache-Control": CACHE_HIT
+    }
   });
 }
 

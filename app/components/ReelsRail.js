@@ -72,13 +72,12 @@ export default function ReelsRail({ reels = [] }) {
                   sizes="224px"
                   style={{ objectFit: "cover" }}
                   priority={index === 0}
-                  // These thumbnails are already small and proxied through
-                  // /api/embeds/thumb, which does its own 24h edge caching.
-                  // Routing them through Vercel's optimizer too was burning
-                  // through the Hobby plan's monthly transformation quota —
-                  // a handful of reels alone accounted for ~300 of the ~1,000
-                  // allowed. Skipping optimization here has little real cost:
-                  // there's minimal size to save on an image this small.
+                  // /api/embeds/thumb shrinks and re-encodes each cover itself
+                  // (lib/imageShrink.js) and caches it for a day, so Vercel's
+                  // optimizer isn't needed. Routing them through it as well was
+                  // burning through the Hobby plan's monthly transformation
+                  // quota — a handful of reels alone accounted for ~300 of the
+                  // ~1,000 allowed at the time.
                   unoptimized
                 />
               ) : null}
