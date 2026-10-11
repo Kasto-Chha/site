@@ -9,7 +9,7 @@ import {
   getTrendingTopicBySlug,
   getUserVotes,
 } from "../../../lib/supabase/queries";
-import { shareMetadata } from "../../../lib/share";
+import { shareMetadata, votesStat } from "../../../lib/share";
 import { NOINDEX_FOLLOW } from "../../../lib/seo/indexable";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +29,7 @@ async function resolveTopic(param) {
 
 
 function voteStat(t) {
-  const total = (t.votes_yes || 0) + (t.votes_mid || 0) + (t.votes_no || 0);
-  return `${total.toLocaleString("en-US")} votes`;
+  return votesStat((t.votes_yes || 0) + (t.votes_mid || 0) + (t.votes_no || 0));
 }
 
 export async function generateMetadata({ params }) {
@@ -46,7 +45,9 @@ export async function generateMetadata({ params }) {
       title: topic.title,
       description: topic.description,
       kicker: topic.category,
-      stat: voteStat(topic)
+      stat: voteStat(topic),
+      // The topic's own vote labels, as saved in the admin, drawn as pills on the card.
+      labels: [topic.yes_label, topic.mid_label, topic.no_label]
     }),
     robots: NOINDEX_FOLLOW
   };

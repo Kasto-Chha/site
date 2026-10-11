@@ -413,14 +413,6 @@ export default function HomeClient({
     setTimeout(() => document.getElementById("sh-exp")?.focus(), 140);
   };
 
-  const fillAsk = (text) => {
-    const input = document.getElementById("ask-q");
-    if (input) {
-      input.value = text;
-      input.focus();
-    }
-  };
-
   // Lets an external link (the embeddable badge widget on a business's own
   // site — see public/badge-widget.js) open straight into the share flow
   // with that business's name already filled in, e.g.
@@ -610,21 +602,10 @@ export default function HomeClient({
     switchMTab(activeTabRef.current);
   };
 
-  const uniqueTitles = Array.from(
-    new Set(trending.map((topic) => topic.title).filter((title) => Boolean(title)))
-  );
   // What people have actually been asking the assistant — chosen and ordered on
   // the server (lib/trendingSearches.js). The row hides itself until there is
   // something to show.
   const searchItems = trendingSearches;
-  // Prefill chips for the Ask tab: what people have actually asked, falling
-  // back to trending poll titles before any question has been posted.
-  const askedQuestions = Array.from(
-    new Set(questions.map((item) => item.question).filter(Boolean))
-  );
-  const suggestedQuestions = (
-    askedQuestions.length ? askedQuestions : uniqueTitles
-  ).slice(0, 4);
 
   const marqueeItems = trending
     .slice(0, 6)
@@ -1158,20 +1139,6 @@ export default function HomeClient({
                   >
                     Share Experience
                   </button>
-                </div>
-              ) : null}
-              {suggestedQuestions.length > 0 ? (
-                <div className="ex-chips">
-                  {suggestedQuestions.map((label) => (
-                    <button
-                      key={label}
-                      type="button"
-                      className="ex-c"
-                      onClick={() => fillAsk(label)}
-                    >
-                      {label}
-                    </button>
-                  ))}
                 </div>
               ) : null}
             </div>

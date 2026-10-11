@@ -10,7 +10,7 @@ import {
   getUserVotes,
 } from "../../../lib/supabase/queries";
 import { topicSlug } from "../../../lib/slug";
-import { shareMetadata } from "../../../lib/share";
+import { shareMetadata, threadShareInfo } from "../../../lib/share";
 import { isDiscussionIndexable, robotsFor } from "../../../lib/seo/indexable";
 import {
   breadcrumbSchema,
@@ -76,7 +76,7 @@ export async function generateMetadata({ params }) {
 
   const op = thread[0];
   const title = op.topic || op.title || "KastoChha discussion";
-  const likes = thread.reduce((sum, item) => sum + (item.upvotes || 0), 0);
+  const card = threadShareInfo(thread, title);
 
   // A thread with one short reply cannot answer whatever someone searched for,
   // and a pile of those drags on how the whole domain is judged. So indexing is
@@ -95,11 +95,12 @@ export async function generateMetadata({ params }) {
       // Previously this was op.summary — one contributor's sentence, which meant
       // the search snippet for the whole thread was a single random opinion
       // ("Ali battery ko issue raichha"). Describe the thread instead.
-      description: `${thread.length} ${
-        thread.length === 1 ? "experience" : "experiences"
-      } shared on ${title} — real opinions from people in Nepal, with votes and replies.`,
+      description: card.description,
       kicker: op.category,
-      stat: `${likes} likes`
+      // The card's pill and label: experiences shared, or, for a thread that opens
+      // with a question, how many answers it has so far.
+      stat: card.stat,
+      kind: card.kind
     }),
     robots: robotsFor(indexable)
   };

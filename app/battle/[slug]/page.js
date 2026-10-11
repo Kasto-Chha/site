@@ -5,7 +5,7 @@ import SiteNav from "../../components/SiteNav";
 import BattleSplit from "../../components/BattleSplit";
 import SharePanel from "../../components/SharePanel";
 import { getBattleById, getBattleBySlug, getUserVotes } from "../../../lib/supabase/queries";
-import { shareMetadata } from "../../../lib/share";
+import { shareMetadata, votesStat } from "../../../lib/share";
 import { NOINDEX_FOLLOW } from "../../../lib/seo/indexable";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ function pcts(b) {
 export async function generateMetadata({ params }) {
   const { row: battle } = await resolveBattle(params.slug);
   if (!battle) return { title: "Battle not found - KastoChha" };
-  const { left, right } = pcts(battle);
+  const { total } = pcts(battle);
   // Noindexed for the same reason as the section index: these rotate out
   // within days. The share card metadata below still matters — that is how
   // these travel on TikTok and Facebook, which is their actual channel.
@@ -44,7 +44,19 @@ export async function generateMetadata({ params }) {
       title: `${battle.left_title} vs ${battle.right_title}`,
       description: `${battle.category} battle — vote and see what Nepal thinks.`,
       kicker: battle.category,
-      stat: `${left}% ${battle.left_title} · ${right}% ${battle.right_title}`
+      // The card's votes badge; the split itself is drawn from the two counts below.
+      stat: votesStat(total),
+      // The two sides' real pictures, names and colours, drawn on the share card.
+      battle: {
+        a: battle.left_title,
+        b: battle.right_title,
+        ia: battle.left_image,
+        ib: battle.right_image,
+        ca: battle.left_color,
+        cb: battle.right_color,
+        va: battle.left_votes,
+        vb: battle.right_votes
+      }
     }),
     robots: NOINDEX_FOLLOW
   };

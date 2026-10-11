@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { renderCard } from "../../../lib/ogResponse";
+import { finalizeImage, defaultCardResponse } from "../../../lib/ogFinalize";
 
 export const runtime = "edge";
 
@@ -22,6 +24,20 @@ function clamp(value, max) {
 // Renders a 1200x630 "post" card for social previews. All content comes from
 // query params so the endpoint stays fast and cacheable by crawlers.
 export async function GET(request) {
+  try {
+    return await finalizeImage(await render(request));
+  } catch (error) {
+    console.error("Share card failed, serving the default card:", error?.message || error);
+    return defaultCardResponse(new URL(request.url).origin);
+  }
+}
+
+async function render(request) {
+  // Trending and Discussion cards are drawn by lib/ogResponse.js; everything
+  // else (homepage, battle, featured) continues below, unchanged.
+  const special = await renderCard(request);
+  if (special) return special;
+
   const { searchParams } = new URL(request.url);
   const type = (searchParams.get("type") || "trending").toLowerCase();
   const accent = ACCENTS[type] || "#C8102E";

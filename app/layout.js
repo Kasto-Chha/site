@@ -52,7 +52,8 @@ export const metadata = {
     type: "website",
     images: [
       {
-        url: "/api/og?kicker=Nepal%27s+Independent+Community-Powered+Review+Platform&title=Nepal+ma+sabai+kura...+KastoChha%3F",
+        url: "/og-home.png",
+        type: "image/png",
         width: 1200,
         height: 630,
         alt: "KastoChha - Nepal's Curious Community Network"
@@ -65,7 +66,7 @@ export const metadata = {
     description:
       "Real reviews, honest opinions, and answers on everything that matters in Nepal.",
     images: [
-      "/api/og?kicker=Nepal%27s+Independent+Community-Powered+Review+Platform&title=Nepal+ma+sabai+kura...+KastoChha%3F"
+      "/og-home.png"
     ]
   }
 };

@@ -19,6 +19,7 @@ const STUBS = {
   "next/headers": "./stubs/next-headers.mjs",
   "next/cache": "./stubs/next-cache.mjs",
   "next/server": "./stubs/next-server.mjs",
+  "next/og": "./stubs/next-og.mjs",
   "@upstash/ratelimit": "./stubs/upstash-ratelimit.mjs",
   "@upstash/redis": "./stubs/upstash-redis.mjs"
 };
