@@ -13,7 +13,7 @@ import sharp from "sharp";
 
 const { renderCard } = await import("../lib/ogResponse.js");
 const { resetOgAssetCache } = await import("../lib/ogAssets.js");
-const { clipText, resolveLabels, titleFontSize, pillFontSize, LABEL_DEFAULTS, battleSplit, battleTitleLayout } = await import("../lib/ogCards.js");
+const { clipText, resolveLabels, titleFontSize, pillFontSize, LABEL_DEFAULTS, battleSplit, battleTitleLayout, hasDevanagari, buildTrendingCard, buildDiscussionCard, buildHomeCard, DISCUSSION_LINE, QUESTION_LINE } = await import("../lib/ogCards.js");
 const { ogImagePath, experiencesStat, votesStat, answersStat, threadShareInfo } = await import("../lib/share.js");
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co";
@@ -497,4 +497,203 @@ test("each page's own card is declared as a PNG with its size", () => {
   const meta = shareMetadata({ type: "trending", path: "/trending/x", title: "T", description: "D" });
   assert.deepEqual(meta.openGraph.images[0], { url: meta.openGraph.images[0].url, type: "image/png", width: 1200, height: 630, alt: "T" });
   assert.ok(meta.openGraph.images[0].url.startsWith("/api/og?"));
+});
+
+test("Discussion and Question cards never draw a summary sentence, even when the address carries one", async () => {
+  const bare = { type: "discussions", kicker: "Motors", title: "TVS Ntorq (RTFi)", stat: "1 experience shared" };
+  const sentence = "1 experience shared on TVS Ntorq (RTFi) \u2014 real opinions from people in Nepal, with votes and replies.";
+  assert.ok((await draw({ ...bare, subtitle: sentence })).equals(await draw(bare)), "a Discussion card drew the summary sentence");
+  const question = { ...bare, stat: "No answers yet", kind: "question" };
+  assert.ok((await draw({ ...question, subtitle: sentence })).equals(await draw(question)), "a Question card drew the summary sentence");
+});
+
+test("the address the discussion page really builds draws the same card as the bare one", async () => {
+  const thread = [{ kind: "experience" }];
+  const info = threadShareInfo(thread, "TVS Ntorq (RTFi)");
+  const meta = shareMetadata({ type: "discussions", path: "/discussions/tvs-ntorq", title: "TVS Ntorq (RTFi)", description: info.description, kicker: "Motors", stat: info.stat, kind: info.kind });
+  const real = new URL(meta.openGraph.images[0].url, "https://kastochhanepal.com");
+  assert.ok(real.searchParams.get("subtitle"), "expected the page to send its description along");
+  const fromPage = await renderCard(new Request(real.toString()));
+  const bare = await draw({ type: "discussions", kicker: "Motors", title: "TVS Ntorq (RTFi)", stat: "1 experience shared" });
+  assert.ok(Buffer.from(await fromPage.arrayBuffer()).equals(bare), "the page's own address draws a different card from the designed one");
+});
+
+test("the address the Trending page really builds draws the designed Trending card", async () => {
+  const prompt = "Balen sarkar ko 6 mahina \u2014 kasto lagyo?";
+  const meta = shareMetadata({
+    type: "trending",
+    path: "/trending/balen-government",
+    title: "Balen Government's 6-month performance",
+    description: prompt,
+    kicker: "General",
+    stat: votesStat(1248),
+    labels: ["Ramro Chha", "Thikai Chha", "Ramro Chhaina"]
+  });
+  const real = await renderCard(new Request(new URL(meta.openGraph.images[0].url, "https://kastochhanepal.com").toString()));
+  const bare = await draw({ type: "trending", kicker: "General", title: "Balen Government's 6-month performance", subtitle: prompt, stat: "1,248 votes", l1: "Ramro Chha", l2: "Thikai Chha", l3: "Ramro Chhaina" });
+  assert.ok(Buffer.from(await real.arrayBuffer()).equals(bare), "the page's own address draws a different card from the designed one");
+});
+
+test("the address the Battle page really builds draws the designed Battle card", async () => {
+  const meta = shareMetadata({
+    type: "battle",
+    path: "/battle/indrive-vs-yango",
+    title: "inDrive vs Yango",
+    description: "Ride sharing battle \u2014 vote and see what Nepal thinks.",
+    kicker: "Ride sharing",
+    stat: votesStat(2341),
+    battle: { a: "inDrive", b: "Yango", ia: "", ib: "", ca: "#1E7A46", cb: "#A8650B", va: 1451, vb: 890 }
+  });
+  const real = await renderCard(new Request(new URL(meta.openGraph.images[0].url, "https://kastochhanepal.com").toString()));
+  const bare = await draw({ type: "battle", title: "inDrive vs Yango", a: "inDrive", b: "Yango", ca: "#1E7A46", cb: "#A8650B", va: "1451", vb: "890", stat: "2,341 votes" });
+  assert.ok(Buffer.from(await real.arrayBuffer()).equals(bare), "the page's own address draws a different card from the designed one");
+});
+
+// ---------- Battle pictures: the rules, and the reasons ----------
+const { resolveBattlePicture, loadBattleImage } = await import("../lib/ogImages.js");
+
+async function battleHeaderFor(params) {
+  const url = `https://kastochhanepal.com/api/og?${new URLSearchParams({ type: "battle", title: "A vs B", a: "A", b: "B", ...params }).toString()}`;
+  const res = await renderCard(new Request(url));
+  await res.arrayBuffer();
+  return res.headers.get("x-card-pictures");
+}
+
+test("which picture addresses are accepted, and the reason for each refusal", () => {
+  const site = "https://kastochhanepal.com";
+  assert.deepEqual(resolveBattlePicture("", site), { reason: "none" });
+  assert.deepEqual(resolveBattlePicture(undefined, site), { reason: "none" });
+  // our own files
+  assert.equal(resolveBattlePicture("/battle-images/x.jpg", site).url, "https://kastochhanepal.com/battle-images/x.jpg");
+  assert.equal(resolveBattlePicture("//evil.example.com/x.jpg", site).reason, "invalid-address");
+  // this project's storage (any /storage/v1/ path), and nothing else on that host
+  assert.ok(resolveBattlePicture(`${STORAGE}/x.jpg`, site).url);
+  assert.ok(resolveBattlePicture("https://abc.supabase.co/storage/v1/render/image/public/b/x.jpg", site).url);
+  assert.equal(resolveBattlePicture("https://abc.supabase.co/rest/v1/battles", site).reason, "path-not-storage");
+  // everyone else
+  assert.equal(resolveBattlePicture("http://abc.supabase.co/storage/v1/object/public/x.jpg", site).reason, "not-https");
+  assert.equal(resolveBattlePicture("https://evil.example.com/x.jpg", site).reason, "host-not-approved");
+  assert.equal(resolveBattlePicture("https://abc.supabase.co.evil.com/storage/v1/x.jpg", site).reason, "host-not-approved");
+  assert.equal(resolveBattlePicture("not a url", site).reason, "invalid-address");
+});
+
+test("a host the site already approves for images is accepted, and only that host", () => {
+  process.env.OPTIMIZED_IMAGE_HOSTS = "i.ytimg.com, Cdn.Example.com";
+  try {
+    assert.ok(resolveBattlePicture("https://cdn.example.com/a/b.png", "https://kastochhanepal.com").url);
+    assert.ok(resolveBattlePicture("https://i.ytimg.com/vi/x/hq.jpg", "https://kastochhanepal.com").url);
+    assert.equal(resolveBattlePicture("https://other.example.com/b.png", "https://kastochhanepal.com").reason, "host-not-approved");
+  } finally {
+    delete process.env.OPTIMIZED_IMAGE_HOSTS;
+  }
+});
+
+test("with no Supabase address and no approved hosts configured, the reason says so", () => {
+  const saved = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  try {
+    assert.equal(resolveBattlePicture(`${STORAGE}/x.jpg`, "https://kastochhanepal.com").reason, "no-approved-hosts");
+  } finally {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = saved;
+  }
+});
+
+test("a picture on this site's own path is fetched and used", async () => {
+  pictures.set("https://kastochhanepal.com/battle-images/x.png", { bytes: await picture("#2db84c", "png"), type: "image/png" });
+  const used = await draw({ ...BATTLE, ia: "/battle-images/x.png" });
+  assert.ok(!used.equals(await draw(BATTLE)), "a picture on this site's own path was ignored");
+  assert.equal(await battleHeaderFor({ ia: "/battle-images/x.png" }), "left=ok; right=none");
+});
+
+test("GIF pictures are drawn; WebP, AVIF and TIFF are refused by name", async () => {
+  const gif = await sharp({ create: { width: 40, height: 60, channels: 3, background: "#ff8800" } }).gif().toBuffer();
+  const webp = await picture("#00ff00", "webp");
+  const avif = await sharp({ create: { width: 40, height: 60, channels: 3, background: "#0000ff" } }).avif().toBuffer();
+  const tiff = await sharp({ create: { width: 40, height: 60, channels: 3, background: "#aa00aa" } }).tiff().toBuffer();
+  pictures.set(`${STORAGE}/a.gif`, { bytes: gif, type: "image/gif" });
+  pictures.set(`${STORAGE}/a.webp`, { bytes: webp, type: "image/webp" });
+  pictures.set(`${STORAGE}/a.avif`, { bytes: avif, type: "image/avif" });
+  pictures.set(`${STORAGE}/a.tiff`, { bytes: tiff, type: "image/tiff" });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.gif` }), "left=ok; right=none");
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.webp` }), "left=unsupported-format:webp; right=none");
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.avif` }), "left=unsupported-format:avif; right=none");
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.tiff` }), "left=unsupported-format:tiff; right=none");
+});
+
+test("the card reports why each side's picture was or wasn't used", async () => {
+  console.error = () => {};
+  pictures.set(`${STORAGE}/good.jpg`, { bytes: await picture("#e0a030", "jpeg"), type: "image/jpeg" });
+  pictures.set(`${STORAGE}/big.jpg`, { bytes: Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(2 * 1024 * 1024 + 10)]), type: "image/jpeg" });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/good.jpg`, ib: `${STORAGE}/missing.jpg` }), "left=ok; right=fetch-failed:404");
+  assert.equal(await battleHeaderFor({ ia: "https://evil.example.com/x.jpg", ib: `${STORAGE}/big.jpg` }), "left=host-not-approved; right=too-large");
+  assert.equal(await battleHeaderFor({}), "left=none; right=none");
+  assert.equal(await battleHeaderFor({ ia: "http://abc.supabase.co/storage/v1/x.jpg", ib: "garbage" }), "left=not-https; right=invalid-address");
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/storage/")) throw new Error("network down");
+    return real(url);
+  };
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/c.jpg` }), "left=fetch-error; right=none");
+});
+
+test("the finalizer keeps the card's own X-Card-* notes and nothing else of its headers", async () => {
+  const png = await sharp({ create: { width: 4, height: 4, channels: 3, background: "#c8102e" } }).png().toBuffer();
+  const res = await finalizeImage(new Response(png, { status: 200, headers: { "X-Card-Pictures": "left=ok; right=none", "X-Secret": "nope", "Content-Type": "text/plain" } }));
+  assert.equal(res.headers.get("x-card-pictures"), "left=ok; right=none");
+  assert.equal(res.headers.get("x-secret"), null);
+  assert.equal(res.headers.get("content-type"), "image/png");
+});
+
+// ---------- the lines on the cards ----------
+// Every piece of text a card draws, in order, read from its element tree.
+function textsOf(node) {
+  if (node === null || node === undefined || node === false) return [];
+  if (typeof node === "string") return [node];
+  const kids = node.props?.children;
+  return (Array.isArray(kids) ? kids : [kids]).flatMap(textsOf);
+}
+const cardArgs = { title: "T", kicker: "K", stat: "S", logo: null };
+
+test("the invitation lines are fixed: Discussion and Question each have their own", () => {
+  assert.equal(DISCUSSION_LINE, "Got Something to Say? Join the Discussion!");
+  assert.equal(QUESTION_LINE, "Got an Answer? Share It!");
+  const discussion = textsOf(buildDiscussionCard(cardArgs));
+  const question = textsOf(buildDiscussionCard({ ...cardArgs, question: true }));
+  assert.ok(discussion.includes(DISCUSSION_LINE) && !discussion.includes(QUESTION_LINE));
+  assert.ok(question.includes(QUESTION_LINE) && !question.includes(DISCUSSION_LINE));
+});
+
+test("a Trending card draws the topic's description, cut to one line, and nothing when there is none", () => {
+  const labels = ["A", "B", "C"];
+  const withNote = textsOf(buildTrendingCard({ ...cardArgs, labels, description: "NTC ra Ncell ko price increase \u2014 worth it ki overpriced?" }));
+  assert.ok(withNote.includes("NTC ra Ncell ko price increase \u2014 worth it ki overpriced?"));
+  const long = "word ".repeat(40).trim();
+  const cut = textsOf(buildTrendingCard({ ...cardArgs, labels, description: long })).find((x) => x.endsWith("\u2026"));
+  assert.ok(cut && cut.length <= 62, `the long description was not cut to one line: ${cut}`);
+  for (const none of [undefined, "", "   "]) {
+    const texts = textsOf(buildTrendingCard({ ...cardArgs, labels, description: none }));
+    assert.deepEqual(texts, textsOf(buildTrendingCard({ ...cardArgs, labels })), `an empty description (${JSON.stringify(none)}) changed the card`);
+  }
+});
+
+test("a description written in Devanagari is left off the card", () => {
+  assert.equal(hasDevanagari("\u0928\u0947\u092a\u093e\u0932 \u092e\u093e"), true);
+  assert.equal(hasDevanagari("Nepal ma sabai kura"), false);
+  assert.equal(hasDevanagari("mixed \u0928\u0947\u092a\u093e\u0932 text"), true);
+  assert.equal(hasDevanagari(undefined), false);
+  const labels = ["A", "B", "C"];
+  const texts = textsOf(buildTrendingCard({ ...cardArgs, labels, description: "\u0928\u0947\u092a\u093e\u0932 \u092e\u093e \u0938\u092c\u0948 \u0915\u0941\u0930\u093e" }));
+  assert.deepEqual(texts, textsOf(buildTrendingCard({ ...cardArgs, labels })), "a Devanagari description was drawn");
+});
+
+test("a Trending card with a description renders; a Devanagari one matches a card without", async () => {
+  const base = { type: "trending", kicker: "General", title: "NTC vs Ncell price increase", stat: "902 votes" };
+  await assertCardSize(await draw({ ...base, subtitle: "NTC ra Ncell ko price increase \u2014 worth it ki overpriced?" }));
+  assert.ok(!(await draw({ ...base, subtitle: "A real description" })).equals(await draw(base)), "the description made no difference");
+  assert.ok((await draw({ ...base, subtitle: "\u0928\u0947\u092a\u093e\u0932 \u092e\u093e" })).equals(await draw(base)), "a Devanagari description changed the card");
+});
+
+test("the homepage pills read Ask, Explore, Share, in that order", () => {
+  const pills = textsOf(buildHomeCard({ logo: null })).filter((x) => ["Ask", "Explore", "Share"].includes(x));
+  assert.deepEqual(pills, ["Ask", "Explore", "Share"]);
 });
