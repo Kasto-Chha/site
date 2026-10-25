@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 
 import { IconPlay } from "./icons";
-import { toEmbedUrl, toThumbUrl } from "../../lib/embeds";
+import { reelCover, toEmbedUrl } from "../../lib/embeds";
 
 // Horizontal reel rail across the niche KastoChha channels. Reels are just
 // stored links — when the link is embeddable (YouTube/Instagram/TikTok/Vimeo)
@@ -37,7 +37,7 @@ export default function ReelsRail({ reels = [] }) {
           const embed = toEmbedUrl(reel.video_url) || toEmbedUrl(reel.channel_url);
           // Video thumbnail layered over the accent gradient; if the thumb URL
           // 404s the gradient below still shows.
-          const thumb = toThumbUrl(reel.video_url) || toThumbUrl(reel.channel_url);
+          const thumb = reelCover(reel);
           const gradient = `linear-gradient(165deg, ${accent} 0%, #17120f 105%)`;
 
           const onClick = (event) => {

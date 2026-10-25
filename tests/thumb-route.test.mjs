@@ -138,3 +138,143 @@ test("shrinkThumbnail gives up cleanly on empty, missing, or oversized input", a
   assert.equal(await shrinkThumbnail(Buffer.alloc(0)), null);
   assert.equal(await shrinkThumbnail(Buffer.alloc(5 * 1024 * 1024 + 1)), null);
 });
+
+// ---------- why a cover is missing: every miss explains itself ----------
+
+function upstream(table) {
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    for (const [prefix, respond] of table) if (url.startsWith(prefix)) return respond(url, init);
+    throw new Error(`unexpected fetch ${url}`);
+  };
+}
+function imageResponse(url, bytes, type = "image/jpeg") {
+  const res = new Response(bytes, { status: 200, headers: { "content-type": type } });
+  Object.defineProperty(res, "url", { value: url });
+  return res;
+}
+const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const ask = (link) => GET(new Request(`https://kastochhanepal.com/api/embeds/thumb?url=${encodeURIComponent(link)}`));
+const TIKTOK = "https://www.tiktok.com/@kasto/video/123";
+const OEMBED = "https://www.tiktok.com/oembed";
+
+async function expectMiss(res, reason, { transient = false } = {}) {
+  assert.equal(res.status, 404);
+  assert.equal(res.headers.get("x-thumb-reason"), reason);
+  assert.equal(res.headers.get("cache-control"), transient ? "public, max-age=30" : "public, max-age=300");
+}
+
+test("TikTok: each way it can fail says so, and only temporary ones are remembered briefly", async () => {
+  console.error = () => {};
+  try {
+    const cover = await makeCover();
+    const goodOembed = () => jsonResponse({ thumbnail_url: "https://p16-sign.tiktokcdn.com/cover.jpg" });
+    const image = (url) => imageResponse(url, cover);
+    const cases = [
+      ["the lookup is overloaded (503)", [[OEMBED, () => new Response("busy", { status: 503 })]], "tiktok:oembed-503", true],
+      ["the lookup is rate-limited (429)", [[OEMBED, () => new Response("slow down", { status: 429 })]], "tiktok:oembed-429", true],
+      ["the lookup says not found (404)", [[OEMBED, () => new Response("no", { status: 404 })]], "tiktok:oembed-404", false],
+      ["the lookup returns something that isn't JSON", [[OEMBED, () => new Response("<html>", { status: 200 })]], "tiktok:oembed-bad-json", false],
+      ["the lookup has no cover in it", [[OEMBED, () => jsonResponse({})]], "tiktok:no-thumbnail", false],
+      ["the cover is on a host we don't approve", [[OEMBED, () => jsonResponse({ thumbnail_url: "https://evil.example.com/c.jpg" })]], "tiktok:host-not-allowed:evil.example.com", false],
+      ["the cover is not https", [[OEMBED, () => jsonResponse({ thumbnail_url: "http://p16-sign.tiktokcdn.com/c.jpg" })]], "tiktok:thumbnail-not-https", false],
+      ["the image is refused (403)", [[OEMBED, goodOembed], ["https://p16-sign.tiktokcdn.com/", () => new Response("no", { status: 403 })]], "tiktok:image-403", false],
+      ["the image server is down (502)", [[OEMBED, goodOembed], ["https://p16-sign.tiktokcdn.com/", () => new Response("bad gateway", { status: 502 })]], "tiktok:image-502", true],
+      ["the 'image' is really a web page", [[OEMBED, goodOembed], ["https://p16-sign.tiktokcdn.com/", (url) => imageResponse(url, "<html>login</html>", "text/html; charset=utf-8")]], "tiktok:not-image:text/html", false],
+      ["the image redirects to a host we don't approve", [[OEMBED, goodOembed], ["https://p16-sign.tiktokcdn.com/", () => imageResponse("https://evil.example.com/c.jpg", cover)]], "tiktok:host-not-allowed:evil.example.com", false],
+      ["the lookup can't be reached at all", [[OEMBED, () => { throw new TypeError("fetch failed"); }]], "tiktok:oembed-error:TypeError:fetch failed", true],
+      ["the image can't be reached at all", [[OEMBED, goodOembed], ["https://p16-sign.tiktokcdn.com/", () => { throw new TypeError("fetch failed"); }]], "tiktok:image-error:TypeError:fetch failed", true]
+    ];
+    for (const [name, table, reason, transient] of cases) {
+      upstream(table);
+      await expectMiss(await ask(TIKTOK), reason, { transient }).catch((error) => {
+        error.message = `${name}: ${error.message}`;
+        throw error;
+      });
+    }
+    // and a working cover carries no reason and the long cache
+    upstream([[OEMBED, goodOembed], ["https://p16-sign.tiktokcdn.com/", image]]);
+    const ok = await ask(TIKTOK);
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get("x-thumb-reason"), null);
+    assert.match(ok.headers.get("cache-control"), /max-age=86400/);
+  } finally {
+    restore();
+  }
+});
+
+test("Instagram: one direct attempt, and each way it can fail says so", async () => {
+  const cover = await makeCover();
+  const REEL = "https://www.instagram.com/reel/ABC123/";
+  const MEDIA = "https://www.instagram.com/reel/ABC123/media/";
+  const asked = [];
+  const track = (fn) => (url, init) => {
+    asked.push(url);
+    return fn(url, init);
+  };
+  try {
+    // the cover is served; nothing else is fetched
+    upstream([[MEDIA, track((url) => imageResponse("https://scontent.cdninstagram.com/c.jpg", cover))]]);
+    const ok = await ask(REEL);
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get("x-thumb-reason"), null);
+    assert.deepEqual(asked, [`${MEDIA}?size=l`]);
+
+    // refused, or answered with a login page, or rate limited, or down
+    upstream([[MEDIA, () => new Response("login", { status: 403 })]]);
+    await expectMiss(await ask(REEL), "instagram:image-403");
+    upstream([[MEDIA, (url) => imageResponse(url, "<html>login</html>", "text/html")]]);
+    await expectMiss(await ask(REEL), "instagram:not-image:text/html");
+    upstream([[MEDIA, () => new Response("slow", { status: 429 })]]);
+    await expectMiss(await ask(REEL), "instagram:image-429", { transient: true });
+    upstream([[MEDIA, () => new Response("down", { status: 503 })]]);
+    await expectMiss(await ask(REEL), "instagram:image-503", { transient: true });
+    upstream([[MEDIA, () => { throw new TypeError("fetch failed"); }]]);
+    await expectMiss(await ask(REEL), "instagram:image-error:TypeError:fetch failed", { transient: true });
+
+    // the image ends up on a host we don't approve
+    upstream([[MEDIA, () => imageResponse("https://evil.example.com/c.jpg", cover)]]);
+    await expectMiss(await ask(REEL), "instagram:host-not-allowed:evil.example.com");
+
+    // not a reel or post address at all
+    await expectMiss(await ask("https://www.instagram.com/someaccount/"), "instagram:no-id");
+  } finally {
+    restore();
+  }
+});
+
+test("Facebook: a missing or foreign og:image is reported, not hidden", async () => {
+  const cover = await makeCover();
+  const FB = "https://www.facebook.com/reel/123";
+  const page = (html, status = 200) => new Response(html, { status });
+  try {
+    upstream([[FB, () => page(`<meta property="og:image" content="https://scontent.fbcdn.net/c.jpg">`)], ["https://scontent.fbcdn.net/", (url) => imageResponse(url, cover)]]);
+    assert.equal((await ask(FB)).status, 200);
+    upstream([[FB, () => page("<html>log in to continue</html>")]]);
+    await expectMiss(await ask(FB), "facebook:no-og-image");
+    upstream([[FB, () => page("denied", 403)]]);
+    await expectMiss(await ask(FB), "facebook:page-403");
+    upstream([[FB, () => page("down", 503)]]);
+    await expectMiss(await ask(FB), "facebook:page-503", { transient: true });
+    upstream([[FB, () => page(`<meta property="og:image" content="https://evil.example.com/c.jpg">`)]]);
+    await expectMiss(await ask(FB), "facebook:host-not-allowed:evil.example.com");
+  } finally {
+    restore();
+  }
+});
+
+test("bad, insecure and unsupported addresses each say so; reasons stay short and header-safe", async () => {
+  try {
+    upstream([]);
+    await expectMiss(await ask("not a url"), "bad-url");
+    await expectMiss(await ask("http://www.tiktok.com/@a/video/1"), "not-https");
+    await expectMiss(await ask("https://example.com/video/1"), "unsupported-host:example.com");
+    const long = await ask(`https://${"a".repeat(120)}.example.com/x`);
+    assert.equal(long.status, 404);
+    assert.ok(long.headers.get("x-thumb-reason").length <= 160);
+    assert.match(long.headers.get("x-thumb-reason"), /^unsupported-host:a+$/);
+    assert.doesNotMatch(long.headers.get("x-thumb-reason"), /[^A-Za-z0-9 .:_/+-]/);
+  } finally {
+    restore();
+  }
+});

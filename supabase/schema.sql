@@ -69,6 +69,7 @@ create table if not exists reels (
   accent text,
   video_url text,
   channel_url text,
+  cover_url text,
   created_at timestamptz not null default now()
 );
 
