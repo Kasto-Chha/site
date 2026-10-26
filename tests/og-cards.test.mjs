@@ -14,7 +14,7 @@ import sharp from "sharp";
 const { renderCard } = await import("../lib/ogResponse.js");
 const { resetOgAssetCache } = await import("../lib/ogAssets.js");
 const { clipText, resolveLabels, titleFontSize, pillFontSize, LABEL_DEFAULTS, battleSplit, battleTitleLayout, hasDevanagari, buildTrendingCard, buildDiscussionCard, buildHomeCard, DISCUSSION_LINE, QUESTION_LINE } = await import("../lib/ogCards.js");
-const { ogImagePath, experiencesStat, votesStat, answersStat, threadShareInfo } = await import("../lib/share.js");
+const { ogImagePath, CARD_VERSION, experiencesStat, votesStat, answersStat, threadShareInfo } = await import("../lib/share.js");
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co";
 const STORAGE = "https://abc.supabase.co/storage/v1/object/public/Battle%20Images";
@@ -102,8 +102,8 @@ test("the card address carries the topic's labels, and is unchanged without them
   assert.equal(params.get("l3"), "Ramro Chhaina");
   assert.equal(new URL(ogImagePath({ type: "trending", title: "T", labels: ["a".repeat(60)] }), "https://x.test").searchParams.get("l1").length, 40);
   // No labels: byte-for-byte the address the site has always produced.
-  assert.equal(ogImagePath({ type: "battle", kicker: "K", title: "T", subtitle: "S", stat: "9" }), "/api/og?type=battle&kicker=K&title=T&subtitle=S&stat=9");
-  assert.equal(ogImagePath({ type: "trending", title: "T", labels: ["", "  ", null] }), "/api/og?type=trending&title=T");
+  assert.equal(ogImagePath({ type: "battle", kicker: "K", title: "T", subtitle: "S", stat: "9" }), `/api/og?type=battle&kicker=K&title=T&subtitle=S&stat=9&v=${CARD_VERSION}`);
+  assert.equal(ogImagePath({ type: "trending", title: "T", labels: ["", "  ", null] }), `/api/og?type=trending&title=T&v=${CARD_VERSION}`);
 });
 
 test("a Trending card renders at 1200x630", async () => {
@@ -263,7 +263,7 @@ test("the share helper carries the battle's names, pictures and colours", () => 
   assert.equal(url.searchParams.get("ca"), "#fff");
   assert.equal(url.searchParams.get("ib"), null);
   assert.equal(url.searchParams.get("cb"), null);
-  assert.equal(ogImagePath({ type: "battle", title: "T" }), "/api/og?type=battle&title=T");
+  assert.equal(ogImagePath({ type: "battle", title: "T" }), `/api/og?type=battle&title=T&v=${CARD_VERSION}`);
 });
 
 test("the vote split: rounding, an even start, and never negative", () => {
@@ -399,8 +399,8 @@ test("an ordinary thread is described exactly as it always was", () => {
 
 test("the card address marks a question thread, and only that", () => {
   assert.equal(new URL(ogImagePath({ type: "discussions", title: "T", kind: "question" }), "https://x.test").searchParams.get("kind"), "question");
-  assert.equal(ogImagePath({ type: "discussions", title: "T", kind: "experience" }), "/api/og?type=discussions&title=T");
-  assert.equal(ogImagePath({ type: "discussions", title: "T" }), "/api/og?type=discussions&title=T");
+  assert.equal(ogImagePath({ type: "discussions", title: "T", kind: "experience" }), `/api/og?type=discussions&title=T&v=${CARD_VERSION}`);
+  assert.equal(ogImagePath({ type: "discussions", title: "T" }), `/api/og?type=discussions&title=T&v=${CARD_VERSION}`);
 });
 
 test("a Question card renders, differs from a Discussion card, and an unknown kind is ignored", async () => {
@@ -837,4 +837,33 @@ test("good pictures are untouched by the safety net: one attempt, both kept", as
   pictures.set(`${STORAGE}/a.jpg`, { bytes: await picture("#e0a030", "jpeg"), type: "image/jpeg" });
   pictures.set(`${STORAGE}/b.png`, { bytes: await picture("#3050c0", "png"), type: "image/png" });
   assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.jpg`, ib: `${STORAGE}/b.png` }), "left=ok; right=ok");
+});
+
+// ---------- the version that makes a redesigned card a new address ----------
+test("every card address ends with the card version, whatever the card", () => {
+  assert.match(CARD_VERSION, /^[A-Za-z0-9]{1,6}$/);
+  for (const type of ["battle", "trending", "discussions", "featured", "home"]) {
+    const url = new URL(ogImagePath({ type, title: "T", kicker: "K", stat: "9", labels: ["a", "b", "c"], battle: { a: "A", b: "B", va: 1, vb: 2 }, kind: "question" }), "https://x.test");
+    assert.equal(url.searchParams.get("v"), CARD_VERSION, type);
+    assert.ok(url.search.endsWith(`&v=${CARD_VERSION}`), `${type}: the version should come last`);
+  }
+});
+
+test("a page's share tags carry the versioned address, for Facebook and for X", () => {
+  const meta = shareMetadata({ type: "battle", path: "/battle/x", title: "A vs B", description: "d", kicker: "K", stat: "1 vote", battle: { a: "A", b: "B", va: 1, vb: 0 } });
+  assert.ok(meta.openGraph.images[0].url.endsWith(`&v=${CARD_VERSION}`));
+  assert.ok(meta.twitter.images[0].endsWith(`&v=${CARD_VERSION}`));
+});
+
+test("the card route ignores the version: it only changes the address", async () => {
+  const params = { type: "trending", kicker: "General", title: "NTC vs Ncell price increase", stat: "902 votes" };
+  const bare = await draw(params);
+  assert.ok((await draw({ ...params, v: "3" })).equals(bare));
+  assert.ok((await draw({ ...params, v: "99" })).equals(bare));
+});
+
+test("raising the version really does produce a different address", () => {
+  const a = ogImagePath({ type: "battle", title: "T" });
+  assert.notEqual(a, a.replace(`v=${CARD_VERSION}`, "v=999"));
+  assert.ok(a.includes(`v=${CARD_VERSION}`));
 });
