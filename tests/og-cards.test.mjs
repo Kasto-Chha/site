@@ -20,14 +20,16 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co";
 const STORAGE = "https://abc.supabase.co/storage/v1/object/public/Battle%20Images";
 const pictures = new Map(); // address -> { bytes, type }
 const fetched = []; // every address the card code asked for
+const fetchInits = []; // and the options each request was made with
 
 const realFetch = globalThis.fetch;
 const realConsoleError = console.error;
 const publicDir = path.resolve("public");
 
 function serveAssetsFromDisk() {
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async (url, init) => {
     fetched.push(String(url));
+    fetchInits.push({ url: String(url), init });
     if (pictures.has(String(url))) {
       const { bytes, type } = pictures.get(String(url));
       return new Response(bytes, { status: 200, headers: { "content-type": type } });
@@ -41,6 +43,7 @@ function serveAssetsFromDisk() {
 beforeEach(() => {
   pictures.clear();
   fetched.length = 0;
+  fetchInits.length = 0;
   resetOgAssetCache();
   serveAssetsFromDisk();
 });
@@ -633,7 +636,7 @@ test("the card reports why each side's picture was or wasn't used", async () => 
     if (String(url).includes("/storage/")) throw new Error("network down");
     return real(url);
   };
-  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/c.jpg` }), "left=fetch-error; right=none");
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/c.jpg` }), "left=fetch-error:request:Error:network down; right=none");
 });
 
 test("the finalizer keeps the card's own X-Card-* notes and nothing else of its headers", async () => {
@@ -696,4 +699,138 @@ test("a Trending card with a description renders; a Devanagari one matches a car
 test("the homepage pills read Ask, Explore, Share, in that order", () => {
   const pills = textsOf(buildHomeCard({ logo: null })).filter((x) => ["Ask", "Explore", "Share"].includes(x));
   assert.deepEqual(pills, ["Ask", "Explore", "Share"]);
+});
+
+// ---------- picture loading: the parts that must not depend on the server ----------
+const { toBase64 } = await import("../lib/ogAssets.js");
+
+test("base64 encoding is exact at every size, including around the chunk boundaries", () => {
+  for (const size of [0, 1, 2, 3, 1023, 1024, 1025, 2047, 2048, 2049, 29069, 70000]) {
+    const bytes = Buffer.alloc(size);
+    for (let i = 0; i < size; i++) bytes[i] = (i * 31 + 7) % 256;
+    assert.equal(toBase64(bytes), bytes.toString("base64"), `wrong at ${size} bytes`);
+  }
+});
+
+test("encoding never hands one call more than a thousand-odd arguments", () => {
+  const original = String.fromCharCode;
+  let largest = 0;
+  String.fromCharCode = function (...args) {
+    largest = Math.max(largest, args.length);
+    if (args.length > 2048) throw new RangeError("Maximum call stack size exceeded");
+    return original.apply(String, args);
+  };
+  try {
+    const bytes = Buffer.alloc(70000, 7);
+    assert.equal(toBase64(bytes), bytes.toString("base64"));
+    assert.ok(largest <= 1024, `one call took ${largest} arguments`);
+  } finally {
+    String.fromCharCode = original;
+  }
+});
+
+const fakeResponse = (extra = {}) => ({ ok: true, status: 200, redirected: false, url: "", headers: new Headers(), arrayBuffer: async () => new ArrayBuffer(0), ...extra });
+const toArrayBuffer = (buf) => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+const onlyStorageFails = (make) => {
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init) => (String(url).includes("/storage/") ? make(url, init) : real(url, init));
+};
+
+test("a failure says which step broke and with what error", async () => {
+  console.error = () => {};
+  onlyStorageFails(() => {
+    throw new TypeError("fetch failed");
+  });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.jpg` }), "left=fetch-error:request:TypeError:fetch failed; right=none");
+
+  onlyStorageFails(() => fakeResponse({ arrayBuffer: async () => { throw new Error("socket hang up"); } }));
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.jpg` }), "left=fetch-error:read:Error:socket hang up; right=none");
+
+  const slow = Object.assign(new Error("timed out"), { name: "TimeoutError" });
+  onlyStorageFails(() => { throw slow; });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.jpg` }), "left=fetch-timeout; right=none");
+
+  // encoding fails: make any large call to fromCharCode blow up, as a tight server might
+  const jpeg = await picture("#e0a030", "jpeg");
+  onlyStorageFails(() => fakeResponse({ arrayBuffer: async () => toArrayBuffer(jpeg) }));
+  const original = String.fromCharCode;
+  String.fromCharCode = function (...args) {
+    if (args.length > 8) throw new RangeError("Maximum call stack size exceeded");
+    return original.apply(String, args);
+  };
+  try {
+    assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.jpg` }), "left=fetch-error:encode:RangeError:Maximum call stack size exceeded; right=none");
+  } finally {
+    String.fromCharCode = original;
+  }
+});
+
+test("a header-unsafe error message is cleaned before it is reported", async () => {
+  console.error = () => {};
+  onlyStorageFails(() => {
+    throw new Error("bad\r\nSet-Cookie: x=1; path=/ <script>");
+  });
+  const header = await battleHeaderFor({ ia: `${STORAGE}/a.jpg` });
+  assert.ok(!/[\r\n<>]/.test(header), `unsafe characters in: ${header}`);
+  assert.match(header, /^left=fetch-error:request:Error:/);
+  assert.ok(header.length < 200);
+});
+
+test("a redirect is followed only while it stays on an approved address", async () => {
+  const png = await picture("#2db84c", "png");
+  onlyStorageFails(() => fakeResponse({ redirected: true, url: "https://evil.example.com/x.png", arrayBuffer: async () => toArrayBuffer(png) }));
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.png` }), "left=redirected-elsewhere; right=none");
+  onlyStorageFails(() => fakeResponse({ redirected: true, url: `${STORAGE}/moved.png`, arrayBuffer: async () => toArrayBuffer(png) }));
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.png` }), "left=ok; right=none");
+});
+
+test("picture requests are plain: no 'redirect: error' option, which not every server accepts", async () => {
+  pictures.set(`${STORAGE}/plain.png`, { bytes: await picture("#2db84c", "png"), type: "image/png" });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/plain.png` }), "left=ok; right=none");
+  const sent = fetchInits.filter((f) => f.url.includes("/storage/"));
+  assert.ok(sent.length > 0);
+  for (const { init } of sent) {
+    assert.ok(!init || !("redirect" in init), "the picture request set a redirect option");
+    assert.ok(init?.signal, "the picture request lost its timeout");
+  }
+});
+
+// ---------- a picture the engine can't decode must never take the whole card down ----------
+async function junkJpeg() {
+  // Passes the card's checks (it starts like a JPEG) but is not a decodable image.
+  const good = await picture("#e0a030", "jpeg");
+  return Buffer.concat([good.subarray(0, 20), Buffer.alloc(3000, 7)]);
+}
+
+test("one undecodable picture is dropped and the other is kept, and the card is still drawn", async () => {
+  console.error = () => {};
+  pictures.set(`${STORAGE}/junk.jpg`, { bytes: await junkJpeg(), type: "image/jpeg" });
+  pictures.set(`${STORAGE}/good.png`, { bytes: await picture("#3050c0", "png"), type: "image/png" });
+  const params = { ...BATTLE, ia: `${STORAGE}/junk.jpg`, ib: `${STORAGE}/good.png` };
+  const card = await draw(params);
+  await assertCardSize(card);
+  assert.equal(await battleHeaderFor({ ia: params.ia, ib: params.ib }), "left=render-failed; right=ok");
+  assert.ok(!card.equals(await draw(BATTLE)), "the good picture was dropped along with the bad one");
+});
+
+test("two undecodable pictures leave a plain coloured card, not an error", async () => {
+  console.error = () => {};
+  pictures.set(`${STORAGE}/junk1.jpg`, { bytes: await junkJpeg(), type: "image/jpeg" });
+  pictures.set(`${STORAGE}/junk2.jpg`, { bytes: await junkJpeg(), type: "image/jpeg" });
+  const params = { ia: `${STORAGE}/junk1.jpg`, ib: `${STORAGE}/junk2.jpg` };
+  assert.equal(await battleHeaderFor(params), "left=render-failed; right=render-failed");
+  assert.ok((await draw({ ...BATTLE, ...params })).equals(await draw(BATTLE)), "the fallback is not the plain colour card");
+});
+
+test("an undecodable picture beside an empty side keeps that side's own reason", async () => {
+  console.error = () => {};
+  pictures.set(`${STORAGE}/junk.jpg`, { bytes: await junkJpeg(), type: "image/jpeg" });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/junk.jpg` }), "left=render-failed; right=none");
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/junk.jpg`, ib: "https://evil.example.com/x.jpg" }), "left=render-failed; right=host-not-approved");
+});
+
+test("good pictures are untouched by the safety net: one attempt, both kept", async () => {
+  pictures.set(`${STORAGE}/a.jpg`, { bytes: await picture("#e0a030", "jpeg"), type: "image/jpeg" });
+  pictures.set(`${STORAGE}/b.png`, { bytes: await picture("#3050c0", "png"), type: "image/png" });
+  assert.equal(await battleHeaderFor({ ia: `${STORAGE}/a.jpg`, ib: `${STORAGE}/b.png` }), "left=ok; right=ok");
 });
