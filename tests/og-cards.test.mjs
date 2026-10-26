@@ -312,15 +312,19 @@ test("the share helper carries the battle's vote counts", () => {
 });
 
 test("the Battle title fits: one line when short, two lines when long, never absurdly small", () => {
-  assert.deepEqual(battleTitleLayout("inDrive", "Yango"), { lines: ["inDrive vs Yango"], size: 88 });
-  const long = battleTitleLayout("Ncell Axiata Limited", "Nepal Telecom (NTC)");
+  assert.deepEqual(battleTitleLayout("inDrive", "Yango"), { lines: ["inDrive vs Yango"], size: 68 });
+  // Lumbini Lions vs Sudurpaschim Royals now fits on one line
+  const lions = battleTitleLayout("Lumbini Lions", "Sudurpaschim Royals");
+  assert.equal(lions.lines.length, 1);
+  assert.ok(lions.size >= 47 && lions.size <= 68, `size ${lions.size}`);
+  const long = battleTitleLayout("Sudurpaschim Royals Cricket", "Lumbini Lions Cricket Club");
   assert.equal(long.lines.length, 2);
-  assert.equal(long.lines[1], "vs Nepal Telecom (NTC)");
+  assert.equal(long.lines[1], "vs Lumbini Lions Cricket Club");
   // Every combination the 24-character name limit allows must fit the 1056px line.
   for (let a = 1; a <= 24; a++) {
     for (let b = 1; b <= 24; b++) {
       const { lines, size } = battleTitleLayout("x".repeat(a), "y".repeat(b));
-      assert.ok(size >= 40 && size <= 88, `size ${size} for ${a}/${b}`);
+      assert.ok(size >= 32 && size <= 68, `size ${size} for ${a}/${b}`);
       for (const line of lines) assert.ok(line.length * (0.54 * size - 2) <= 1056 + 1, `${a}/${b}: "${line}" at ${size}px is too wide`);
     }
   }
