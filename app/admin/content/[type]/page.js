@@ -1,5 +1,7 @@
 import ContentListClient from "./ContentListClient";
+import TrendingNowPanel from "./TrendingNowPanel";
 import { createServerSupabase } from "../../../../lib/supabase/server";
+import { getTrendingSearchReport } from "../../../../lib/supabase/queries";
 import { requireRole, ROLE, hasRole } from "../../../../lib/auth/roles";
 import { getContentType } from "../../../../lib/admin/contentTypes";
 import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
@@ -58,6 +60,10 @@ export default async function AdminContentListPage({ params }) {
     loadError = "Failed to load content.";
   }
 
+  // The search rules shape a list the site works out for itself, so their
+  // page also shows that list: what a rule is about to change.
+  const trendingReport = params.type === "searches" ? await getTrendingSearchReport() : null;
+
   return (
     <ContentListClient
       type={params.type}
@@ -65,6 +71,8 @@ export default async function AdminContentListPage({ params }) {
       rows={rows}
       loadError={loadError}
       canDelete={hasRole(authResult.role, ROLE.SUPER_ADMIN)}
-    />
+    >
+      {trendingReport ? <TrendingNowPanel report={trendingReport} /> : null}
+    </ContentListClient>
   );
 }

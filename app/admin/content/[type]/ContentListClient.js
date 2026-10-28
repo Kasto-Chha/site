@@ -1,13 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ContentListClient({ type, config, rows = [], loadError = "", canDelete }) {
+// `children` is rendered between the header and the list, for a type that has
+// something to show above its rows (the trending-search rules do).
+export default function ContentListClient({
+  type,
+  config,
+  rows = [],
+  loadError = "",
+  canDelete,
+  children
+}) {
   const router = useRouter();
   const [items, setItems] = useState(rows);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState(loadError);
+
+  // router.refresh() hands this component fresh rows, but state initialised
+  // from a prop keeps its first value — so a row created elsewhere on the page
+  // would not appear until a full reload. Follow the server's list.
+  useEffect(() => {
+    setItems(rows);
+  }, [rows]);
 
   const handleDelete = async (id) => {
     if (!window.confirm(`Delete this ${config.singular}? This cannot be undone.`)) return;
@@ -42,6 +58,8 @@ export default function ContentListClient({ type, config, rows = [], loadError =
           <a className="btn-red" href={`/admin/content/${type}/new`}>New {config.singular}</a>
         </div>
       </div>
+
+      {children}
 
       <div className="admin-panel">
         {error ? <div className="admin-banner">{error}</div> : null}

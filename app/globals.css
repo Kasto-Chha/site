@@ -26,6 +26,10 @@
 	--green-pale:#EAF3DE;
 	--muted:#7A7468;
 	--muted2:#9E988E;
+	/* For small text that has to be read, not just noticed. --muted is 4.1:1 on
+	   --paper and --muted2 is 2.5:1, both under the 4.5:1 floor; this is 5.0:1
+	   on --paper, 5.4:1 on --card and 4.7:1 on --paper2. */
+	--muted-strong:#6B665B;
 	--border:rgba(12,11,9,.1);
 	--border2:rgba(12,11,9,.18);
 	--border3:rgba(12,11,9,.06);
@@ -308,15 +312,45 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 }
 .chip:hover,.chip.active{background:var(--red-pale);border-color:rgba(200,16,46,.3);color:var(--red)}
 
-.t-searches{}
-.t-searches p{font-family:var(--font-mono), monospace;font-size:.62rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-bottom:10px}
-.t-searches ul{list-style:none;display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
-.t-searches ul li a{
-	text-decoration:none;color:var(--muted);font-size:.84rem;
-	display:flex;align-items:center;gap:5px;transition:color .2s;
+/* Trending searches: what people are actually asking the assistant, in rank
+   order. Numbered plain text rather than bordered pills, so it reads as a
+   ranking and not as a second row of the chips above — those only fill the
+   box, these go straight to an answer. */
+.t-searches{width:100%;max-width:700px;margin:0 auto}
+.t-searches-label{
+	display:inline-flex;align-items:center;gap:7px;margin-bottom:4px;
+	font-family:var(--font-mono), monospace;font-size:.62rem;letter-spacing:2px;text-transform:uppercase;
+	color:var(--muted-strong);
 }
-.t-searches ul li a::before{content:"\2197";font-size:.7rem;color:var(--muted2)}
-.t-searches ul li a:hover{color:var(--red)}
+.t-searches-label .icon{width:13px;height:13px;color:var(--red)}
+.t-searches ol{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:0 2px}
+/* min-width:0 all the way down is what lets a long search shrink and end in an
+   ellipsis instead of pushing the row wider than the screen. */
+.t-searches li{min-width:0;max-width:100%}
+.t-searches a{
+	display:flex;align-items:center;gap:8px;max-width:100%;
+	/* The padding is the touch target: the text alone is 13px tall. */
+	min-height:40px;padding:6px 13px;border-radius:100px;
+	text-decoration:none;color:var(--ink);font-size:.86rem;font-weight:500;
+	transition:background .2s,color .2s,opacity .2s;
+}
+.t-rank{
+	flex-shrink:0;min-width:1ch;text-align:center;
+	font-family:var(--font-mono), monospace;font-size:.72rem;font-weight:500;color:var(--red);
+}
+.t-label{min-width:0;max-width:30ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-searches a:hover{background:var(--red-pale);color:var(--red)}
+/* One search is already on its way to /chat: the one clicked says so, and the
+   rest step back so a second click can't start another. */
+.t-searches a[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.t-searches a.is-pending{background:var(--red-pale);color:var(--red);pointer-events:none}
+.t-searches a.is-pending .t-rank{position:relative;color:transparent}
+.t-searches a.is-pending .t-rank::after{
+	content:"";position:absolute;top:50%;left:50%;width:12px;height:12px;margin:-6px 0 0 -6px;
+	border-radius:50%;border:2px solid var(--red-glow);border-top-color:var(--red);
+	animation:tSearchSpin .7s linear infinite;
+}
+@keyframes tSearchSpin{to{transform:rotate(360deg)}}
 
 .empty-card{
 	border-style:dashed;color:var(--muted);background:var(--card);
@@ -1308,6 +1342,30 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:.88rem;line-height:1.5;
 	background:var(--red-pale);border:1px solid rgba(200,16,46,.2);color:var(--red);
 }
+/* "On the homepage now", above the trending-search rules. Built from the list
+   classes above; only what a second panel on the page needs is added here. */
+.trend-now{margin-bottom:22px}
+.trend-now-head{padding:12px 14px 10px}
+.trend-now-head h2{font-family:var(--font-serif), serif;font-size:1.25rem;font-weight:800;letter-spacing:-.4px;margin-bottom:4px}
+.trend-now h3{
+	padding:16px 14px 2px;font-family:var(--font-mono), monospace;font-size:.62rem;font-weight:500;
+	letter-spacing:1.6px;text-transform:uppercase;color:var(--muted-strong);
+}
+.trend-now .admin-banner{margin:0 14px 12px}
+.trend-now .admin-list{list-style:none}
+.trend-now .admin-list .admin-row:last-child{border-bottom:1px solid var(--border)}
+/* Wrapped in full rather than cut with an ellipsis: an editor deciding whether
+   to hide a search needs to read all of it. */
+.trend-now .admin-row-title{white-space:normal;overflow-wrap:anywhere}
+.trend-now-rank{display:inline-block;min-width:1.5ch;margin-right:8px;font-family:var(--font-mono), monospace;font-weight:500;color:var(--red)}
+.trend-now-foot{padding:12px 14px 8px}
+.trend-now .btn-outline:disabled{opacity:.5;cursor:not-allowed}
+/* A fallback row has no Hide button; a fixed last column keeps its status in
+   line with the rows that do. */
+@media(min-width:721px){
+	.trend-now .admin-row{grid-template-columns:minmax(0,1fr) auto 76px}
+	.trend-now .admin-row-actions{justify-content:flex-end}
+}
 .admin-form{display:flex;flex-direction:column;gap:16px;padding:14px}
 .admin-field{display:flex;flex-direction:column;gap:6px}
 .admin-label{
@@ -1335,8 +1393,16 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 
 @media(max-width:720px){
 	.admin-page{padding:28px 16px 60px}
-	.admin-row{grid-template-columns:1fr;gap:10px;align-items:flex-start}
+	/* minmax(0,1fr), not 1fr: a bare 1fr track grows to fit an unbreakable
+	   title, which pushed long rows out past the panel edge. The status pill
+	   keeps its own width instead of stretching into a bar. */
+	.admin-row{grid-template-columns:minmax(0,1fr);gap:10px;align-items:flex-start}
+	.admin-status{justify-self:start}
 	.admin-two{grid-template-columns:1fr}
+	/* Trending panel on a phone: the search on its own line, then its status
+	   and Hide side by side. */
+	.trend-now .admin-row{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+	.trend-now .admin-row > div:first-child{grid-column:1/-1}
 }
 
 @media(max-width:860px){
@@ -1448,7 +1514,11 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	.foot-col ul li{margin-bottom:11px}
 	.foot-col ul li a{font-size:.88rem}
 	.foot-bottom{padding-top:20px;font-size:.7rem}
-	.t-searches ul{gap:10px}
+	/* Three on a phone, full-size touch targets, and a long search gets the
+	   whole line before it is cut. */
+	.t-searches li:nth-child(n+4){display:none}
+	.t-searches a{min-height:44px}
+	.t-label{max-width:none}
 }
 
 @theme inline {

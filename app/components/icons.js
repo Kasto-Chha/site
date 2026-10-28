@@ -114,6 +114,15 @@ export function IconArrowUp({ className = "" }) {
   );
 }
 
+export function IconTrend({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </svg>
+  );
+}
+
 export function IconArrowDown({ className = "" }) {
   return (
     <svg {...baseProps} className={className}>

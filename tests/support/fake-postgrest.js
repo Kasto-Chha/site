@@ -10,7 +10,7 @@
 //
 // Supported: select (incl. head + count=exact), eq/gte/lt filters, order,
 // limit, single/maybeSingle via the pgrst.object accept header, insert with
-// return=representation, and delete by filter.
+// return=representation, and update and delete by filter.
 
 import http from "node:http";
 
@@ -25,6 +25,7 @@ const VOTE_TARGETS = {
 export class FakePostgrest {
   constructor() {
     this.tables = {
+      admin_audit_log: [],
       battles: [],
       chat_messages: [],
       chat_topics: [],
@@ -262,7 +263,21 @@ export class FakePostgrest {
       return this.#select(res, req, url, rows);
     }
     if (req.method === "DELETE") return this.#delete(res, table, url);
+    if (req.method === "PATCH") return this.#update(res, req, table, url, body);
     return send(res, 405, { message: "not supported by the fake" });
+  }
+
+  // Update by filter: the body's columns are written onto every matching row.
+  #update(res, req, table, url, body) {
+    if (this.failWritesTo === table) {
+      return send(res, 500, { code: "XX000", message: "simulated write failure" });
+    }
+    const changed = this.tables[table].filter((row) => matches(row, url.searchParams));
+    for (const row of changed) Object.assign(row, body || {});
+
+    const prefer = req.headers.prefer || "";
+    if (!prefer.includes("return=representation")) return send(res, 204, null);
+    return sendRows(res, req, changed, 200);
   }
 
   // Delete by filter. chat_messages go with their topic, the way the

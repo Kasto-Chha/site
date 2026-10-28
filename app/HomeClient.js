@@ -20,7 +20,8 @@ import {
   IconBriefcase,
   IconCheck,
   IconChat,
-  IconHome
+  IconHome,
+  IconTrend
 } from "./components/icons";
 import { CATEGORY_LABELS, categoryLabel } from "../lib/categories";
 import { topicSlug } from "../lib/slug";
@@ -44,6 +45,12 @@ const SEARCH_CHIPS = [
   "Sandar ko momo",
   "IPO parne chance"
 ];
+
+// A trending search longer than this is likely to be cut short on screen (the
+// CSS truncates by width, so this is an estimate), and gets a tooltip carrying
+// the whole thing. Shorter ones are already fully visible, and a tooltip that
+// only repeats the text is noise — to a screen reader, literally.
+const SEARCH_TOOLTIP_FROM = 26;
 
 // Maps the modal's verdict keys onto the canonical labels the reviews/Experience
 // feed groups and colours by.
@@ -185,8 +192,13 @@ export default function HomeClient({
   // label, and reading state inside the handler would see a stale value.
   const busyRef = useRef(false);
   const router = useRouter();
-  // Drives the hero search button's "Searching..." label while /chat loads.
+  // True while /chat loads after a search was sent, from the box or from a
+  // trending link. Drives whichever of the two shows the pending state.
   const [searching, startSearch] = useTransition();
+  // Which trending search was clicked, so the wait is shown on that link and
+  // not on the Go button. Only meaningful while `searching`: the transition
+  // clears itself when the route is ready and this is simply left behind.
+  const [pendingSearch, setPendingSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [modalError, setModalError] = useState("");
   const [needsSignIn, setNeedsSignIn] = useState(false);
@@ -261,8 +273,26 @@ export default function HomeClient({
     // search, and is tagged so "Trending searches" doesn't count it — otherwise
     // that row would just repeat the chips above it. Edited, it is theirs.
     const isChip = SEARCH_CHIPS.some((chip) => chip.toLowerCase() === value.toLowerCase());
+    setPendingSearch("");
     startSearch(() => {
       router.push(chatHref(value, isChip ? CHAT_SOURCE.CHIP : null));
+    });
+  };
+
+  // A trending link is a real link — it works without JavaScript, opens in a
+  // new tab, can be copied — but a plain click on it used to look like nothing
+  // had happened for as long as /chat took to load, the same dead second the
+  // Go button had. So a plain click goes through the same transition and the
+  // link shows it is working; anything else is left to the browser.
+  const openTrendingSearch = (event, label) => {
+    const plainClick =
+      event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+    if (!plainClick) return;
+    event.preventDefault();
+    if (searching) return;
+    setPendingSearch(label);
+    startSearch(() => {
+      router.push(chatHref(label, CHAT_SOURCE.TRENDING));
     });
   };
 
@@ -596,6 +626,7 @@ export default function HomeClient({
   // the server (lib/trendingSearches.js). The row hides itself until there is
   // something to show.
   const searchItems = trendingSearches;
+  const goPending = searching && !pendingSearch;
   // Prefill chips for the Ask tab: what people have actually asked, falling
   // back to trending poll titles before any question has been posted.
   const askedQuestions = Array.from(
@@ -694,12 +725,12 @@ export default function HomeClient({
             />
             <button
               type="button"
-              className={`s-btn${searching ? " searching" : ""}`}
+              className={`s-btn${goPending ? " searching" : ""}`}
               onClick={submitSearch}
               disabled={searching}
-              aria-busy={searching}
+              aria-busy={goPending}
             >
-              {searching ? "Searching..." : "Go"}
+              {goPending ? "Searching..." : "Go"}
             </button>
           </div>
         </div>
@@ -720,15 +751,37 @@ export default function HomeClient({
         ) : null}
 
         {searchItems.length > 0 ? (
-          <div className="t-searches">
-            <p>Trending searches</p>
-            <ul>
-              {searchItems.map((label) => (
-                <li key={label}>
-                  <a href={chatHref(label, CHAT_SOURCE.TRENDING)}>{label}</a>
-                </li>
-              ))}
-            </ul>
+          // Not a <nav>: the stylesheet pins every nav element to the top of
+          // the page as the site header.
+          <div className="t-searches" role="group" aria-labelledby="t-searches-label">
+            <p className="t-searches-label" id="t-searches-label">
+              <IconTrend className="icon" />
+              Trending searches
+            </p>
+            {/* An ordered list because the order is the information. The
+                explicit role keeps it a list for VoiceOver, which drops list
+                semantics once list-style is none; the visible number is then
+                hidden from screen readers so the position isn't read twice. */}
+            <ol role="list">
+              {searchItems.map((label, index) => {
+                const pending = searching && pendingSearch === label;
+                return (
+                  <li key={label}>
+                    <a
+                      href={chatHref(label, CHAT_SOURCE.TRENDING)}
+                      className={pending ? "is-pending" : undefined}
+                      aria-busy={pending || undefined}
+                      aria-disabled={(searching && !pending) || undefined}
+                      title={label.length > SEARCH_TOOLTIP_FROM ? label : undefined}
+                      onClick={(event) => openTrendingSearch(event, label)}
+                    >
+                      <span className="t-rank" aria-hidden="true">{index + 1}</span>
+                      <span className="t-label">{label}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
         ) : null}
       </section>

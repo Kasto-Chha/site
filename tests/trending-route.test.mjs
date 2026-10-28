@@ -13,11 +13,14 @@ import { CHAT_SOURCE } from "../lib/chatTopics.js";
 import { TRENDING_SEARCH_TAG } from "../lib/trendingSearches.js";
 
 let getTrendingChatSearches;
+let getTrendingSearchReport;
 let DELETE;
 
 before(async () => {
   await setup();
-  ({ getTrendingChatSearches } = await import("../lib/supabase/queries.js"));
+  ({ getTrendingChatSearches, getTrendingSearchReport } = await import(
+    "../lib/supabase/queries.js"
+  ));
   ({ DELETE } = await import("../app/api/chat/history/route.js"));
 });
 after(() => teardown());
@@ -211,4 +214,73 @@ test("a delete that fails leaves the cached row alone", async () => {
 
   assert.equal(await deleteHistory(USER, { all: true }), 500);
   assert.equal(state().revalidatedTags, undefined);
+});
+
+// --------------------------------------------------------------------------
+// Hiding a search from the admin panel
+// --------------------------------------------------------------------------
+
+const ADMIN = "user_admin";
+
+// What the panel's Hide button sends: POST /api/admin/content/searches.
+async function hideFromPanel(userId, search) {
+  state().userId = userId;
+  const { POST } = await import("../app/api/admin/content/[type]/route.js");
+  const response = await POST(
+    new Request("https://kastochha.com/api/admin/content/searches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        term: search.term,
+        action: "hide",
+        rank: 1,
+        note: `Hidden from the trending panel, where it showed as "${search.label}".`
+      })
+    }),
+    { params: { type: "searches" } }
+  );
+  return response.status;
+}
+
+test("Hide in the admin panel takes a search off the homepage, every spelling of it", async () => {
+  state().roles[ADMIN] = "admin";
+  await ask("BYD ko gaadi kasto chha?", { userId: USER });
+  await ask("byd ko gaadi", { userId: OTHER });
+  await ask("Loksewa exam", { userId: USER });
+  await ask("loksewa exam?", { userId: OTHER });
+
+  const before = await getTrendingSearchReport();
+  const byd = before.shown.find((search) => search.term === "byd ko gaadi");
+  assert.ok(byd, "it is showing, so the panel offers to hide it");
+
+  assert.equal(await hideFromPanel(ADMIN, byd), 200);
+
+  assert.deepEqual(
+    db.tables.trending_search_rules.map((rule) => [rule.term, rule.action]),
+    [["byd ko gaadi", "hide"]]
+  );
+  assert.deepEqual(state().revalidatedTags, [TRENDING_SEARCH_TAG], "visitors' copy is dropped too");
+
+  const after = await getTrendingSearchReport();
+  assert.deepEqual(after.shown.map((search) => search.term), ["loksewa exam"]);
+  assert.deepEqual(await getTrendingChatSearches(), ["loksewa exam?"]);
+
+  const [entry] = db.tables.admin_audit_log;
+  assert.deepEqual(
+    [entry.actor_id, entry.action, entry.target_type, entry.status],
+    [ADMIN, "content.create", "searches", "applied"]
+  );
+});
+
+test("only an admin can hide a search", async () => {
+  await ask("Loksewa exam", { userId: USER });
+  await ask("Loksewa exam", { userId: OTHER });
+  const [search] = (await getTrendingSearchReport()).shown;
+
+  assert.equal(await hideFromPanel(USER, search), 403);
+  assert.equal(await hideFromPanel(null, search), 401);
+
+  assert.deepEqual(db.tables.trending_search_rules, []);
+  assert.equal(state().revalidatedTags, undefined);
+  assert.deepEqual(await getTrendingChatSearches(), ["Loksewa exam"]);
 });

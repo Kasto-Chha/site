@@ -17,6 +17,7 @@ import assert from "node:assert/strict";
 import { db } from "./support/harness.js";
 import { chatHref, chatSource, CHAT_SOURCE } from "../lib/chatTopics.js";
 import {
+  describeTrendingSearches,
   isPublicSearch,
   rankTrendingSearches,
   searchKey,
@@ -391,13 +392,16 @@ test("chat links carry a source only when it is one the server knows", () => {
 // --------------------------------------------------------------------------
 
 let getTrendingChatSearches;
+let getTrendingSearchReport;
 let getHomeData;
 
 before(async () => {
   await db.listen();
   process.env.NEXT_PUBLIC_SUPABASE_URL = db.url;
   process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
-  ({ getTrendingChatSearches, getHomeData } = await import("../lib/supabase/queries.js"));
+  ({ getTrendingChatSearches, getTrendingSearchReport, getHomeData } = await import(
+    "../lib/supabase/queries.js"
+  ));
 });
 
 after(() => db.close());
@@ -564,4 +568,149 @@ test("the admin panel accepts a hide or fallback rule and nothing else", async (
     sanitizeContent("searches", { term: "x".repeat(TRENDING_SEARCH_MAX + 1), action: "hide" }).error,
     /too long/
   );
+});
+
+// --------------------------------------------------------------------------
+// The admin panel's view of the same ranking
+// --------------------------------------------------------------------------
+
+test("the report says what is shown, what is next, and counts what is held back", () => {
+  const rows = [
+    ...Array.from({ length: 3 }, (_, i) => asked("ABC Trek kasto chha?", { by: `a${i}`, hoursAgo: 2 })),
+    asked("abc trek", { by: "a9", hoursAgo: 1 }),
+    asked("Loksewa exam", { by: "b1", hoursAgo: 5 }),
+    asked("Loksewa exam", { guest: "bbbb", hoursAgo: 6 }),
+    asked("NTC ko 5G", { by: "c1", hoursAgo: 40 }),
+    asked("NTC ko 5G", { by: "c2", hoursAgo: 41 }),
+    asked("only I asked this", { by: "d1" }),
+    asked("and only I asked this", { by: "d2" }),
+    asked("hi", { by: "d3" }),
+    asked("hi", { by: "d4" })
+  ];
+
+  const report = describeTrendingSearches(rows, {
+    now: NOW,
+    limit: 2,
+    rules: [{ term: "Editor's pick", action: "fallback", rank: 1 }]
+  });
+
+  assert.deepEqual(report.shown, [
+    {
+      label: "ABC Trek kasto chha?",
+      term: "abc trek",
+      askers: 4,
+      lastAsked: new Date(NOW - HOUR).toISOString(),
+      fallback: false
+    },
+    {
+      label: "Loksewa exam",
+      term: "loksewa exam",
+      askers: 2,
+      lastAsked: new Date(NOW - 5 * HOUR).toISOString(),
+      fallback: false
+    }
+  ]);
+  assert.deepEqual(
+    report.next.map((search) => [search.label, search.askers]),
+    [["NTC ko 5G", 2]]
+  );
+  // Two real searches below the threshold. "hi" is not a search, so it is not
+  // waiting for anything.
+  assert.equal(report.waiting, 2);
+});
+
+test("the report never names a search that hasn't cleared the threshold", () => {
+  const report = describeTrendingSearches(
+    [
+      asked("my landlord Ram Sharma kasto manche ho", { by: "u1" }),
+      asked("shown search", { by: "u2" }),
+      asked("shown search", { by: "u3" })
+    ],
+    { now: NOW }
+  );
+
+  assert.equal(report.waiting, 1);
+  assert.doesNotMatch(JSON.stringify(report), /landlord|sharma/i);
+});
+
+test("a fallback term is marked as one, and a search an admin hid is gone entirely", () => {
+  const rows = [
+    asked("hidden topic", { by: "u1" }),
+    asked("hidden topic", { by: "u2" }),
+    asked("real search", { by: "u3" }),
+    asked("real search", { by: "u4" })
+  ];
+  const report = describeTrendingSearches(rows, {
+    now: NOW,
+    rules: [
+      { term: "hidden topic", action: "hide", rank: 1 },
+      { term: "Editor's pick", action: "fallback", rank: 1 }
+    ]
+  });
+
+  assert.deepEqual(
+    report.shown.map((search) => [search.label, search.fallback, search.askers]),
+    [
+      ["real search", false, 2],
+      ["Editor's pick", true, 0]
+    ]
+  );
+  assert.equal(report.waiting, 0, "hidden is not the same as waiting");
+});
+
+test("the term a report gives is one a hide rule takes the whole search down with", () => {
+  const rows = [
+    asked("BYD ko gaadi kasto chha?", { by: "u1" }),
+    asked("byd ko gaadi", { by: "u2" }),
+    asked("BYD ko Gaadi kasto xa", { by: "u3" })
+  ];
+  const [search] = describeTrendingSearches(rows, { now: NOW }).shown;
+
+  assert.deepEqual(rank(rows, { rules: [{ term: search.term, action: "hide" }] }), []);
+});
+
+test("getTrendingSearchReport: live numbers and the settings they were worked out with", async () => {
+  seedTopic("eSewa vs Khalti", { userId: "u1" });
+  seedTopic("esewa vs khalti?", { userId: "u2" });
+  seedTopic("asked once", { userId: "u3" });
+
+  const report = await getTrendingSearchReport();
+
+  assert.equal(report.available, true);
+  assert.equal(report.migrated, true);
+  assert.deepEqual(
+    [report.limit, report.minAskers, report.sample, report.refreshMinutes],
+    [TRENDING_SEARCH_LIMIT, TRENDING_MIN_ASKERS, TRENDING_SEARCH_SAMPLE, 10]
+  );
+  assert.deepEqual(
+    report.shown.map((search) => [search.term, search.askers]),
+    [["esewa vs khalti", 2]]
+  );
+  assert.equal(report.waiting, 1);
+});
+
+test("getTrendingSearchReport: an unmigrated database is reported, not hidden", async () => {
+  db.beforeTrendingMigration = true;
+  const at = new Date(Date.now() - 60_000).toISOString();
+  db.tables.chat_topics.push(
+    { id: "t1", user_id: "u1", title: "Bhatbhateni ko offer", archived_at: null, created_at: at },
+    { id: "t2", user_id: "u2", title: "Bhatbhateni ko offer", archived_at: null, created_at: at }
+  );
+
+  const report = await getTrendingSearchReport();
+
+  assert.equal(report.available, true);
+  assert.equal(report.migrated, false);
+  assert.deepEqual(report.shown.map((search) => search.label), ["Bhatbhateni ko offer"]);
+});
+
+test("getTrendingSearchReport: a failed lookup is not presented as an empty row", async () => {
+  seedTopic("a search", { userId: "u1" });
+  seedTopic("a search", { userId: "u2" });
+  db.failReadsFrom = "chat_topics";
+
+  const report = await getTrendingSearchReport();
+
+  assert.equal(report.available, false);
+  assert.deepEqual([report.shown, report.next, report.waiting], [[], [], 0]);
 });
