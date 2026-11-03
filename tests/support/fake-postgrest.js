@@ -30,6 +30,10 @@ export class FakePostgrest {
       chat_topics: [],
       chat_usage: [],
       reviews: [],
+      sync_events: [],
+      sync_feedback: [],
+      sync_merchants: [],
+      sync_qr_codes: [],
       trending_search_rules: [],
       trending_topics: [],
       user_votes: []
