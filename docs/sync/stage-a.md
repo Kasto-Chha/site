@@ -51,6 +51,25 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 - Every change is written to the admin audit log before it is made. If the log cannot be
   written, nothing changes.
 
+## The tag form (patch 2, revised)
+
+- **Finding the thread** is done in the database, one page at a time (8 by default, 20 at
+  most), through the `sync_thread_summary` view (migration 0019). It never loads every
+  post. Filters: a title search, a category, and whether to include threads that are
+  already business threads (hidden by default). Pasting a discussion link, `/discussions/x`
+  or a bare address like `himal-brew-house` jumps to that thread. The count says how many
+  threads there are in all, and Show more loads the next page.
+- **Choosing a thread is undoable.** A linked thread shows as a card with Change and
+  Remove. Removing it takes back the name and area that choosing filled in, but never
+  anything the admin typed since.
+- **Starting a new thread** shows the address that will be made, and a way back.
+- **The category is not asked for.** It follows the business type (cafe, restaurant,
+  bakery and bar are all Food), is set on the server, and is never sent by the browser, so
+  a stale or hand-edited value cannot get through. A linked thread filed under another
+  category says so; its posts keep theirs. To list a new kind of business, add a line to
+  `lib/sync/businessTypes.js`.
+- Run migration 0019 before using the form: the search reads the view.
+
 ## How the pieces fit
 
 - `supabase/migrations/0018_sync_foundation.sql`: sync_merchants, sync_qr_codes,

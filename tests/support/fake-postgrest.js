@@ -22,6 +22,35 @@ const VOTE_TARGETS = {
   review: { table: "reviews", columns: { up: "upvotes", down: "downvotes" } }
 };
 
+// public.sync_thread_summary (migration 0019), worked out from the tables it is built
+// from: one row per thread, named and filed by its first post, counted by kind, with the
+// business it belongs to if any. A test seeds reviews and sync_merchants and reads this.
+export function deriveThreadSummary(tables) {
+  const byThread = new Map();
+  for (const row of tables.reviews) {
+    if (!row.topic_slug) continue;
+    if (!byThread.has(row.topic_slug)) byThread.set(row.topic_slug, []);
+    byThread.get(row.topic_slug).push(row);
+  }
+  const summary = [];
+  for (const [slug, rows] of byThread) {
+    const ordered = [...rows].sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : String(a.id) < String(b.id) ? -1 : 1));
+    const first = ordered[0];
+    const merchant = tables.sync_merchants.find((m) => m.topic_slug === slug);
+    summary.push({
+      topic_slug: slug,
+      title: (first.topic && String(first.topic).trim()) || first.title,
+      category: first.category,
+      posts: rows.filter((r) => (r.kind ?? "experience") !== "question").length,
+      questions: rows.filter((r) => r.kind === "question").length,
+      latest: ordered[ordered.length - 1].created_at,
+      first_at: first.created_at,
+      tagged_as: merchant ? merchant.business_name : null
+    });
+  }
+  return summary;
+}
+
 // The unique indexes the migrations create, by table: sync_merchants_slug_key and so on.
 const UNIQUE_KEYS = {
   sync_merchants: ["slug", "topic_slug"],
@@ -262,8 +291,12 @@ export class FakePostgrest {
       if (refusal) return send(res, refusal.status, refusal.body);
     }
 
-    const rows = this.tables[table];
+    const isView = table === "sync_thread_summary";
+    const rows = isView ? deriveThreadSummary(this.tables) : this.tables[table];
     if (!rows) return send(res, 404, { message: `no such table ${table}` });
+    if (isView && req.method !== "GET" && req.method !== "HEAD") {
+      return send(res, 405, { code: "42809", message: "cannot change a view" });
+    }
 
     if (req.method === "POST") return this.#insert(res, req, table, body);
     if (req.method === "GET" || req.method === "HEAD") {
@@ -353,14 +386,23 @@ export class FakePostgrest {
 
     const order = url.searchParams.get("order");
     if (order) {
-      const [field, direction] = order.split(".");
+      const keys = order.split(",").map((part) => {
+        const [field, direction] = part.split(".");
+        return { field, desc: direction === "desc" };
+      });
       out = [...out].sort((a, b) => {
-        const cmp = a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : 0;
-        return direction === "desc" ? -cmp : cmp;
+        for (const { field, desc } of keys) {
+          const cmp = a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : 0;
+          if (cmp) return desc ? -cmp : cmp;
+        }
+        return 0;
       });
     }
 
     const total = out.length;
+    const offset = Number.parseInt(url.searchParams.get("offset") || "", 10);
+    const from = Number.isInteger(offset) && offset > 0 ? offset : 0;
+    if (from) out = out.slice(from);
     const limit = Number.parseInt(url.searchParams.get("limit") || "", 10);
     if (Number.isInteger(limit)) out = out.slice(0, limit);
 
@@ -378,7 +420,7 @@ export class FakePostgrest {
       out = out.map((row) => Object.fromEntries(fields.map((f) => [f, row[f]])));
     }
 
-    res.setHeader("Content-Range", `0-${Math.max(0, out.length - 1)}/${total}`);
+    res.setHeader("Content-Range", `${from}-${Math.max(from, from + out.length - 1)}/${total}`);
     return sendRows(res, req, out, 200);
   }
 }
@@ -446,6 +488,7 @@ function matches(row, params) {
     const value = rest.join(".");
     const cell = row[key];
     if (op === "eq" && String(cell) !== value) return false;
+    if (op === "neq" && String(cell) === value) return false;
     if (op === "gte" && !(cell >= value)) return false;
     if (op === "lte" && !(cell <= value)) return false;
     if (op === "gt" && !(cell > value)) return false;

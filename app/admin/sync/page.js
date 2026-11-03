@@ -1,6 +1,7 @@
 import { NOINDEX_NOFOLLOW } from "../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 import { listMerchantsForAdmin } from "../../../lib/sync/merchants";
+import { countLabel } from "../../../lib/sync/text";
 
 export const metadata = {
   title: "Sync businesses - KastoChha Admin",
@@ -54,7 +55,7 @@ export default async function SyncAdminPage() {
                   {m.business_name}, {m.area}
                 </div>
                 <div className="admin-row-meta">
-                  Thread /discussions/{m.topic_slug} · {m.posts} experiences · {m.questions} questions
+                  Thread /discussions/{m.topic_slug} · {countLabel(m.posts, "experience", "experiences")} · {countLabel(m.questions, "question", "questions")}
                 </div>
               </div>
               <div className="admin-row-actions">

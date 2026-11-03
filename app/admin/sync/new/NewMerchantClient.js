@@ -4,34 +4,47 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { CATEGORIES } from "../../../../lib/categories";
+import { BUSINESS_TYPES, DEFAULT_BUSINESS_KIND, categoryForKind } from "../../../../lib/sync/businessTypes";
+import { chooseThread, NO_PREFILL, unlinkThread } from "../../../../lib/sync/formState";
 import { threadSlugFor } from "../../../../lib/sync/slug";
-import { ABOUT_MAX, BUSINESS_KINDS, suggestHubSlug } from "../../../../lib/sync/validate";
+import { ABOUT_MAX, suggestHubSlug } from "../../../../lib/sync/validate";
+import { LinkedThreadCard, NewThreadCard, ThreadList } from "./ThreadChoice";
 
-const KIND_LABELS = { cafe: "Cafe", restaurant: "Restaurant", bakery: "Bakery", bar: "Bar" };
-
-// "Himal Brew House, Jhamsikhel" -> the name and the area, as a starting point.
-function splitTitle(title) {
-  const text = (title || "").toString();
-  const cut = text.lastIndexOf(",");
-  if (cut < 0) return { name: text.trim(), area: "" };
-  return { name: text.slice(0, cut).trim(), area: text.slice(cut + 1).trim() };
+async function fetchThreads({ query, category, includeTagged, offset, signal }) {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (category) params.set("category", category);
+  if (includeTagged) params.set("tagged", "1");
+  if (offset) params.set("offset", String(offset));
+  const res = await fetch(`/api/admin/sync/threads?${params.toString()}`, { signal });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Search failed.");
+  return data;
 }
+
+const NO_RESULTS = { threads: [], total: 0, hasMore: false, addressNotFound: false };
 
 export default function NewMerchantClient() {
   const router = useRouter();
 
+  // Step 1: the thread. mode is "" (nothing chosen: the search shows), "existing" (a
+  // thread is linked) or "new" (a thread will be made from the name and area).
+  const [mode, setMode] = useState("");
+  const [picked, setPicked] = useState(null);
+  const [prefill, setPrefill] = useState(NO_PREFILL);
+
   const [query, setQuery] = useState("");
-  const [threads, setThreads] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [includeTagged, setIncludeTagged] = useState(false);
+  const [results, setResults] = useState(NO_RESULTS);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState("");
 
-  const [mode, setMode] = useState(""); // "", "existing" or "new"
-  const [picked, setPicked] = useState(null);
-
+  // Step 2: the details. There is no category here: it follows the business type.
   const [businessName, setBusinessName] = useState("");
   const [area, setArea] = useState("");
-  const [category, setCategory] = useState("Food");
-  const [businessKind, setBusinessKind] = useState("cafe");
+  const [businessKind, setBusinessKind] = useState(DEFAULT_BUSINESS_KIND);
   const [about, setAbout] = useState("");
   const [googlePlaceId, setGooglePlaceId] = useState("");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
@@ -42,48 +55,74 @@ export default function NewMerchantClient() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
-  // Search as the admin types, after a short pause.
-  useEffect(() => {
-    let cancelled = false;
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/admin/sync/threads?q=${encodeURIComponent(query)}`);
-        const data = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!res.ok) throw new Error(data.error || "Search failed.");
-        setThreads(data.threads || []);
-        setSearchError("");
-      } catch (error) {
-        if (!cancelled) setSearchError(error?.message || "Search failed.");
-      } finally {
-        if (!cancelled) setSearching(false);
-      }
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query]);
-
+  const businessCategory = categoryForKind(businessKind);
   const hubSuggestion = suggestHubSlug({ name: businessName, area });
   const shownHub = hubTouched ? hubSlug : hubSuggestion;
-  const threadAddress = mode === "existing" && picked ? picked.slug : mode === "new" ? threadSlugFor({ name: businessName, area }) : "";
+  const newAddress = mode === "new" ? threadSlugFor({ name: businessName, area }) : "";
+
+  // Search while no thread is chosen: after a short pause when typing, at once for
+  // filters and for the first look. Only the newest request may answer.
+  useEffect(() => {
+    if (mode) return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await fetchThreads({ query, category: categoryFilter, includeTagged, offset: 0, signal: controller.signal });
+        setResults(data);
+        setSearchError("");
+      } catch (error) {
+        if (error?.name !== "AbortError") setSearchError(error?.message || "Search failed.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, query ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [mode, query, categoryFilter, includeTagged]);
+
+  async function showMore() {
+    setLoadingMore(true);
+    try {
+      const data = await fetchThreads({ query, category: categoryFilter, includeTagged, offset: results.threads.length });
+      setResults((current) => {
+        const have = new Set(current.threads.map((t) => t.slug));
+        return { ...data, threads: [...current.threads, ...data.threads.filter((t) => !have.has(t.slug))] };
+      });
+    } catch (error) {
+      setSearchError(error?.message || "Could not load more.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   function pick(thread) {
     if (thread.alreadyTaggedAs) return;
-    const { name, area: place } = splitTitle(thread.title);
-    setMode("existing");
+    const result = chooseThread({ businessName, area }, thread);
+    setBusinessName(result.form.businessName);
+    setArea(result.form.area);
+    setPrefill(result.prefill);
     setPicked(thread);
-    if (!businessName) setBusinessName(name);
-    if (!area) setArea(place);
-    if (thread.category) setCategory(thread.category);
+    setMode("existing");
+    setStatus("");
+  }
+
+  // Take back the choice, and what it filled in, then go back to searching.
+  function unlink(clearSearch) {
+    const result = unlinkThread({ businessName, area }, prefill);
+    setBusinessName(result.form.businessName);
+    setArea(result.form.area);
+    setPrefill(result.prefill);
+    setPicked(null);
+    setMode("");
+    if (clearSearch) setQuery("");
     setStatus("");
   }
 
   function startNew() {
     setMode("new");
-    setPicked(null);
     setStatus("");
   }
 
@@ -100,7 +139,7 @@ export default function NewMerchantClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessName, area, category, businessKind, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
+          businessName, area, businessKind, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
           threadMode: mode,
           threadSlug: picked ? picked.slug : undefined,
           hubSlug: shownHub
@@ -133,59 +172,69 @@ export default function NewMerchantClient() {
       {status ? <div className="admin-banner">{status}</div> : null}
 
       <div className="admin-panel">
-        <h2>1. Find the thread</h2>
-        <div className="admin-field">
-          <label className="admin-label" htmlFor="thread-search">Search existing threads</label>
-          <input
-            id="thread-search"
-            className="admin-input"
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="For example: himal brew"
-            autoComplete="off"
+        <h2>1. The thread</h2>
+
+        {mode === "existing" && picked ? (
+          <LinkedThreadCard
+            thread={picked}
+            businessCategory={businessCategory}
+            onChange={() => unlink(false)}
+            onRemove={() => unlink(true)}
           />
-        </div>
-
-        {searchError ? <div className="admin-banner">{searchError}</div> : null}
-        {!searchError && !searching && threads.length === 0 ? (
-          <div className="admin-empty">No thread matches. You can start a new one below.</div>
-        ) : null}
-
-        <div className="admin-list">
-          {threads.map((t) => (
-            <div className="admin-row" key={t.slug}>
-              <div>
-                <div className="admin-row-title">{t.title}</div>
-                <div className="admin-row-meta">
-                  {t.category || "No category"} · {t.posts} experiences · {t.questions} questions · /discussions/{t.slug}
-                </div>
+        ) : mode === "new" ? (
+          <NewThreadCard address={newAddress} onSwitch={() => unlink(false)} />
+        ) : (
+          <div>
+            <div className="admin-field">
+              <label className="admin-label" htmlFor="thread-search">Search threads, or paste a discussion address</label>
+              <input
+                id="thread-search"
+                className="admin-input"
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="For example: himal brew, or kastochhanepal.com/discussions/himal-brew-house"
+                autoComplete="off"
+              />
+              <div className="admin-helper">With nothing typed, the most recently active threads are shown.</div>
+            </div>
+            <div className="admin-two">
+              <div className="admin-field">
+                <label className="admin-label" htmlFor="thread-category">Category</label>
+                <select id="thread-category" className="admin-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} autoComplete="off">
+                  <option value="">All categories</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.label}>{c.label}</option>
+                  ))}
+                </select>
               </div>
-              <div className="admin-row-actions">
-                {t.alreadyTaggedAs ? (
-                  <span className="admin-status draft">Already {t.alreadyTaggedAs}</span>
-                ) : picked && picked.slug === t.slug ? (
-                  <span className="admin-status published">Selected</span>
-                ) : (
-                  <button type="button" className="btn-outline" onClick={() => pick(t)}>Select</button>
-                )}
+              <div className="admin-field">
+                <label className="admin-label" htmlFor="thread-tagged">Threads already tagged</label>
+                <label className="admin-helper" htmlFor="thread-tagged">
+                  <input id="thread-tagged" type="checkbox" checked={includeTagged} onChange={(e) => setIncludeTagged(e.target.checked)} autoComplete="off" />{" "}
+                  Include threads that are already business threads
+                </label>
               </div>
             </div>
-          ))}
-        </div>
-
-        <div className="admin-divider" />
-        <div className="admin-actions">
-          <span className="admin-helper">No thread for this business yet?</span>
-          <button type="button" className="btn-outline" onClick={startNew}>
-            {mode === "new" ? "Starting a new thread" : "Start a new thread from name and area"}
-          </button>
-        </div>
-        <div className="admin-field">
-          <label className="admin-label" htmlFor="thread-address">Thread address (permanent)</label>
-          <input id="thread-address" className="admin-input" type="text" value={threadAddress ? `/discussions/${threadAddress}` : ""} readOnly placeholder="Choose or start a thread first" />
-          <div className="admin-helper">Fixed once tagged, so renaming the business later never splits its thread.</div>
-        </div>
+            <ThreadList
+              threads={results.threads}
+              total={results.total}
+              hasMore={results.hasMore}
+              loading={loading}
+              loadingMore={loadingMore}
+              error={searchError}
+              addressNotFound={results.addressNotFound}
+              searching={Boolean(query || categoryFilter || includeTagged)}
+              onSelect={pick}
+              onMore={showMore}
+            />
+            <div className="admin-divider" />
+            <div className="admin-actions">
+              <span className="admin-helper">No thread for this business yet?</span>
+              <button type="button" className="btn-outline" onClick={startNew}>Start a new thread from name and area</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <form className="admin-form admin-panel" onSubmit={save}>
@@ -193,50 +242,47 @@ export default function NewMerchantClient() {
         <div className="admin-two">
           <div className="admin-field">
             <label className="admin-label" htmlFor="business-name">Display name</label>
-            <input id="business-name" className="admin-input" type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} maxLength={120} required />
+            <input id="business-name" className="admin-input" type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} maxLength={120} required autoComplete="off" />
           </div>
           <div className="admin-field">
             <label className="admin-label" htmlFor="area">Area</label>
-            <input id="area" className="admin-input" type="text" value={area} onChange={(e) => setArea(e.target.value)} maxLength={80} required />
+            <input id="area" className="admin-input" type="text" value={area} onChange={(e) => setArea(e.target.value)} maxLength={80} required autoComplete="off" />
           </div>
         </div>
         <div className="admin-two">
           <div className="admin-field">
-            <label className="admin-label" htmlFor="category">Category</label>
-            <select id="category" className="admin-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {CATEGORIES.map((c) => (
-                <option key={c.key} value={c.label}>{c.label}</option>
+            <label className="admin-label" htmlFor="kind">Type of business</label>
+            <select id="kind" className="admin-select" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)} autoComplete="off">
+              {BUSINESS_TYPES.map((t) => (
+                <option key={t.key} value={t.key}>{t.label}</option>
               ))}
             </select>
           </div>
           <div className="admin-field">
-            <label className="admin-label" htmlFor="kind">Type of business</label>
-            <select id="kind" className="admin-select" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)}>
-              {BUSINESS_KINDS.map((k) => (
-                <option key={k} value={k}>{KIND_LABELS[k] || k}</option>
-              ))}
-            </select>
+            <span className="admin-label">Category</span>
+            <div className="admin-row-title">{businessCategory}</div>
+            <div className="admin-helper">Set by the business type. It is not chosen by hand.</div>
           </div>
         </div>
         <div className="admin-field">
           <label className="admin-label" htmlFor="about">About (from the business)</label>
-          <textarea id="about" className="admin-textarea" rows={4} value={about} onChange={(e) => setAbout(e.target.value)} />
+          <textarea id="about" className="admin-textarea" rows={4} value={about} onChange={(e) => setAbout(e.target.value)} autoComplete="off" />
           <div className="admin-helper">
             {about.length} / {ABOUT_MAX} characters. Plain facts only: no hours, menu, prices, phone numbers, photos or ranking claims.
           </div>
         </div>
         <div className="admin-field">
           <label className="admin-label" htmlFor="place-id">Google place ID</label>
-          <input id="place-id" className="admin-input" type="text" value={googlePlaceId} onChange={(e) => setGooglePlaceId(e.target.value)} placeholder="Optional" />
+          <input id="place-id" className="admin-input" type="text" value={googlePlaceId} onChange={(e) => setGooglePlaceId(e.target.value)} placeholder="Optional" autoComplete="off" />
         </div>
         <div className="admin-two">
           <div className="admin-field">
             <label className="admin-label" htmlFor="review-url">Google review link</label>
-            <input id="review-url" className="admin-input" type="url" value={googleReviewUrl} onChange={(e) => setGoogleReviewUrl(e.target.value)} placeholder="https://g.page/r/.../review" />
+            <input id="review-url" className="admin-input" type="url" value={googleReviewUrl} onChange={(e) => setGoogleReviewUrl(e.target.value)} placeholder="https://g.page/r/.../review" autoComplete="off" />
           </div>
           <div className="admin-field">
             <label className="admin-label" htmlFor="maps-url">Google Maps link</label>
-            <input id="maps-url" className="admin-input" type="url" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+            <input id="maps-url" className="admin-input" type="url" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." autoComplete="off" />
           </div>
         </div>
         <div className="admin-helper">Only Google links are accepted: search.google.com, g.page, maps.app.goo.gl and Google Maps.</div>
@@ -252,6 +298,7 @@ export default function NewMerchantClient() {
               setHubSlug(e.target.value.toLowerCase());
             }}
             maxLength={80}
+            autoComplete="off"
           />
           <div className="admin-helper">The QR hub will live at /hub/{shownHub || "..."}. Lowercase letters, numbers and single hyphens.</div>
         </div>

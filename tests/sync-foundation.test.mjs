@@ -20,7 +20,10 @@ const { getMerchantBySlug, getMerchantByTopicSlug, publicMerchant } = await impo
 
 test("the migration sorts after the last existing one, and is idempotent", () => {
   const files = fs.readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
-  assert.equal(files[files.length - 1], "0018_sync_foundation.sql");
+  const at = files.indexOf("0018_sync_foundation.sql");
+  assert.ok(at > 0, "the migration file is missing");
+  assert.ok(files[at - 1] < "0018", "something that sorts before it is numbered 0018 or higher");
+  assert.equal(files.filter((f) => f.startsWith("0018_")).length, 1, "two migrations share the number 0018");
   for (const statement of SQL.match(/create (unique )?(table|index)[^;]*;/gi) || []) {
     assert.match(statement, /if not exists/i, `not idempotent: ${statement.slice(0, 60)}`);
   }

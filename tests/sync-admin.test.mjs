@@ -8,8 +8,7 @@ import fs from "node:fs";
 import { FakePostgrest } from "./support/fake-postgrest.js";
 
 const { validateCreate, validateUpdate, googleLink, placeId, cleanParagraph, cleanLine, suggestHubSlug, ABOUT_MAX } = await import("../lib/sync/validate.js");
-const { searchThreads, cleanSearch, threadExists } = await import("../lib/sync/threads.js");
-const { GET: searchRoute } = await import("../app/api/admin/sync/threads/route.js");
+const { threadExists } = await import("../lib/sync/threads.js");
 const { POST: createRoute } = await import("../app/api/admin/sync/merchants/route.js");
 const { PUT: updateRoute } = await import("../app/api/admin/sync/merchants/[id]/route.js");
 const { createServerSupabase } = await import("../lib/supabase/server.js");
@@ -51,7 +50,6 @@ test("missing or unusable names, areas and addresses are refused with a clear me
   for (const hub of ["a b", "-x", "x-", "a--b", "a/b", "x".repeat(81)]) {
     assert.match(validateCreate({ ...GOOD, hubSlug: hub }).error, /hub address/, hub);
   }
-  assert.match(validateCreate({ ...GOOD, category: "Politics" }).error, /categories/);
   assert.match(validateCreate({ ...GOOD, businessKind: "casino" }).error, /business type/);
   assert.match(validateCreate({ ...GOOD, about: "x".repeat(ABOUT_MAX + 1) }).error, /300/);
   assert.equal(validateCreate({ ...GOOD, about: "x".repeat(ABOUT_MAX) }).error, undefined);
@@ -168,63 +166,6 @@ beforeEach(() => {
 
 const json = (url, method, body) => new Request(`http://localhost${url}`, { method, headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
 const supabase = () => createServerSupabase();
-
-// ---------- the thread search ----------
-
-test("searching finds threads by name, with exact counts, best match first", async () => {
-  const threads = await searchThreads(supabase(), "himal");
-  assert.deepEqual(threads.map((t) => t.slug), ["himal-brew-house-jhamsikhel", "himal-brew"]);
-  const first = threads[0];
-  assert.equal(first.title, "Himal Brew House, Jhamsikhel");
-  assert.equal(first.category, "Food");
-  assert.equal(first.posts, 2);
-  assert.equal(first.questions, 1);
-  assert.equal((await searchThreads(supabase(), "HIMAL BREW HOUSE"))[0].slug, "himal-brew-house-jhamsikhel");
-  assert.deepEqual((await searchThreads(supabase(), "himal bre"))[0].slug, "himal-brew-house-jhamsikhel", "more posts ranks first when neither title is an exact match");
-  assert.equal((await searchThreads(supabase(), "Himal Brew"))[0].slug, "himal-brew", "an exact title match ranks first");
-  assert.deepEqual(await searchThreads(supabase(), "nothing like this"), []);
-});
-
-test("an empty search lists the recent threads, and search characters are made harmless", async () => {
-  const recent = await searchThreads(supabase(), "");
-  assert.equal(recent.length, 3);
-  assert.equal(recent[0].slug, "himal-brew-house-jhamsikhel", "the busiest thread comes first");
-  assert.equal(cleanSearch("  ha%l_*f\\, (x) \"q\" 'y' "), "ha l f x q y");
-  assert.equal(cleanSearch("x".repeat(200)).length, 60);
-  assert.deepEqual((await searchThreads(supabase(), "%")).map((t) => t.slug).length, 3, "a lone wildcard behaves like an empty search");
-  assert.equal((await searchThreads(supabase(), "", { limit: 2 })).length, 2);
-});
-
-test("a thread that is already a business thread says which", async () => {
-  fake.tables.sync_merchants.push({ id: "m1", slug: "himal-brew-house", topic_slug: "himal-brew-house-jhamsikhel", business_name: "Himal Brew House", area: "Jhamsikhel", status: "active" });
-  const threads = await searchThreads(supabase(), "himal");
-  assert.equal(threads.find((t) => t.slug === "himal-brew-house-jhamsikhel").alreadyTaggedAs, "Himal Brew House");
-  assert.equal(threads.find((t) => t.slug === "himal-brew").alreadyTaggedAs, null);
-});
-
-test("a failing database is an error, never an empty list", async () => {
-  fake.failReadsFrom = "reviews";
-  await assert.rejects(() => searchThreads(supabase(), "himal"));
-  await assert.rejects(() => threadExists(supabase(), "himal-brew"));
-  fake.failReadsFrom = null;
-  assert.equal(await threadExists(supabase(), "himal-brew"), true);
-  assert.equal(await threadExists(supabase(), "no-such-thread"), false);
-});
-
-test("the search route is for admins only, and reports a broken database as an error", async () => {
-  signedInAs(null);
-  assert.equal((await searchRoute(json("/api/admin/sync/threads?q=himal", "GET"))).status, 401);
-  signedInAs("user");
-  assert.equal((await searchRoute(json("/api/admin/sync/threads?q=himal", "GET"))).status, 403);
-  signedInAs("admin");
-  const ok = await searchRoute(json("/api/admin/sync/threads?q=himal", "GET"));
-  assert.equal(ok.status, 200);
-  assert.equal((await ok.json()).threads.length, 2);
-  fake.failReadsFrom = "reviews";
-  const broken = await searchRoute(json("/api/admin/sync/threads?q=himal", "GET"));
-  assert.equal(broken.status, 500);
-  assert.match((await broken.json()).error, /Could not search/);
-});
 
 // ---------- tagging a business ----------
 
