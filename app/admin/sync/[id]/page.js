@@ -41,6 +41,7 @@ export default async function MerchantPage({ params }) {
     business_name: merchant.business_name,
     area: merchant.area,
     business_kind: merchant.business_kind,
+    kind_label: merchant.kind_label || "",
     category: merchant.category,
     about: merchant.about || "",
     google_place_id: merchant.google_place_id || "",

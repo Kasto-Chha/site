@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { CATEGORIES } from "../../../../lib/categories";
-import { DEFAULT_BUSINESS_KIND, categoryForKind } from "../../../../lib/sync/businessTypes";
+import { DEFAULT_BUSINESS_KIND, OTHER_KIND, categoryForKind } from "../../../../lib/sync/businessTypes";
 import { chooseThread, NO_PREFILL, unlinkThread } from "../../../../lib/sync/formState";
 import { threadSlugFor } from "../../../../lib/sync/slug";
 import { ABOUT_MAX, suggestHubSlug } from "../../../../lib/sync/validate";
-import { BusinessTypeSelect, CategoryControl } from "../CategoryControl";
+import { BusinessTypeSelect, CategoryControl, KindLabelField } from "../CategoryControl";
 import { LinkedThreadCard, NewThreadCard, ThreadList } from "./ThreadChoice";
 
 async function fetchThreads({ query, category, includeTagged, offset, signal }) {
@@ -46,6 +46,8 @@ export default function NewMerchantClient() {
   const [businessName, setBusinessName] = useState("");
   const [area, setArea] = useState("");
   const [businessKind, setBusinessKind] = useState(DEFAULT_BUSINESS_KIND);
+  // What an Other business is, in the admin's own words. Only used for the Other type.
+  const [kindLabel, setKindLabel] = useState("");
   // A category chosen by hand, only when the admin clicks "Change category". Empty means: use the type's.
   const [categoryOverride, setCategoryOverride] = useState("");
   const [pickingCategory, setPickingCategory] = useState(false);
@@ -146,7 +148,7 @@ export default function NewMerchantClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessName, area, businessKind, categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
+          businessName, area, businessKind, kindLabel: businessKind === OTHER_KIND ? kindLabel : "", categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
           threadMode: mode,
           threadSlug: picked ? picked.slug : undefined,
           hubSlug: shownHub
@@ -259,7 +261,14 @@ export default function NewMerchantClient() {
         <div className="admin-two">
           <div className="admin-field">
             <label className="admin-label" htmlFor="kind">Type of business</label>
-            <BusinessTypeSelect id="kind" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)} />
+            <BusinessTypeSelect
+              id="kind"
+              value={businessKind}
+              onChange={(e) => {
+                setBusinessKind(e.target.value);
+                if (e.target.value !== OTHER_KIND) setKindLabel("");
+              }}
+            />
           </div>
           <div className="admin-field">
             <CategoryControl
@@ -279,6 +288,9 @@ export default function NewMerchantClient() {
             />
           </div>
         </div>
+        {businessKind === OTHER_KIND ? (
+          <KindLabelField id="kind-label" value={kindLabel} onChange={(e) => setKindLabel(e.target.value)} />
+        ) : null}
         <div className="admin-field">
           <label className="admin-label" htmlFor="about">About (from the business)</label>
           <textarea id="about" className="admin-textarea" rows={4} value={about} onChange={(e) => setAbout(e.target.value)} autoComplete="off" />

@@ -1,5 +1,6 @@
 import { NOINDEX_NOFOLLOW } from "../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
+import { kindDisplay } from "../../../lib/sync/businessTypes";
 import { listMerchantsForAdmin } from "../../../lib/sync/merchants";
 import { countLabel } from "../../../lib/sync/text";
 
@@ -55,7 +56,7 @@ export default async function SyncAdminPage() {
                   {m.business_name}, {m.area}
                 </div>
                 <div className="admin-row-meta">
-                  Thread /discussions/{m.topic_slug} · {countLabel(m.posts, "experience", "experiences")} · {countLabel(m.questions, "question", "questions")}
+                  {kindDisplay(m.business_kind, m.kind_label)} · Thread /discussions/{m.topic_slug} · {countLabel(m.posts, "experience", "experiences")} · {countLabel(m.questions, "question", "questions")}
                 </div>
               </div>
               <div className="admin-row-actions">

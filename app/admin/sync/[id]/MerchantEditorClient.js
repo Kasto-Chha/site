@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { categoryForKind } from "../../../../lib/sync/businessTypes";
-import { BusinessTypeSelect, CategoryControl } from "../CategoryControl";
+import { OTHER_KIND, categoryForKind } from "../../../../lib/sync/businessTypes";
+import { BusinessTypeSelect, CategoryControl, KindLabelField } from "../CategoryControl";
 import { countLabel } from "../../../../lib/sync/text";
 import { ABOUT_MAX } from "../../../../lib/sync/validate";
 
@@ -13,6 +13,7 @@ export default function MerchantEditorClient({ merchant }) {
   const [businessName, setBusinessName] = useState(merchant.business_name);
   const [area, setArea] = useState(merchant.area);
   const [businessKind, setBusinessKind] = useState(merchant.business_kind);
+  const [kindLabel, setKindLabel] = useState(merchant.kind_label || "");
   // A category different from the type's own was chosen by hand: keep it until the admin says otherwise.
   const [categoryOverride, setCategoryOverride] = useState(
     merchant.category && merchant.category !== categoryForKind(merchant.business_kind) ? merchant.category : ""
@@ -55,7 +56,7 @@ export default function MerchantEditorClient({ merchant }) {
 
   function save(event) {
     event.preventDefault();
-    send({ businessName, area, businessKind, categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl }, "Saved.");
+    send({ businessName, area, businessKind, kindLabel: businessKind === OTHER_KIND ? kindLabel : "", categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl }, "Saved.");
   }
 
   function toggle() {
@@ -117,7 +118,14 @@ export default function MerchantEditorClient({ merchant }) {
         <div className="admin-two">
           <div className="admin-field">
             <label className="admin-label" htmlFor="kind">Type of business</label>
-            <BusinessTypeSelect id="kind" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)} />
+            <BusinessTypeSelect
+              id="kind"
+              value={businessKind}
+              onChange={(e) => {
+                setBusinessKind(e.target.value);
+                if (e.target.value !== OTHER_KIND) setKindLabel("");
+              }}
+            />
           </div>
           <div className="admin-field">
             <CategoryControl
@@ -137,6 +145,9 @@ export default function MerchantEditorClient({ merchant }) {
             />
           </div>
         </div>
+        {businessKind === OTHER_KIND ? (
+          <KindLabelField id="kind-label" value={kindLabel} onChange={(e) => setKindLabel(e.target.value)} />
+        ) : null}
         <div className="admin-field">
           <label className="admin-label" htmlFor="about">About (from the business)</label>
           <textarea autoComplete="off" id="about" className="admin-textarea" rows={4} value={about} onChange={(e) => setAbout(e.target.value)} />

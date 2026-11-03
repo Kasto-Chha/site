@@ -291,7 +291,7 @@ test("what goes to a browser never includes the owner's account or internal ids"
   seed();
   const merchant = await getMerchantBySlug("himal-brew-house");
   const shown = publicMerchant(merchant);
-  assert.deepEqual(Object.keys(shown).sort(), ["about", "area", "category", "googleMapsUrl", "googleReviewUrl", "hasOwner", "kind", "name", "slug", "topicSlug"]);
+  assert.deepEqual(Object.keys(shown).sort(), ["about", "area", "category", "googleMapsUrl", "googleReviewUrl", "hasOwner", "kind", "kindName", "name", "slug", "topicSlug"]);
   assert.equal(shown.hasOwner, true);
   const text = JSON.stringify(shown);
   assert.ok(!text.includes("user_owner_1") && !text.includes(MERCHANT), "an owner account or internal id leaked");

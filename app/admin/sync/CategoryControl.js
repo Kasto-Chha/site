@@ -1,5 +1,5 @@
 import { CATEGORIES } from "../../../lib/categories";
-import { BUSINESS_GROUPS } from "../../../lib/sync/businessTypes";
+import { BUSINESS_GROUPS, KIND_LABEL_MAX } from "../../../lib/sync/businessTypes";
 
 // The two controls that belong together in both Sync forms, as plain pieces with no
 // state of their own, so they can be rendered and checked without a browser.
@@ -48,6 +48,30 @@ export function CategoryControl({ effective, derived, overridden, picking, onSta
           </select>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// Shown only when the type is Other: what the business is, in the admin's own words.
+// Customers see these words in place of the business type.
+export function KindLabelField({ id, value, onChange }) {
+  return (
+    <div className="admin-field">
+      <label className="admin-label" htmlFor={id}>What is this business?</label>
+      <input
+        id={id}
+        className="admin-input"
+        type="text"
+        value={value}
+        onChange={onChange}
+        maxLength={KIND_LABEL_MAX}
+        required
+        autoComplete="off"
+        placeholder="For example: Motorcycle workshop"
+      />
+      <div className="admin-helper">
+        {value.length} / {KIND_LABEL_MAX} characters. Customers see these words in place of the business type.
+      </div>
     </div>
   );
 }

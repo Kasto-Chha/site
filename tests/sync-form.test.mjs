@@ -132,7 +132,7 @@ test("the forms share the type and category controls, and send only a deliberate
     const source = fs.readFileSync(file, "utf8");
     assert.ok(!/id="category"/.test(source), `${file} has its own category control`);
     assert.match(source, /from "\.\.\/CategoryControl"/, `${file} does not use the shared controls`);
-    assert.match(source, /<BusinessTypeSelect /, file);
+    assert.match(source, /<BusinessTypeSelect\b/, file);
     assert.match(source, /<CategoryControl\s/, file);
     assert.match(source, /categoryForKind\(/, `${file} does not derive the category from the type`);
   }

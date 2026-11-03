@@ -47,7 +47,7 @@ test("the original four types still work, under the same keys", () => {
 test("there is a way to list a business that fits nowhere else", () => {
   assert.equal(isBusinessKind("other_business"), true);
   assert.equal(categoryForKind("other_business"), "Other");
-  assert.equal(labelForKind("other_business"), "Other business");
+  assert.equal(labelForKind("other_business"), "Other (write it in)");
   assert.equal(labelForKind("nope"), "");
   assert.equal(categoryForKind("nope"), "");
   assert.equal(isBusinessKind("nope"), false);
@@ -66,7 +66,7 @@ test("a new type needs no migration: the database does not restrict the business
 
 test("each type gives its own category by default, for a new business", () => {
   for (const type of BUSINESS_TYPES) {
-    const { values, error } = validateCreate({ ...BASE, businessKind: type.key });
+    const { values, error } = validateCreate({ ...BASE, businessKind: type.key, kindLabel: "Motorcycle workshop" });
     assert.equal(error, undefined, type.key);
     assert.equal(values.business_kind, type.key);
     assert.equal(values.category, type.category, `${type.key} should be filed under ${type.category}`);

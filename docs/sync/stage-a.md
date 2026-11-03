@@ -75,7 +75,17 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
   line to `lib/sync/businessTypes.js`: the type is plain text in the database, so no
   migration is needed. Clinics, banks and foreign-employment agencies are kept out of the
   pilot as an onboarding policy, not by the form.
-- Run migration 0019 before using the form: the search reads the view.
+- **A business that fits none of the types** is listed as "Other (write it in)", the last
+  entry of the type dropdown. Choosing it shows one box, "What is this business?", where
+  the admin writes what it is (for example "Motorcycle workshop"). It is required for the
+  Other type, at least two and at most 60 characters, tidied for spacing, and nothing else
+  is asked of it. Customers see those words in place of the business type. Switching to a
+  standard type clears them. They are stored in `sync_merchants.kind_label` (migration
+  0020), and `kindDisplay()` shows "Business" for an Other business that has none (one
+  tagged before the box existed). When the same kind keeps appearing, add it to
+  `lib/sync/businessTypes.js` as a standard type.
+- Run migrations 0019 and 0020 before using the form: the search reads the view, and the
+  admin screens read the business-type words.
 
 ## How the pieces fit
 
