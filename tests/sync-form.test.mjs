@@ -127,18 +127,23 @@ test("browsers are told not to restore old values into either form", () => {
   }
 });
 
-test("neither form has a category dropdown, and neither sends a category when saving", () => {
+test("the forms share the type and category controls, and send only a deliberate override", () => {
   for (const file of FORMS) {
     const source = fs.readFileSync(file, "utf8");
-    assert.ok(!/id="category"/.test(source), `${file} still has a category control`);
+    assert.ok(!/id="category"/.test(source), `${file} has its own category control`);
+    assert.match(source, /from "\.\.\/CategoryControl"/, `${file} does not use the shared controls`);
+    assert.match(source, /<BusinessTypeSelect /, file);
+    assert.match(source, /<CategoryControl\s/, file);
     assert.match(source, /categoryForKind\(/, `${file} does not derive the category from the type`);
   }
-  // What each form sends on save, read from the source: the business's details, no category.
+  // What each form sends on save, read from the source: a plain category is never sent;
+  // the override is, and it is empty unless the admin chose a category by hand.
   const tag = fs.readFileSync(FORMS[0], "utf8").match(/body: JSON\.stringify\(\{([\s\S]*?)\}\)/)[1];
   const edit = fs.readFileSync(FORMS[1], "utf8").match(/send\(\{([^}]*)\}, "Saved\."\)/)[1];
   for (const [name, sent] of [["tag form", tag], ["editor", edit]]) {
     assert.match(sent, /businessKind/, `${name} does not send the business type`);
-    assert.ok(!/categor/i.test(sent), `${name} sends a category: ${sent.trim().slice(0, 80)}`);
+    assert.match(sent, /categoryOverride: activeOverride/, `${name} does not send the override as computed`);
+    assert.ok(!/(^|[\s,{])category\s*[,:}]/.test(sent.replace(/categoryOverride: activeOverride/, "")), `${name} sends a plain category: ${sent.trim().slice(0, 100)}`);
   }
 });
 

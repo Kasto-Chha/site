@@ -63,11 +63,18 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
   Remove. Removing it takes back the name and area that choosing filled in, but never
   anything the admin typed since.
 - **Starting a new thread** shows the address that will be made, and a way back.
-- **The category is not asked for.** It follows the business type (cafe, restaurant,
-  bakery and bar are all Food), is set on the server, and is never sent by the browser, so
-  a stale or hand-edited value cannot get through. A linked thread filed under another
-  category says so; its posts keep theirs. To list a new kind of business, add a line to
-  `lib/sync/businessTypes.js`.
+- **Business types and the category.** There are 23 business types, in seven groups (Food,
+  Health & Lifestyle, Travel, Tech & Gadgets, Motors, Career, Other), each filed under
+  that category by default, with "Other business" for anything else. The server works the
+  category out from the type. It can be changed by hand, only on purpose ("Change
+  category"), and only to one of KastoChha's own categories: the form then sends
+  `categoryOverride`, and a plain `category` from a browser is never read, so a stale value
+  cannot get through (a cafe once ended up as "Career"). A hand-chosen category shows as
+  "Chosen by hand", with "Use the type's category" to undo it. A linked thread filed under
+  another category says so; its posts keep theirs. To list a new kind of business, add a
+  line to `lib/sync/businessTypes.js`: the type is plain text in the database, so no
+  migration is needed. Clinics, banks and foreign-employment agencies are kept out of the
+  pilot as an onboarding policy, not by the form.
 - Run migration 0019 before using the form: the search reads the view.
 
 ## How the pieces fit

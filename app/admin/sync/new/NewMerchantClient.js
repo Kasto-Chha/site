@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { CATEGORIES } from "../../../../lib/categories";
-import { BUSINESS_TYPES, DEFAULT_BUSINESS_KIND, categoryForKind } from "../../../../lib/sync/businessTypes";
+import { DEFAULT_BUSINESS_KIND, categoryForKind } from "../../../../lib/sync/businessTypes";
 import { chooseThread, NO_PREFILL, unlinkThread } from "../../../../lib/sync/formState";
 import { threadSlugFor } from "../../../../lib/sync/slug";
 import { ABOUT_MAX, suggestHubSlug } from "../../../../lib/sync/validate";
+import { BusinessTypeSelect, CategoryControl } from "../CategoryControl";
 import { LinkedThreadCard, NewThreadCard, ThreadList } from "./ThreadChoice";
 
 async function fetchThreads({ query, category, includeTagged, offset, signal }) {
@@ -45,6 +46,9 @@ export default function NewMerchantClient() {
   const [businessName, setBusinessName] = useState("");
   const [area, setArea] = useState("");
   const [businessKind, setBusinessKind] = useState(DEFAULT_BUSINESS_KIND);
+  // A category chosen by hand, only when the admin clicks "Change category". Empty means: use the type's.
+  const [categoryOverride, setCategoryOverride] = useState("");
+  const [pickingCategory, setPickingCategory] = useState(false);
   const [about, setAbout] = useState("");
   const [googlePlaceId, setGooglePlaceId] = useState("");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
@@ -55,7 +59,10 @@ export default function NewMerchantClient() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
-  const businessCategory = categoryForKind(businessKind);
+  const derivedCategory = categoryForKind(businessKind);
+  // A hand-chosen category that matches the new type's own is no exception at all.
+  const activeOverride = categoryOverride && categoryOverride !== derivedCategory ? categoryOverride : "";
+  const businessCategory = activeOverride || derivedCategory;
   const hubSuggestion = suggestHubSlug({ name: businessName, area });
   const shownHub = hubTouched ? hubSlug : hubSuggestion;
   const newAddress = mode === "new" ? threadSlugFor({ name: businessName, area }) : "";
@@ -139,7 +146,7 @@ export default function NewMerchantClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessName, area, businessKind, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
+          businessName, area, businessKind, categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
           threadMode: mode,
           threadSlug: picked ? picked.slug : undefined,
           hubSlug: shownHub
@@ -252,16 +259,24 @@ export default function NewMerchantClient() {
         <div className="admin-two">
           <div className="admin-field">
             <label className="admin-label" htmlFor="kind">Type of business</label>
-            <select id="kind" className="admin-select" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)} autoComplete="off">
-              {BUSINESS_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>{t.label}</option>
-              ))}
-            </select>
+            <BusinessTypeSelect id="kind" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)} />
           </div>
           <div className="admin-field">
-            <span className="admin-label">Category</span>
-            <div className="admin-row-title">{businessCategory}</div>
-            <div className="admin-helper">Set by the business type. It is not chosen by hand.</div>
+            <CategoryControl
+              effective={businessCategory}
+              derived={derivedCategory}
+              overridden={Boolean(activeOverride)}
+              picking={pickingCategory}
+              onStartPicking={() => setPickingCategory(true)}
+              onChoose={(label) => {
+                setCategoryOverride(label === derivedCategory ? "" : label);
+                setPickingCategory(false);
+              }}
+              onReset={() => {
+                setCategoryOverride("");
+                setPickingCategory(false);
+              }}
+            />
           </div>
         </div>
         <div className="admin-field">

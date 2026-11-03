@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { BUSINESS_TYPES, categoryForKind } from "../../../../lib/sync/businessTypes";
+import { categoryForKind } from "../../../../lib/sync/businessTypes";
+import { BusinessTypeSelect, CategoryControl } from "../CategoryControl";
 import { countLabel } from "../../../../lib/sync/text";
 import { ABOUT_MAX } from "../../../../lib/sync/validate";
 
@@ -12,6 +13,11 @@ export default function MerchantEditorClient({ merchant }) {
   const [businessName, setBusinessName] = useState(merchant.business_name);
   const [area, setArea] = useState(merchant.area);
   const [businessKind, setBusinessKind] = useState(merchant.business_kind);
+  // A category different from the type's own was chosen by hand: keep it until the admin says otherwise.
+  const [categoryOverride, setCategoryOverride] = useState(
+    merchant.category && merchant.category !== categoryForKind(merchant.business_kind) ? merchant.category : ""
+  );
+  const [pickingCategory, setPickingCategory] = useState(false);
   const [about, setAbout] = useState(merchant.about);
   const [googlePlaceId, setGooglePlaceId] = useState(merchant.google_place_id);
   const [googleReviewUrl, setGoogleReviewUrl] = useState(merchant.google_review_url);
@@ -21,7 +27,9 @@ export default function MerchantEditorClient({ merchant }) {
   const [ok, setOk] = useState(false);
 
   const active = merchant.status === "active";
-  const category = categoryForKind(businessKind);
+  const derivedCategory = categoryForKind(businessKind);
+  const activeOverride = categoryOverride && categoryOverride !== derivedCategory ? categoryOverride : "";
+  const category = activeOverride || derivedCategory;
 
   async function send(body, success) {
     setSaving(true);
@@ -47,7 +55,7 @@ export default function MerchantEditorClient({ merchant }) {
 
   function save(event) {
     event.preventDefault();
-    send({ businessName, area, businessKind, about, googlePlaceId, googleReviewUrl, googleMapsUrl }, "Saved.");
+    send({ businessName, area, businessKind, categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl }, "Saved.");
   }
 
   function toggle() {
@@ -109,19 +117,24 @@ export default function MerchantEditorClient({ merchant }) {
         <div className="admin-two">
           <div className="admin-field">
             <label className="admin-label" htmlFor="kind">Type of business</label>
-            <select id="kind" autoComplete="off" className="admin-select" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)}>
-              {BUSINESS_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>{t.label}</option>
-              ))}
-            </select>
+            <BusinessTypeSelect id="kind" value={businessKind} onChange={(e) => setBusinessKind(e.target.value)} />
           </div>
           <div className="admin-field">
-            <span className="admin-label">Category</span>
-            <div className="admin-row-title">{category}</div>
-            <div className="admin-helper">
-              Set by the business type. It is not chosen by hand.
-              {merchant.category !== category ? ` It was saved as ${merchant.category || "nothing"}; saving corrects it.` : ""}
-            </div>
+            <CategoryControl
+              effective={category}
+              derived={derivedCategory}
+              overridden={Boolean(activeOverride)}
+              picking={pickingCategory}
+              onStartPicking={() => setPickingCategory(true)}
+              onChoose={(label) => {
+                setCategoryOverride(label === derivedCategory ? "" : label);
+                setPickingCategory(false);
+              }}
+              onReset={() => {
+                setCategoryOverride("");
+                setPickingCategory(false);
+              }}
+            />
           </div>
         </div>
         <div className="admin-field">
