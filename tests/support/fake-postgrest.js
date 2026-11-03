@@ -22,9 +22,16 @@ const VOTE_TARGETS = {
   review: { table: "reviews", columns: { up: "upvotes", down: "downvotes" } }
 };
 
+// The unique indexes the migrations create, by table: sync_merchants_slug_key and so on.
+const UNIQUE_KEYS = {
+  sync_merchants: ["slug", "topic_slug"],
+  sync_qr_codes: ["code"]
+};
+
 export class FakePostgrest {
   constructor() {
     this.tables = {
+      admin_audit_log: [],
       battles: [],
       chat_messages: [],
       chat_topics: [],
@@ -266,6 +273,7 @@ export class FakePostgrest {
       return this.#select(res, req, url, rows);
     }
     if (req.method === "DELETE") return this.#delete(res, table, url);
+    if (req.method === "PATCH") return this.#update(res, req, table, url, body);
     return send(res, 405, { message: "not supported by the fake" });
   }
 
@@ -284,11 +292,47 @@ export class FakePostgrest {
     return send(res, 204, null);
   }
 
+  // Update by filter, the way PATCH /table?col=eq.x does. Answers with the changed rows
+  // only when asked to (Prefer: return=representation), like PostgREST.
+  #update(res, req, table, url, body) {
+    if (this.failWritesTo === table) {
+      return send(res, 500, { code: "XX000", message: "simulated write failure" });
+    }
+    const targets = this.tables[table].filter((row) => matches(row, url.searchParams));
+    const conflict = this.#uniqueConflict(table, targets, body || {});
+    if (conflict) return send(res, 409, conflict);
+    for (const row of targets) Object.assign(row, body);
+    const prefer = req.headers.prefer || "";
+    if (!prefer.includes("return=representation")) return send(res, 204, null);
+    return sendRows(res, req, targets, 200);
+  }
+
+  // The unique indexes the migrations create, for the tables the tests write to. A
+  // violation answers 409 with Postgres's code 23505, which is what PostgREST sends.
+  #uniqueConflict(table, rows, changes) {
+    const keys = UNIQUE_KEYS[table];
+    if (!keys) return null;
+    const changing = Array.isArray(rows) ? rows : [rows];
+    for (const key of keys) {
+      if (!(key in changes)) continue;
+      const value = changes[key];
+      const clash = this.tables[table].some((other) => !changing.includes(other) && other[key] === value);
+      if (clash || changing.length > 1) {
+        return { code: "23505", message: `duplicate key value violates unique constraint "${table}_${key}_key"` };
+      }
+    }
+    return null;
+  }
+
   #insert(res, req, table, body) {
     if (this.failWritesTo === table) {
       return send(res, 500, { code: "XX000", message: "simulated write failure" });
     }
     const incoming = Array.isArray(body) ? body : [body];
+    for (const row of incoming) {
+      const conflict = this.#uniqueConflict(table, [], row);
+      if (conflict) return send(res, 409, conflict);
+    }
     const inserted = incoming.map((row) => {
       const full = {
         id: `${table}-${this.nextId++}`,

@@ -3,7 +3,11 @@
 // opt out of, so this is a no-op.
 
 export function unstable_noStore() {}
-export function revalidatePath() {}
+export function revalidatePath(path) {
+  const test = globalThis.__KC_TEST__;
+  if (!test) return;
+  test.revalidatedPaths = [...(test.revalidatedPaths || []), path];
+}
 
 // unstable_cache without the cache: every call runs the function. What Next
 // caches and for how long is Next's to get right; what these tests care about

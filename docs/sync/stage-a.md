@@ -10,7 +10,7 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 
 ## Decisions (change one only on purpose)
 
-1. Admin only in Stage A. An operator role arrives with the dashboard in Stage B.
+1. Admin only in Stage A. An operator role arrives with the fuller dashboard in Stage B.
 2. A thread's address (topic_slug) is pinned when a business is tagged and never
    recomputed. Renaming a café changes only what is displayed.
 3. Empty business threads stay out of public lists and the sitemap. They are reached by
@@ -27,13 +27,29 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 ## The patches
 
 1. Foundation: the tables, security, the slug rules, the signed token, the readers.
-2. Admin: tag a business thread.
+2. Admin: tag a business thread, with a simple businesses list and editor.
 3. The thread page becomes a business page, and every list that shows threads knows.
 4. QR codes and the hub.
-5. Posting through the hub: the Visited label and the "copy and open Google" step.
-6. Private feedback and the admin inbox.
-7. Linking the owner's account, and the "Verified business" label.
-8. Pilot pack: a small overview, a CSV export, a runbook.
+5. The Overview: scans, taps, posts and questions per business. Moved up so it shows real
+   activity as soon as the first QR code is out. It is also where the dashboard shell
+   (the canvas's dark sidebar and IBM Plex type) is introduced.
+6. Posting through the hub: the Visited label and the "copy and open Google" step.
+7. Private feedback and the admin inbox.
+8. Linking the owner's account, and the "Verified business" label.
+9. Pilot pack: a CSV export, a runbook, and a final smoke test.
+
+## Patch 2 notes
+
+- The Sync admin screens reuse the admin's existing styling, so they match the rest of
+  the admin. The canvas look arrives once, with the Overview (patch 5), rather than
+  being built twice.
+- About text: at most 300 characters (the canvas says 200 to 300; there is no minimum).
+- Google links: only search.google.com, g.page, maps.app.goo.gl, maps.google.com and
+  Google Maps are accepted, because customers tap them. A look-alike address is refused.
+- A business's two addresses (thread and hub) are fixed once tagged. Removing a tag keeps
+  the thread and every post; restoring it brings the business header back.
+- Every change is written to the admin audit log before it is made. If the log cannot be
+  written, nothing changes.
 
 ## How the pieces fit
 

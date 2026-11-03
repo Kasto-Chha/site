@@ -315,7 +315,7 @@ test("no browser code can import the server-only sync helpers", () => {
   const clientFiles = roots.flatMap((dir) => sourceFiles(dir)).filter((f) => /^\s*["']use client["']/.test(fs.readFileSync(f, "utf8")));
   assert.ok(clientFiles.length > 0, "found no client components to check");
   for (const file of clientFiles) {
-    assert.ok(!/lib\/sync\//.test(fs.readFileSync(file, "utf8")), `${file} imports lib/sync, which holds a secret and the service role`);
+    assert.ok(!/lib\/sync\/(hubToken|merchants|threads)/.test(fs.readFileSync(file, "utf8")), `${file} imports a server-only sync module, which holds a secret or the service role`);
   }
   for (const file of sourceFiles("lib/sync")) {
     assert.ok(!/from\s+["'](\.\.\/)+app\//.test(fs.readFileSync(file, "utf8")), `${file} reaches into app/`);

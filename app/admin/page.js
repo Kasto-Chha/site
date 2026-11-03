@@ -56,6 +56,10 @@ export default async function AdminHome() {
           <h3>Trending search rules</h3>
           <p>Hide a search from the homepage row, or add one to fill it.</p>
         </a>
+        <a className="admin-card" href="/admin/sync">
+          <h3>Sync: businesses</h3>
+          <p>Tag a business thread, add its details, and manage its QR hub and private inbox.</p>
+        </a>
         <a className="admin-card" href="/admin/roles">
           <h3>User roles</h3>
           <p>
