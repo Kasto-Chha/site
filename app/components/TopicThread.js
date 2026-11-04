@@ -15,6 +15,7 @@ import {
 import { formatTimeAgo, scoreOf, verdictTone } from "../../lib/topics";
 import { categoryLabel, categoryTone } from "../../lib/categories";
 import { isoTime } from "./sectionHelpers";
+import "./businessChip.css";
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 
@@ -172,6 +173,7 @@ export default function TopicThread({
           <span className="topic-cat" style={{ color: categoryTone(topic.category) }}>
             {categoryLabel(topic.category)}
           </span>
+          {topic.business ? <span className="topic-biz-chip">Business</span> : null}
           <span className="topic-count-pill">
             {topic.count} experience{topic.count === 1 ? "" : "s"}
           </span>

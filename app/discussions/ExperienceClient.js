@@ -10,6 +10,7 @@ import useRequireSignIn from "../components/useRequireSignIn";
 import TopicSuggest from "../components/TopicSuggest";
 import { topicSlug } from "../../lib/slug";
 import { buildTopics } from "../../lib/topics";
+import { applyBusinesses } from "../../lib/sync/businessTopics";
 import { CHAT_SOURCE, chatHref } from "../../lib/chatTopics";
 import {
   CATEGORY_LABELS,
@@ -21,6 +22,7 @@ const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 
 export default function ExperienceClient({
   reviews = [],
+  businesses: initialBusinesses = {},
   myVotes = {},
   questions = [],
   hasMore: initialHasMore = false,
@@ -56,6 +58,8 @@ export default function ExperienceClient({
   // server refresh — after posting, say — replaces the first page without
   // discarding what has already been loaded below it.
   const [extraRows, setExtraRows] = useState([]);
+  // The businesses among the threads loaded beyond the first page, by thread address.
+  const [extraBusinesses, setExtraBusinesses] = useState({});
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [nextOffset, setNextOffset] = useState(initialOffset);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -68,6 +72,7 @@ export default function ExperienceClient({
       if (!response.ok) throw new Error("Could not load more");
       const data = await response.json();
       setExtraRows((rows) => [...rows, ...(data.rows || [])]);
+      if (data.businesses) setExtraBusinesses((current) => ({ ...current, ...data.businesses }));
       setHasMore(Boolean(data.hasMore));
       setNextOffset(data.nextOffset || nextOffset + 30);
     } catch {
@@ -100,9 +105,13 @@ export default function ExperienceClient({
 
   // buildTopics groups by slug, so a thread arriving on a later page cannot
   // duplicate one already shown — the rows merge into the same thread.
+  //
+  // A thread a business is tagged to is shown by the business's name and category, with a
+  // Business mark. That is for the eye only: the thread's own title is kept as `postTitle`,
+  // because a reply must be sent under it to land in the same thread.
   const topics = useMemo(
-    () => buildTopics([...items, ...extraRows]),
-    [items, extraRows]
+    () => applyBusinesses(buildTopics([...items, ...extraRows]), { ...initialBusinesses, ...extraBusinesses }),
+    [items, extraRows, initialBusinesses, extraBusinesses]
   );
 
   // Filter by canonical label, not the raw stored string, so rows saved as
@@ -183,7 +192,7 @@ export default function ExperienceClient({
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          title: topicItem.title,
+          title: topicItem.postTitle || topicItem.title,
           category: topicItem.category,
           verdict: verdict || "",
           summary

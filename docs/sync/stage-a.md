@@ -32,7 +32,8 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
    3a. the thread page itself: the business header, the empty-thread invitation, the
        business's name and category on the page and its share card, the pinned thread title,
        and links built from a place ID.
-   3b. the discussions list, the search suggestions and the cards that carry the name.
+   3b. the discussions list and the Share box's suggestions: a business is named, marked and
+       offered even with no posts. (Done.)
 4. QR codes and the hub.
 5. The Overview: scans, taps, posts and questions per business. Moved up so it shows real
    activity as soon as the first QR code is out. It is also where the dashboard shell
@@ -113,6 +114,26 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 - Run migrations 0019 to 0021 before using the Sync screens: the search reads the thread
   summary view, the admin screens read the business-type words, and the thread page reads the
   pinned title.
+
+## Lists and suggestions (patch 3b)
+
+- **The discussions list** names a thread a business is tagged to by the business ("Name,
+  Area") and its category, with a Business mark beside the category. That is for the eye
+  only: the thread's own title is kept as `postTitle` (lib/sync/businessTopics.js), and a
+  reply from a list card is sent under it, so it lands in the same thread. The category
+  filter uses the business's category too, so the filter and the card agree. A thread with
+  no business, or one whose tag was removed, renders exactly as before.
+- **The Share box's suggestions** (`/api/topics/search`) offer a business even when its
+  thread has no posts yet, and name a business thread for the business. Picking one fills the
+  form with the pinned title (`title`), not the name shown (`label`), so the post is filed in
+  the business's thread. Suggestions are built from posts, so before this an empty business
+  thread could never be offered, and typing its name would have started a second thread.
+  Businesses lead, at most three; the rest are as before.
+- **Failure is quiet.** If the business lookup cannot be read, the list and the suggestions
+  are exactly what they were. The load-more route also returns the businesses among the
+  threads it returns.
+- Not changed: the home page's sections and the trending lists still show a thread by its
+  first post's title. Add the business name there if it is wanted.
 
 ## How the pieces fit
 

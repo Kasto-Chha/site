@@ -8,6 +8,7 @@ import {
   getUserVotes
 } from "../../lib/supabase/queries";
 import { breadcrumbSchema, jsonLd } from "../../lib/seo/schema";
+import { getBusinessesByTopicSlugs } from "../../lib/sync/merchants";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -65,6 +66,9 @@ export default async function DiscussionsPage({ searchParams }) {
     getRecentQuestions(6)
   ]);
 
+  // The businesses among these threads, so the list can name and mark them.
+  const businesses = await getBusinessesByTopicSlugs(threadPage.rows.map((row) => row.topic_slug));
+
   const breadcrumbTrail = [{ name: "Discussions", path: "/discussions" }];
   if (page > 1) {
     breadcrumbTrail.push({ name: `Page ${page}`, path: `/discussions?page=${page}` });
@@ -78,6 +82,7 @@ export default async function DiscussionsPage({ searchParams }) {
       />
       <ExperienceClient
         reviews={threadPage.rows}
+        businesses={businesses}
         hasMore={threadPage.hasMore}
         nextOffset={offset + PAGE_SIZE}
         page={page}

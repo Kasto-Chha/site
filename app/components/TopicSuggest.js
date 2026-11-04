@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { topicSlug } from "../../lib/slug";
+import { suggestMeta } from "../../lib/suggestText";
+import "./businessChip.css";
 
 // ---------------------------------------------------------------------------
 // Threads that already exist for whatever is being typed into the topic field.
@@ -154,6 +156,13 @@ export default function TopicSuggest({
   const visible = topics;
   if (!visible.length) return null;
 
+  return <SuggestionList topics={visible} onPick={onPick} onDismiss={() => setDismissed(true)} />;
+}
+
+// The list of suggestions, with no state of its own so it can be rendered and checked without a
+// browser. A business thread is shown by the business's name (label) with a Business mark, but
+// picking it hands over `title`, the thread's own title, which is what a post must go under.
+export function SuggestionList({ topics, onPick, onDismiss }) {
   return (
     <div className="topic-suggest" role="listbox" aria-label="Existing discussions">
       <div className="topic-suggest-head">
@@ -161,14 +170,14 @@ export default function TopicSuggest({
         <button
           type="button"
           className="topic-suggest-close"
-          onClick={() => setDismissed(true)}
+          onClick={onDismiss}
           aria-label="Hide suggestions"
         >
           ×
         </button>
       </div>
 
-      {visible.map((topic) => (
+      {topics.map((topic) => (
         <button
           key={topic.slug}
           type="button"
@@ -179,17 +188,14 @@ export default function TopicSuggest({
             // The whole thread, not just its title: callers want the category
             // too, since joining adopts it.
             onPick(topic.title, topic);
-            setDismissed(true);
+            onDismiss();
           }}
         >
-          <span className="topic-suggest-title">{topic.title}</span>
-          <span className="topic-suggest-meta">
-            {topic.experiences === 0
-              ? "asked, no answers yet"
-              : `${topic.experiences} ${
-                  topic.experiences === 1 ? "experience" : "experiences"
-                }`}
+          <span className="topic-suggest-title">
+            {topic.label || topic.title}
+            {topic.business ? <span className="topic-suggest-biz">Business</span> : null}
           </span>
+          <span className="topic-suggest-meta">{suggestMeta(topic)}</span>
         </button>
       ))}
 

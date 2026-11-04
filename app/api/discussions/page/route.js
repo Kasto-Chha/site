@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getThreadPage } from "../../../../lib/supabase/queries";
+import { getBusinessesByTopicSlugs } from "../../../../lib/sync/merchants";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +30,13 @@ export async function GET(request) {
 
   try {
     const { rows, hasMore } = await getThreadPage({ offset, limit: PAGE_SIZE });
-    return NextResponse.json({ rows, hasMore, nextOffset: offset + PAGE_SIZE });
+    // The businesses among these threads, so the list can name and mark them.
+    const businesses = await getBusinessesByTopicSlugs(rows.map((row) => row.topic_slug));
+    return NextResponse.json({ rows, hasMore, nextOffset: offset + PAGE_SIZE, businesses });
   } catch (error) {
     console.warn("[discussions/page]", error?.message || error);
     // Never break the page over a failed "load more" — what is already on
     // screen stays, and the button can be tried again.
-    return NextResponse.json({ rows: [], hasMore: false, nextOffset: offset });
+    return NextResponse.json({ rows: [], hasMore: false, nextOffset: offset, businesses: {} });
   }
 }

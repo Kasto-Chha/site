@@ -51,6 +51,16 @@ export function deriveThreadSummary(tables) {
   return summary;
 }
 
+export function deriveThreadList(tables) {
+  const latest = new Map();
+  for (const row of tables.reviews) {
+    if (!row.topic_slug) continue;
+    const seen = latest.get(row.topic_slug);
+    if (!seen || row.created_at > seen) latest.set(row.topic_slug, row.created_at);
+  }
+  return [...latest].map(([topic_slug, last_activity]) => ({ topic_slug, last_activity }));
+}
+
 // The unique indexes the migrations create, by table: sync_merchants_slug_key and so on.
 const UNIQUE_KEYS = {
   sync_merchants: ["slug", "topic_slug"],
@@ -91,6 +101,7 @@ export class FakePostgrest {
     // applied: chat_topics has no opening_query / source / guest_key, and
     // trending_search_rules does not exist.
     this.beforeTrendingMigration = false;
+    this.withDiscussionThreads = false;
     this.nextId = 1;
   }
 
@@ -291,8 +302,14 @@ export class FakePostgrest {
       if (refusal) return send(res, refusal.status, refusal.body);
     }
 
-    const isView = table === "sync_thread_summary";
-    const rows = isView ? deriveThreadSummary(this.tables) : this.tables[table];
+    // discussion_threads is the production view the list reads. The tests' stand-in is the
+    // simplest thing with its shape (one row per thread, newest activity first), and exists
+    // only when a test turns it on, so no other test sees a table it has never had.
+    const isThreadList = table === "discussion_threads" && this.withDiscussionThreads;
+    const isView = table === "sync_thread_summary" || isThreadList;
+    const rows = table === "sync_thread_summary" ? deriveThreadSummary(this.tables)
+      : isThreadList ? deriveThreadList(this.tables)
+      : this.tables[table];
     if (!rows) return send(res, 404, { message: `no such table ${table}` });
     if (isView && req.method !== "GET" && req.method !== "HEAD") {
       return send(res, 405, { code: "42809", message: "cannot change a view" });

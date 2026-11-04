@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { searchTokens, ilikeAnyClause, relevanceScore } from "../../../../lib/search";
+import { withBusinesses } from "../../../../lib/sync/suggest";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,10 @@ export async function GET(request) {
         return thread;
       });
 
-    return NextResponse.json({ topics: ranked, ok: true });
+    // A thread a business is tagged to is named for the business, and businesses that match the
+    // words but have no posts yet are offered too. Unchanged when no business is involved.
+    const topics = await withBusinesses(supabase, tokens, ranked);
+    return NextResponse.json({ topics, ok: true });
   } catch (error) {
     console.warn("[topics/search]", error?.message || error);
     // Suggestions are an aid, never a gate: if this fails the form still works
