@@ -1,14 +1,20 @@
-import { createServerSupabase } from "../../../../lib/supabase/server";
+import { clientIp } from "../../../../lib/clientIp";
+import { checkRateLimit, retryAfterSeconds } from "../../../../lib/ratelimit";
+import { badgeCheckAnswer } from "../../../../lib/sync/badge";
+import { getMerchantBySlug } from "../../../../lib/sync/merchants";
+import { isValidSlug, normalizeSlug } from "../../../../lib/sync/slug";
 
-// Called by the embeddable badge widget (public/badge-widget.js), from
-// whatever third-party site it's embedded on — genuinely cross-origin,
-// unlike the rest of this app's API routes, which only ever get called
-// from kastochhanepal.com itself. That's why this needs explicit CORS
-// headers where nothing else here has needed them.
+// Called by the website badge (public/badge-widget.js) from whatever site it is pasted on, so
+// it is genuinely cross-origin and needs CORS headers where nothing else here has.
 //
-// Public, read-only, and returns nothing beyond a yes/no — no rate limiting
-// or auth here, matching the low cost/risk of a single indexed lookup
-// against a small table, unlike the paid-API-backed chat endpoints.
+// It answers one question: is this business on KastoChha Sync right now? The business is named
+// by its Sync address (its slug), and the answer is yes only while it is tagged and active. So a
+// business that is removed loses its badge without anyone touching the site it sits on. A yes
+// carries only what is already public on the business's own page: its name and where its thread is.
+//
+// Public and read-only, so it is limited per visitor address, and the answer is cached at the edge
+// for a minute: a busy site's visitors are answered from the cache instead of the database, and a
+// removed business's badge is gone within a minute. It fails closed: any trouble means no badge.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -20,38 +26,26 @@ export async function OPTIONS() {
 }
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const business = (searchParams.get("business") || "").trim();
+  const limit = await checkRateLimit("badge", clientIp(request));
+  if (!limit.ok) {
+    return Response.json(
+      { allowed: false, error: "Too many requests." },
+      { status: 429, headers: { ...CORS_HEADERS, "Retry-After": String(retryAfterSeconds(limit.reset)), "Cache-Control": "no-store" } }
+    );
+  }
 
+  const business = normalizeSlug(new URL(request.url).searchParams.get("business"));
   if (!business) {
-    return Response.json(
-      { allowed: false, error: "Missing business parameter" },
-      { status: 400, headers: CORS_HEADERS }
-    );
+    return Response.json({ allowed: false, error: "Missing business parameter" }, { status: 400, headers: { ...CORS_HEADERS, "Cache-Control": "no-store" } });
+  }
+  // Not an address: not a business. No lookup, and no answer worth keeping for long.
+  if (!isValidSlug(business)) {
+    return Response.json({ allowed: false }, { headers: { ...CORS_HEADERS, "Cache-Control": "public, max-age=0, s-maxage=30" } });
   }
 
-  try {
-    const supabase = createServerSupabase();
-    const { data, error } = await supabase
-      .from("badge_businesses")
-      .select("id")
-      .eq("business_name", business)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    return Response.json(
-      { allowed: Boolean(data) },
-      { headers: CORS_HEADERS }
-    );
-  } catch (err) {
-    console.error("Badge business check failed:", err?.message || err);
-    // Fails closed, unlike most of this app's other fallback behavior — an
-    // unrecognized or erroring check should not accidentally let an
-    // unapproved badge through.
-    return Response.json(
-      { allowed: false },
-      { status: 200, headers: CORS_HEADERS }
-    );
-  }
+  const merchant = await getMerchantBySlug(business);
+  const answer = badgeCheckAnswer(merchant);
+  return Response.json(answer, {
+    headers: { ...CORS_HEADERS, "Cache-Control": `public, max-age=0, s-maxage=${answer.allowed ? 60 : 30}` }
+  });
 }

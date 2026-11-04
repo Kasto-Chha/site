@@ -257,7 +257,9 @@ test("the limit is checked before any database work", () => {
 // ---------- the event helpers ----------
 
 test("every kind of event the database allows is one the code knows, and no more", () => {
-  const sql = fs.readFileSync("supabase/migrations/0018_sync_foundation.sql", "utf8");
+  // The list is redefined by later migrations as events are added: the last one to define it wins.
+  const defining = fs.readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort().filter((f) => fs.readFileSync(`supabase/migrations/${f}`, "utf8").includes("sync_events_type_check"));
+  const sql = fs.readFileSync(`supabase/migrations/${defining[defining.length - 1]}`, "utf8").replace(/--.*$/gm, "");
   const inDb = sql.match(/event_type in \(([^)]*)\)/s)[1].match(/'([a-z_]+)'/g).map((t) => t.replace(/'/g, "")).sort();
   assert.deepEqual([...EVENT_TYPES].sort(), inDb);
   for (const type of HUB_CLICK_EVENTS) assert.ok(EVENT_TYPES.includes(type));

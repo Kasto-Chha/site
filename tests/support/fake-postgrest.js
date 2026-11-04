@@ -51,6 +51,8 @@ export function deriveThreadSummary(tables) {
   return summary;
 }
 
+const HEAD_OR_GET = (req) => req.method !== "HEAD";
+
 export function deriveThreadList(tables) {
   const latest = new Map();
   for (const row of tables.reviews) {
@@ -102,6 +104,7 @@ export class FakePostgrest {
     // trending_search_rules does not exist.
     this.beforeTrendingMigration = false;
     this.withDiscussionThreads = false;
+    this.maxRows = null;
     this.nextId = 1;
   }
 
@@ -422,6 +425,9 @@ export class FakePostgrest {
     if (from) out = out.slice(from);
     const limit = Number.parseInt(url.searchParams.get("limit") || "", 10);
     if (Number.isInteger(limit)) out = out.slice(0, limit);
+    // Hosted Supabase (PostgREST) never returns more than its max-rows setting (1,000 by default),
+    // whatever limit was asked for. Off unless a test turns it on, so no other test is affected.
+    if (this.maxRows && HEAD_OR_GET(req)) out = out.slice(0, this.maxRows);
 
     // head:true + count:exact — the shape lib/chatQuota.js counts with.
     if (req.method === "HEAD") {

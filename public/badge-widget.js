@@ -1,42 +1,43 @@
 /**
- * KastoChha embeddable badge — a small floating button any business can add
- * to their own site. Clicking it opens a popup with two options, both
- * pre-filled with the exact same business name so everything lands on one
- * consolidated discussion thread rather than fragmenting across slightly
- * different spellings someone might type by hand:
- *   - Share Your KastoChha Experience (listed first, primary) — opens
- *     KastoChha's homepage with the share-experience modal already open,
- *     topic pre-filled. See the "share" query param handling in
- *     app/HomeClient.js for the other half of this.
- *   - Ask KastoChha Assist about us — opens the AI chat with the question
- *     already pre-filled, using the chat page's existing ?q= support.
+ * KastoChha website badge: a small floating button a business adds to its own site. Clicking it
+ * opens a popup with two options:
+ *   - Share Your KastoChha Experience (primary): the business's own page on KastoChha, with the
+ *     box to write an experience. Every post lands in that one thread, in the right category.
+ *   - Ask KastoChha Assist about us: the AI chat, with the business's name already asked about.
  *
- * Usage, on any third-party site:
+ * Usage, on the business's own site, just before </body> (the admin shows this line, ready to copy):
  *   <script src="https://www.kastochhanepal.com/badge-widget.js"
- *           data-business="XYZ Trekking Agency"></script>
+ *           data-business="himal-brew-house" async></script>
  *
- * Only shows for a business name on the approved allowlist — see
- * app/api/badge/check/route.js and the badge_businesses table. Approving a
- * new business is a single row added in Supabase's own table editor; the
- * widget itself never needs to change or redeploy.
+ * data-business is the business's KastoChha address (the part after /hub/ or in its QR page), not
+ * its name, so there is nothing to mistype. The button shows only while that business is tagged
+ * in KastoChha Sync (see app/api/badge/check/route.js): removing the tag removes the badge from
+ * every site it was pasted on, within a minute, with nothing to change there.
  *
- * Vanilla JS, no dependencies, self-contained styles scoped under a "kc-"
- * prefix — this has to work correctly on any host site regardless of what
- * it's built with, without colliding with that site's own CSS.
+ * What it tells KastoChha: that the popup was opened, and which link was clicked, counted against
+ * the business. No cookies are sent or set, and nothing is recorded about the visitor. Nothing is
+ * sent when the page merely loads, apart from the question of whether to show the button.
+ *
+ * Vanilla JS, no dependencies, styles scoped under a "kc-" prefix: it has to work on any host
+ * site, whatever it is built with, without colliding with that site's own CSS. Nothing from the
+ * server is ever put into the page as HTML: names go in as text, addresses are checked first.
  */
 (function () {
   "use strict";
 
   var scriptTag = document.currentScript;
-  var business = (scriptTag && scriptTag.getAttribute("data-business")) || "";
-  if (!business.trim()) {
-    console.error("KastoChha badge: missing required data-business attribute on the script tag.");
+  var business = ((scriptTag && scriptTag.getAttribute("data-business")) || "").trim().toLowerCase();
+  if (!business) {
+    console.error("KastoChha badge: missing required data-business attribute on the script tag. Copy the snippet from KastoChha exactly as given.");
+    return;
+  }
+  // An address, not a name: lowercase letters, digits and single hyphens.
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(business) || business.length > 80) {
+    console.error('KastoChha badge: data-business must be the business\'s KastoChha address, for example "himal-brew-house", not its name. Copy the snippet from KastoChha exactly as given.');
     return;
   }
 
   var SITE_URL = "https://www.kastochhanepal.com";
-  var shareUrl = SITE_URL + "/?share=" + encodeURIComponent(business);
-  var askUrl = SITE_URL + "/chat?q=" + encodeURIComponent(business);
 
   var style = document.createElement("style");
   style.textContent = [
@@ -78,76 +79,114 @@
   ].join("");
   document.head.appendChild(style);
 
-  var badgeBtn = document.createElement("button");
-  badgeBtn.className = "kc-badge-btn";
-  badgeBtn.setAttribute("aria-label", "Ask or share on KastoChha about " + business);
-  badgeBtn.innerHTML =
-    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M4 4h16v12H7l-3 3V4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
-    "</svg>" +
-    "<span>Ask KastoChha</span>";
-
-  var overlay = document.createElement("div");
-  overlay.className = "kc-badge-overlay";
-  overlay.innerHTML =
-    '<div class="kc-badge-card" role="dialog" aria-modal="true">' +
-    '<button class="kc-badge-close" aria-label="Close">\u2715</button>' +
-    '<img class="kc-badge-logo" src="' + SITE_URL + '/kastochha-logo.svg" alt="KastoChha" />' +
-    '<a class="kc-badge-option kc-badge-primary" href="' + shareUrl + '" target="_blank" rel="noopener noreferrer">' +
-    '<p class="kc-badge-option-title">Share Your KastoChha Experience</p>' +
-    '<p class="kc-badge-option-sub">Help others with an honest review of ' + escapeHtml(business) + "</p>" +
-    "</a>" +
-    '<a class="kc-badge-option kc-badge-secondary" href="' + askUrl + '" target="_blank" rel="noopener noreferrer">' +
-    '<p class="kc-badge-option-title">Ask KastoChha Assist about us</p>' +
-    '<p class="kc-badge-option-sub">Get an honest answer from real community experience</p>' +
-    "</a>" +
-    "</div>";
-
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
+  // Tells KastoChha what was clicked, counted against the business. Fire and forget: it uses a
+  // request that survives the page being left, sends no cookies, and never shows an error or
+  // slows a click down. A failure just means one click is not counted.
+  function track(type) {
+    try {
+      if (typeof fetch !== "function") return;
+      fetch(SITE_URL + "/api/sync/event", {
+        method: "POST",
+        mode: "no-cors",
+        credentials: "omit",
+        keepalive: true,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify({ slug: business, type: type })
+      }).catch(function () {});
+    } catch (e) {
+      // Counting is never allowed to get in the way.
+    }
   }
 
-  function openOverlay() {
-    overlay.classList.add("kc-open");
-  }
-  function closeOverlay() {
-    overlay.classList.remove("kc-open");
-  }
+  function mount(name, thread) {
+    // Included twice on one page? One button is enough.
+    if (document.querySelector(".kc-badge-btn")) return;
 
-  badgeBtn.addEventListener("click", openOverlay);
-  overlay.addEventListener("click", function (event) {
-    if (event.target === overlay) closeOverlay();
-  });
-  overlay.querySelector(".kc-badge-close").addEventListener("click", closeOverlay);
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") closeOverlay();
-  });
+    var shareUrl = SITE_URL + thread + "#share";
+    var askUrl = SITE_URL + "/chat?q=" + encodeURIComponent(name);
 
-  function mount() {
+    var badgeBtn = document.createElement("button");
+    badgeBtn.className = "kc-badge-btn";
+    badgeBtn.setAttribute("aria-label", "Ask or share on KastoChha about " + name);
+    badgeBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M4 4h16v12H7l-3 3V4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
+      "</svg>" +
+      "<span>Ask KastoChha</span>";
+
+    // Static markup only. The name and the addresses are put in afterwards, as text and as
+    // checked properties, so nothing that came from the server is ever read as HTML.
+    var overlay = document.createElement("div");
+    overlay.className = "kc-badge-overlay";
+    overlay.innerHTML =
+      '<div class="kc-badge-card" role="dialog" aria-modal="true" aria-label="KastoChha">' +
+      '<button class="kc-badge-close" aria-label="Close">\u2715</button>' +
+      '<img class="kc-badge-logo" src="' + SITE_URL + '/kastochha-logo.svg" alt="KastoChha" />' +
+      '<a class="kc-badge-option kc-badge-primary kc-share" target="_blank" rel="noopener noreferrer">' +
+      '<p class="kc-badge-option-title">Share Your KastoChha Experience</p>' +
+      '<p class="kc-badge-option-sub">Help others with an honest review of <span class="kc-name"></span></p>' +
+      "</a>" +
+      '<a class="kc-badge-option kc-badge-secondary kc-ask" target="_blank" rel="noopener noreferrer">' +
+      '<p class="kc-badge-option-title">Ask KastoChha Assist about us</p>' +
+      '<p class="kc-badge-option-sub">Get an honest answer from real community experience</p>' +
+      "</a>" +
+      "</div>";
+    overlay.querySelector(".kc-name").textContent = name;
+    var shareLink = overlay.querySelector(".kc-share");
+    var askLink = overlay.querySelector(".kc-ask");
+    shareLink.href = shareUrl;
+    askLink.href = askUrl;
+
+    var opened = false;
+    function openOverlay() {
+      overlay.classList.add("kc-open");
+      // Once per page view, however often it is opened.
+      if (!opened) {
+        opened = true;
+        track("badge_open");
+      }
+    }
+    function closeOverlay() {
+      overlay.classList.remove("kc-open");
+    }
+
+    badgeBtn.addEventListener("click", openOverlay);
+    overlay.addEventListener("click", function (event) {
+      if (event.target === overlay) closeOverlay();
+    });
+    overlay.querySelector(".kc-badge-close").addEventListener("click", closeOverlay);
+    shareLink.addEventListener("click", function () {
+      track("badge_share");
+    });
+    askLink.addEventListener("click", function () {
+      track("badge_ask");
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeOverlay();
+    });
+
     document.body.appendChild(badgeBtn);
     document.body.appendChild(overlay);
   }
 
-  // Confirms this business is on the approved list (see
-  // app/api/badge/check/route.js and the badge_businesses table) before
-  // showing anything at all. Without this, the widget would respond to any
-  // data-business value on any page — including a plain test file — with no
-  // way to know it's happening or which names it's actually meant to serve.
-  // Fails silently either way: a network error or a "not approved" result
-  // both just mean nothing renders, not a visible error on someone's site.
+  // Asks KastoChha whether this business is on Sync right now, and shows nothing at all unless
+  // the answer is a clear yes. A network error, a blocked request, a business that is not (or is
+  // no longer) tagged, or an answer that does not look right all mean the same thing: no badge,
+  // and no visible error on someone's site. The answer's address must be one of KastoChha's own
+  // discussion pages, so a tampered answer cannot send a visitor anywhere else.
   function checkAndMount() {
     fetch(SITE_URL + "/api/badge/check?business=" + encodeURIComponent(business))
       .then(function (res) {
         return res.json();
       })
       .then(function (data) {
-        if (data && data.allowed) mount();
+        if (!data || data.allowed !== true) return;
+        if (typeof data.name !== "string" || !data.name.trim() || data.name.length > 200) return;
+        if (typeof data.thread !== "string" || !/^\/discussions\/[a-z0-9]+(-[a-z0-9]+)*$/.test(data.thread)) return;
+        mount(data.name.trim(), data.thread);
       })
       .catch(function () {
-        // Network error, CORS issue, endpoint down — do not show an
-        // unverified badge just because the check itself failed.
+        // Network error, CORS issue, endpoint down: do not show an unverified badge.
       });
   }
 

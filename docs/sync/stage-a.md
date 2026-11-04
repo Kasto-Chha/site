@@ -35,6 +35,7 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
    3b. the discussions list and the Share box's suggestions: a business is named, marked and
        offered even with no posts. (Done.)
 4. QR codes and the hub (done: scans, the hub, taps, and QR downloads).
+   4b. The website badge, connected to Sync (done): one list, the business's own thread, counted clicks.
 5. The Overview: scans, taps, posts and questions per business. Moved up so it shows real
    activity as soon as the first QR code is out. It is also where the dashboard shell
    (the canvas's dark sidebar and IBM Plex type) is introduced.
@@ -177,6 +178,89 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 - **Dependencies.** `qrcode` (runtime, pure JavaScript, MIT) makes the squares. `jsqr`
   (dev only, Apache-2.0) lets the tests scan the generated images.
 - No migration: the tables are from 0018.
+
+## The website badge (patch 4b)
+
+- **What it is.** A small red "Ask KastoChha" button a business pastes on its own website
+  (`public/badge-widget.js`). It opens a popup with two links: **Share Your KastoChha Experience**
+  (the business's own page on KastoChha, where the box to write an experience is) and **Ask
+  KastoChha Assist about us** (the chat, asked about the business).
+- **It is part of Sync now.** The badge names a business by its Sync address (its slug), not by
+  its name: `data-business="himal-brew-house"`. A business tagged in Sync can have the badge; one
+  whose tag is removed loses it from every site it was pasted on, within a minute, with nothing to
+  change there. There is no second list to keep. The admin shows the exact line to paste on each
+  business's page (a "Website badge" section, after the QR codes).
+- **Why "Share" goes to the thread.** The old badge sent the raw name to the home page's share
+  box, which made a post's address from the name alone ("himal-brew-house"), a different thread from
+  the business's own ("himal-brew-house-jhamsikhel"). The link now goes to the business's page, where
+  the box posts under the pinned title and category. A badge click is not a visit: those posts never
+  get a "Visited" label, which is for people who scanned a QR code.
+- **The check** (`/api/badge/check`) answers one question: is this business on Sync right now? A yes
+  carries only what the business's page already shows: its name and where its thread is. It is limited
+  per visitor address (120 a minute), cached at the edge for 60 seconds (30 for a no), and fails closed:
+  any trouble means no badge. It is open to any website (CORS `*`), which is the point.
+- **The script trusts nothing from the server.** The name is put in as text, never as HTML, and the
+  thread address must be one of KastoChha's own `/discussions/...` pages, so a tampered answer cannot
+  send a visitor anywhere else. A name typed where the address belongs is refused with a clear message
+  in the console, and asks the server nothing.
+- **What it counts.** Three events, against the business: the popup opened (once per page view) and a
+  click on each link (`badge_open`, `badge_share`, `badge_ask`, migration 0022). Sent with a request
+  that carries no cookies, survives the page being left and shows nothing in the host site's console.
+  Nothing is recorded about the visitor, and nothing is sent when a page merely loads. The admin shows
+  the totals and the last 7 days.
+- **The old table.** `badge_businesses` is no longer read by anything. Migration 0022 removes its
+  public-read policy (so the names are no longer readable with the public key) but leaves the table
+  and its rows alone: drop it by hand (`drop table public.badge_businesses;`) when you are sure it
+  holds nothing you want. The home page's `?share=` handler was only for the old badge; it is
+  unused and harmless, and can be removed later.
+- **Changing the script changes every embed at once.** `/badge-widget.js` is not versioned, and a
+  business pastes it once. It is covered by tests that run the real script in a simulated page against
+  the real routes; keep it that way.
+- **Limits.** A host site's own security settings, or an ad blocker, can stop the badge or its counts.
+  That only shows on a real site: check it once on a real page after deploying.
+- **Dependencies.** `jsdom` (dev only, MIT) lets the tests run the script in a simulated page. The
+  26 series is used because newer ones need a very recent Node.
+
+## The overview and the Sync look (patch 5)
+
+- **Where things are now.** `/admin/sync` is the **Overview**. The list of businesses moved to
+  `/admin/sync/businesses`; the tag form (`/admin/sync/new`) and a business's page
+  (`/admin/sync/<id>`) are where they were. The admin home still opens `/admin/sync`.
+- **What the Overview shows**, for the last 7 days, the last 30 days or all time (a rolling
+  window, not calendar days): QR scans, hub taps (share, Google, Maps), website badge opens and
+  link clicks, and posts (experiences and questions) on the tagged businesses' threads; a table
+  with one row per business, those needing something first; scans per day for the last 30
+  days; each kind of activity as a bar; and the most scanned QR codes. Every number is a count.
+  It does not follow a person from a scan to a post (nothing links them yet), so it shows no
+  conversion rate: a ratio of posts to taps would claim more than the data can say. Taps show
+  intent only; Google does not say whether a review was posted.
+- **Days are Nepal days** (UTC+05:45, no daylight saving): a scan at 11 p.m. in Kathmandu belongs
+  to that day. The day turns over at 18:15 UTC.
+- **What "needs attention" means**, worked out from the last 7 days whatever range is shown, most
+  urgent first: no QR code at all, or every code switched off (weight 3); a working code but no
+  scans this week (2); no Google link yet (1, a to-do, not a fault: a business with no Google
+  profile is a normal starting point). The first is the status; the rest are listed as "+N more".
+- **Counting is paged.** Hosted Supabase never returns more than its max-rows setting (1,000 by
+  default) from one request and says nothing when it cuts a result short. Patches 4 and 4b read
+  scan and badge counts in one request, so they would have stopped at 1,000 per business without
+  a sign. They now read every page (`lib/sync/paging.js`), as the Overview does. A read that gives
+  up (100,000 rows) says so on the page. The pages are ordered by time and id, so rows that share a
+  timestamp are never skipped or repeated.
+- **A failed read is never shown as zeros.** If anything cannot be loaded the page says so and shows
+  no numbers: a page full of zeros reads as "nothing is happening".
+- **Reading is done in memory.** Events and posts for the range are read and added up in the
+  server. That is right for a pilot (a few businesses, thousands of events). When the numbers grow
+  into hundreds of thousands, move the adding-up into the database (a view or a function) and keep
+  this page's shape.
+- **The Sync look** (dark sidebar, pale page, IBM Plex, teal) is for every page under `/admin/sync`
+  and nothing else: its layout loads the fonts and the stylesheet, every rule sits under
+  `.sync-shell`, and a test fails if one does not. An admin sees the sidebar; anyone else sees the
+  page's own plain "admin access required" message. The pages that were there before keep their
+  markup and are restyled to match. On a phone the sidebar becomes a bar along the top.
+- **Never use a `<nav>` element in these pages.** The site's stylesheet makes every `<nav>` its fixed
+  top bar. The sidebar links and the range tabs are `<div role="navigation">`; a test fails if a
+  `<nav>` comes back.
+- **No migration, no new package.** It reads what patches 2 to 4b collect.
 
 ## How the pieces fit
 

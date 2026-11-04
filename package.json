@@ -44,6 +44,7 @@
     "dotenv": "^16.1.4",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.25",
+    "jsdom": "^26.1.0",
     "jsqr": "^1.4.0",
     "pg": "^8.22.0",
     "postcss": "^8.5.15",

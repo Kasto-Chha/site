@@ -81,7 +81,7 @@ export default function MerchantEditorClient({ merchant }) {
           </p>
         </div>
         <div className="admin-actions">
-          <a className="btn-outline" href="/admin/sync">Back</a>
+          <a className="btn-outline" href="/admin/sync/businesses">Back</a>
           <a className="btn-outline" href={`/discussions/${merchant.topic_slug}`}>View thread</a>
         </div>
       </div>

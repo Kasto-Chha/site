@@ -3,7 +3,9 @@ import { requireRole, ROLE } from "../../../../lib/auth/roles";
 import { getMerchantById } from "../../../../lib/sync/merchants";
 import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import MerchantEditorClient from "./MerchantEditorClient";
+import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
+import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { listQrCodes } from "../../../../lib/sync/qr";
 
@@ -32,7 +34,7 @@ export default async function MerchantPage({ params }) {
       <div className="admin-page">
         <h1>{error ? "Could not load this business" : "Business not found"}</h1>
         <p>{error || "It may have been removed, or the link is wrong."}</p>
-        <a className="btn-outline" href="/admin/sync">Back to businesses</a>
+        <a className="btn-outline" href="/admin/sync/businesses">Back to businesses</a>
       </div>
     );
   }
@@ -67,6 +69,16 @@ export default async function MerchantPage({ params }) {
     loadError = "Could not load the QR codes.";
   }
 
+  // How the website badge has been used. A failure is shown, never hidden as "no use".
+  let badge = null;
+  let badgeError = "";
+  try {
+    badge = await badgeStats(createServerSupabase(), merchant.id);
+  } catch (error) {
+    console.error("Sync badge stats failed:", error?.message || error);
+    badgeError = "Could not load the badge counts.";
+  }
+
   return (
     <>
       <MerchantEditorClient merchant={shown} />
@@ -77,6 +89,14 @@ export default async function MerchantPage({ params }) {
           siteUrl={process.env.NEXT_PUBLIC_SITE_URL || ""}
           initialCodes={codes}
           loadError={loadError}
+        />
+      </div>
+      <div className="admin-page">
+        <BadgePanel
+          snippet={badgeSnippet(process.env.NEXT_PUBLIC_SITE_URL, merchant.slug)}
+          active={merchant.status === "active"}
+          stats={badge}
+          statsError={badgeError}
         />
       </div>
     </>

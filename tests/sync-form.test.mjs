@@ -148,7 +148,7 @@ test("the forms share the type and category controls, and send only a deliberate
 });
 
 test("the screens say 'experience' and 'question' in the singular, with the tested helper", () => {
-  for (const file of ["app/admin/sync/page.js", "app/admin/sync/new/ThreadChoice.js", FORMS[1]]) {
+  for (const file of ["app/admin/sync/businesses/page.js", "app/admin/sync/new/ThreadChoice.js", FORMS[1]]) {
     const source = fs.readFileSync(file, "utf8");
     assert.ok(!/\}\s*experiences\b/.test(source), `${file} hard-codes the plural`);
     assert.ok(!/\}\s*questions\b/.test(source), `${file} hard-codes the plural`);

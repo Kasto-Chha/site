@@ -369,7 +369,7 @@ test("editing is for admins, needs a real id, and fails cleanly", async () => {
 // ---------- guards on the screens and routes ----------
 
 const read = (file) => fs.readFileSync(file, "utf8");
-const SCREENS = ["app/admin/sync/page.js", "app/admin/sync/new/page.js", "app/admin/sync/[id]/page.js"];
+const SCREENS = ["app/admin/sync/page.js", "app/admin/sync/businesses/page.js", "app/admin/sync/new/page.js", "app/admin/sync/[id]/page.js"];
 const ROUTES = ["app/api/admin/sync/threads/route.js", "app/api/admin/sync/merchants/route.js", "app/api/admin/sync/merchants/[id]/route.js"];
 
 test("every Sync admin screen checks for an admin first, and stays out of search", () => {

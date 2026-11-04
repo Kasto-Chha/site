@@ -1,0 +1,194 @@
+/* KastoChha Sync's own look: a dark sidebar, a pale page, IBM Plex, teal. Every rule here sits under
+   .sync-shell, which only the Sync layout renders, so no other admin page changes. The pages inside
+   (the businesses list, the tag form, a business's page) keep their markup and are restyled to match. */
+
+.sync-shell {
+  --s-ink: #17211f;
+  --s-muted: #4d5753;
+  --s-line: #dde2de;
+  --s-line-soft: #eef1ee;
+  --s-teal: #0f5c55;
+  --s-teal-dark: #0b4a44;
+  --s-side: #13201e;
+  --s-bg: #f4f5f2;
+  display: flex;
+  min-height: 100vh;
+  background: var(--s-bg);
+  color: var(--s-ink);
+  font-family: var(--sync-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.sync-shell * { box-sizing: border-box; }
+.sync-shell .mono { font-family: var(--sync-mono), ui-monospace, monospace; }
+
+/* ---- the sidebar ---- */
+.sync-shell .sync-side {
+  flex: 0 0 240px;
+  background: var(--s-side);
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  align-self: flex-start;
+}
+.sync-shell .sync-brand { padding: 0 6px; }
+.sync-shell .sync-brand b { display: block; color: #fff; font-size: 16px; font-weight: 600; }
+.sync-shell .sync-brand span { display: block; color: #9db3ac; font-size: 12px; margin-top: 2px; }
+.sync-shell .sync-nav { display: flex; flex-direction: column; gap: 4px; }
+.sync-shell .sync-nav a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: #c3d2cc;
+  font-size: 14px;
+  text-decoration: none;
+}
+.sync-shell .sync-nav a:hover { background: #1b302d; color: #fff; }
+.sync-shell .sync-nav a[aria-current="page"] { background: #22403b; color: #fff; font-weight: 500; }
+.sync-shell .sync-nav a:focus-visible,
+.sync-shell .sync-side-foot a:focus-visible { outline: 2px solid #8fd1c7; outline-offset: 2px; }
+.sync-shell .sync-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; }
+.sync-shell .sync-side-foot a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  color: #9db3ac;
+  font-size: 13px;
+  text-decoration: none;
+  border-radius: 6px;
+}
+.sync-shell .sync-side-foot a:hover { color: #fff; background: #1b302d; }
+
+/* ---- the page ---- */
+.sync-shell .sync-main {
+  flex: 999 1 560px;
+  min-width: 0;
+  padding: 28px 32px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ---- the pages that were there before, restyled to match ---- */
+.sync-shell .sync-main .admin-page { max-width: 1040px; margin: 0; padding: 0; }
+.sync-shell .sync-main h1,
+.sync-shell .sync-main .admin-page h1 { font-family: inherit; font-size: 26px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.2; }
+.sync-shell .sync-main .page-kicker { font-family: var(--sync-mono), ui-monospace, monospace; color: var(--s-teal); letter-spacing: 1.5px; }
+.sync-shell .sync-main .admin-sub { color: var(--s-muted); }
+.sync-shell .sync-main .admin-header { border-bottom-color: var(--s-line); }
+.sync-shell .sync-main .btn-red {
+  background: var(--s-teal);
+  box-shadow: none;
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}
+.sync-shell .sync-main .btn-red:hover { background: var(--s-teal-dark); transform: none; box-shadow: none; }
+.sync-shell .sync-main .btn-outline {
+  background: #fff;
+  border: 1px solid var(--s-line);
+  border-radius: 8px;
+  color: var(--s-ink);
+  min-height: 44px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}
+.sync-shell .sync-main .btn-outline:hover { border-color: var(--s-teal); color: var(--s-teal); }
+.sync-shell .sync-main .admin-panel { background: #fff; border: 1px solid var(--s-line); border-radius: 8px; box-shadow: none; }
+.sync-shell .sync-main .admin-row { border-bottom-color: var(--s-line-soft); }
+.sync-shell .sync-main .page-kicker::before { background: var(--s-teal); }
+.sync-shell .sync-main .admin-row-actions { align-items: center; }
+.sync-shell .sync-main .admin-row-meta { color: var(--s-muted); font-size: 12px; letter-spacing: 0; }
+.sync-shell .sync-main .admin-status { font-size: 11px; }
+.sync-shell .sync-main .admin-banner { background: #fff8f2; border: 1px solid #f3d3bc; border-radius: 8px; color: #7a3410; }
+.sync-shell .sync-main input,
+.sync-shell .sync-main select,
+.sync-shell .sync-main textarea { font-family: inherit; }
+
+/* ---- the overview ---- */
+.sync-shell .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sync-shell .ov-head p { margin: 4px 0 0; color: var(--s-muted); }
+.sync-shell .ov-tabs { display: inline-flex; background: #fff; border: 1px solid var(--s-line); border-radius: 8px; padding: 3px; gap: 2px; }
+.sync-shell .ov-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--s-muted);
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.sync-shell .ov-tabs a[aria-current="page"] { background: var(--s-teal); color: #fff; }
+.sync-shell .ov-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.sync-shell .ov-card { background: #fff; border: 1px solid var(--s-line); border-radius: 8px; }
+.sync-shell .ov-tile { padding: 16px 18px; }
+.sync-shell .ov-tile .k { font-size: 13px; color: var(--s-muted); }
+.sync-shell .ov-tile .v { font-family: var(--sync-mono), ui-monospace, monospace; font-size: 32px; font-weight: 500; margin-top: 6px; line-height: 1.1; }
+.sync-shell .ov-tile .s { margin-top: 4px; font-size: 13px; color: var(--s-muted); }
+.sync-shell .ov-tile.warn { background: #fff8f2; border-color: #f3d3bc; }
+.sync-shell .ov-tile.warn .k, .sync-shell .ov-tile.warn .v, .sync-shell .ov-tile.warn .s { color: #7a3410; }
+.sync-shell .ov-section { display: flex; flex-direction: column; gap: 12px; }
+.sync-shell .ov-section h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.sync-shell .ov-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sync-shell .ov-section-head a { color: var(--s-teal); font-weight: 500; text-decoration: none; }
+.sync-shell .ov-table-wrap { overflow-x: auto; }
+.sync-shell .ov-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.sync-shell .ov-table th { text-align: left; font-size: 12px; font-weight: 500; color: var(--s-muted); padding: 10px 14px; border-bottom: 1px solid var(--s-line); white-space: nowrap; }
+.sync-shell .ov-table td { padding: 12px 14px; border-bottom: 1px solid var(--s-line-soft); vertical-align: middle; }
+.sync-shell .ov-table tr:last-child td { border-bottom: none; }
+.sync-shell .ov-table tr.attn td { background: #fffaf5; }
+.sync-shell .ov-table .num { font-family: var(--sync-mono), ui-monospace, monospace; text-align: right; }
+.sync-shell .ov-table th.num { text-align: right; }
+.sync-shell .ov-table .nm a { color: var(--s-ink); font-weight: 500; text-decoration: none; }
+.sync-shell .ov-table .nm a:hover { color: var(--s-teal); text-decoration: underline; }
+.sync-shell .ov-table .nm small { display: block; color: var(--s-muted); font-size: 12px; margin-top: 1px; }
+.sync-shell .ov-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.sync-shell .ov-pill.warn { background: #fce3d0; color: #7a3410; }
+.sync-shell .ov-pill.info { background: #e6ebe7; color: #3d4a45; }
+.sync-shell .ov-pill.ok { background: #dcefe2; color: #1b4d2e; }
+.sync-shell .ov-more { margin-left: 6px; color: var(--s-muted); font-size: 12px; }
+.sync-shell .ov-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+.sync-shell .ov-pad { padding: 16px 18px; }
+.sync-shell .ov-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.sync-shell .ov-chart { display: block; width: 100%; height: auto; }
+.sync-shell .ov-chart { height: 140px; }
+.sync-shell .ov-chart .bar { fill: var(--s-teal); }
+.sync-shell .ov-chart .axis { stroke: var(--s-line); }
+.sync-shell .ov-chart-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--s-muted); font-size: 13px; margin-bottom: 8px; }
+.sync-shell .ov-chart-axis { display: flex; justify-content: space-between; margin-top: 6px; color: var(--s-muted); font-size: 12px; font-family: var(--sync-mono), ui-monospace, monospace; }
+.sync-shell .ov-bars { display: flex; flex-direction: column; gap: 12px; }
+.sync-shell .ov-bar-row { display: flex; justify-content: space-between; gap: 12px; }
+.sync-shell .ov-bar-track { height: 10px; border-radius: 5px; background: #e6ebe7; overflow: hidden; margin-top: 4px; }
+.sync-shell .ov-bar-track i { display: block; height: 100%; background: var(--s-teal); border-radius: 5px; }
+.sync-shell .ov-note { color: var(--s-muted); font-size: 13px; margin: 14px 0 0; }
+.sync-shell .ov-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sync-shell .ov-list li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--s-line-soft); }
+.sync-shell .ov-list li:last-child { border-bottom: none; }
+.sync-shell .ov-list small { display: block; color: var(--s-muted); font-size: 12px; }
+.sync-shell .ov-banner { padding: 12px 16px; border-radius: 8px; background: #fff8f2; border: 1px solid #f3d3bc; color: #7a3410; }
+.sync-shell .ov-empty { padding: 36px 20px; text-align: center; color: var(--s-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+/* ---- a phone: the sidebar becomes a bar along the top ---- */
+@media (max-width: 860px) {
+  .sync-shell { flex-direction: column; }
+  .sync-shell .sync-side { align-self: stretch; max-width: 100%; flex: none; height: auto; position: static; flex-direction: row; align-items: center; gap: 10px; padding: 8px 12px; overflow-x: auto; }
+  .sync-shell .sync-brand span { display: none; }
+  .sync-shell .sync-nav { flex-direction: row; }
+  .sync-shell .sync-nav a { white-space: nowrap; }
+  .sync-shell .sync-side-foot { margin: 0 0 0 auto; flex-direction: row; }
+  .sync-shell .sync-main { padding: 18px 14px 40px; }
+}

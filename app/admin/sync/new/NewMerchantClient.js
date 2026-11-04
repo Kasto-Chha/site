@@ -175,7 +175,7 @@ export default function NewMerchantClient() {
             Nothing is copied from Google.
           </p>
         </div>
-        <a className="btn-outline" href="/admin/sync">Cancel</a>
+        <a className="btn-outline" href="/admin/sync/businesses">Cancel</a>
       </div>
 
       {status ? <div className="admin-banner">{status}</div> : null}

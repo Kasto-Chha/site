@@ -221,5 +221,5 @@ test("the editor page hands the words to the form, and the owner's account stays
   const page = fs.readFileSync("app/admin/sync/[id]/page.js", "utf8");
   assert.match(page, /kind_label: merchant\.kind_label \|\| ""/);
   assert.ok(!/owner_user_id\s*:/.test(page));
-  assert.match(fs.readFileSync("app/admin/sync/page.js", "utf8"), /kindDisplay\(m\.business_kind, m\.kind_label\)/);
+  assert.match(fs.readFileSync("app/admin/sync/businesses/page.js", "utf8"), /kindDisplay\(m\.business_kind, m\.kind_label\)/);
 });
