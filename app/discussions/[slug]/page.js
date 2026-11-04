@@ -11,6 +11,11 @@ import {
 } from "../../../lib/supabase/queries";
 import { topicSlug } from "../../../lib/slug";
 import { shareMetadata, threadShareInfo } from "../../../lib/share";
+import { getMerchantByTopicSlug } from "../../../lib/sync/merchants";
+import { businessMetadata, businessPageFacts, pinnedTitle } from "../../../lib/sync/threadPage";
+import BusinessHeader from "./BusinessHeader";
+import FirstPostComposer from "./FirstPostComposer";
+import "./business.css";
 import { isDiscussionIndexable, robotsFor } from "../../../lib/seo/indexable";
 import {
   breadcrumbSchema,
@@ -71,8 +76,12 @@ export async function generateMetadata({ params }) {
   const { slug } = await resolveSlug(params.slug);
   if (!slug) return { title: "Discussion not found - KastoChha" };
 
-  const thread = await getReviewsByTopicSlug(slug);
-  if (!thread.length) return { title: "Discussion not found - KastoChha" };
+  const [thread, merchant] = await Promise.all([getReviewsByTopicSlug(slug), getMerchantByTopicSlug(slug)]);
+  if (!thread.length && !merchant) return { title: "Discussion not found - KastoChha" };
+
+  // A thread a business has been tagged to is called by the business's name, and one with no
+  // posts yet is still a page (kept out of search engines until it has some).
+  if (merchant) return businessMetadata({ slug, merchant, thread });
 
   const op = thread[0];
   const title = op.topic || op.title || "KastoChha discussion";
@@ -114,10 +123,52 @@ export default async function DiscussionThreadPage({ params }) {
   if (redirect && slug) permanentRedirect(`/discussions/${slug}`);
 
   const { userId } = await auth();
-  const [thread, myVotes] = await Promise.all([
+  const [thread, myVotes, merchant] = await Promise.all([
     slug ? getReviewsByTopicSlug(slug) : Promise.resolve([]),
     getUserVotes(userId, "review"),
+    slug ? getMerchantByTopicSlug(slug) : Promise.resolve(null),
   ]);
+  const biz = merchant ? businessPageFacts(merchant) : null;
+
+  // A business that has been tagged but has no posts yet: its header and an invitation to be
+  // first, instead of "not found".
+  if (!thread.length && biz) {
+    return (
+      <>
+        <SiteNav />
+        <div className="page-hero">
+          <div className="page-glow"></div>
+          <div className="page-shell">
+            <div className="page-head">
+              <div>
+                <div className="page-kicker">{biz.category}</div>
+                <h1 className="page-title">{biz.name}</h1>
+                <p className="page-sub">
+                  Nobody has shared an experience here yet. Be the first to tell Nepal what it is really like.
+                </p>
+              </div>
+              <a className="sec-all" href="/discussions">
+                All discussions -&gt;
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <section className="section">
+          <div className="permalink-single" style={{ maxWidth: 760 }}>
+            <BusinessHeader facts={biz} />
+            <FirstPostComposer
+              slug={slug}
+              postTitle={pinnedTitle(merchant)}
+              category={biz.category}
+              businessName={biz.name}
+            />
+            <SharePanel url={`/discussions/${slug}`} text={biz.title} heading="Share this business" />
+          </div>
+        </section>
+      </>
+    );
+  }
 
   if (!thread.length) {
     return (
@@ -139,7 +190,7 @@ export default async function DiscussionThreadPage({ params }) {
   // Oldest first, so the opening experience carries the thread's title.
   const op = thread[0];
   const replies = thread.length - 1;
-  const title = op.topic || op.title || "KastoChha discussion";
+  const title = biz ? biz.title : op.topic || op.title || "KastoChha discussion";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   // DiscussionForumPosting is the type Google documents for a thread: an
@@ -164,8 +215,8 @@ export default async function DiscussionThreadPage({ params }) {
         <div className="page-shell">
           <div className="page-head">
             <div>
-              <div className="page-kicker">{op.category}</div>
-              <h1 className="page-title">{title}</h1>
+              <div className="page-kicker">{biz ? biz.category : op.category}</div>
+              <h1 className="page-title">{biz ? biz.name : title}</h1>
               <p className="page-sub">
                 {thread.length} experience{thread.length === 1 ? "" : "s"} ·{" "}
                 {replies} {replies === 1 ? "reply" : "replies"} — read what the
@@ -181,7 +232,22 @@ export default async function DiscussionThreadPage({ params }) {
 
       <section className="section">
         <div className="permalink-single" style={{ maxWidth: 760 }}>
-          <ThreadClient reviews={thread} threadSlug={slug} myVotes={myVotes} />
+          {biz ? (
+            <>
+              <BusinessHeader facts={biz} />
+              <div id="share">
+                <ThreadClient
+                  reviews={thread}
+                  threadSlug={slug}
+                  myVotes={myVotes}
+                  displayTitle={biz.title}
+                  displayCategory={biz.category}
+                />
+              </div>
+            </>
+          ) : (
+            <ThreadClient reviews={thread} threadSlug={slug} myVotes={myVotes} />
+          )}
           <SharePanel
             url={`/discussions/${slug}`}
             text={title}

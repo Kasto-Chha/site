@@ -11,7 +11,11 @@ import { buildTopics } from "../../../lib/topics";
 // Dedicated thread view for one discussion: the experience list starts
 // expanded, voting works like on the Experience page, and the composer posts
 // into the same reviews pool so replies join this thread's topic slug.
-export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} }) {
+//
+// A business thread shows the business's name and category (displayTitle, displayCategory)
+// in place of the first post's. That is for the eye only: a reply is always sent under the
+// thread's own title (the first post's), because that is what makes the thread's address.
+export default function ThreadClient({ reviews = [], threadSlug, myVotes = {}, displayTitle = "", displayCategory = "" }) {
   const { items, setItems, handleVote, voteOf, isPending, errorFor } = useReviewVotes(
     reviews,
     myVotes
@@ -76,16 +80,21 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {} })
 
   if (!topic) return null;
 
+  const showsBusiness = Boolean(displayTitle || displayCategory);
+  const shownTopic = showsBusiness
+    ? { ...topic, title: displayTitle || topic.title, category: displayCategory || topic.category }
+    : topic;
+
   return (
     <TopicThread
-      topic={topic}
+      topic={shownTopic}
       isOpen={isOpen}
       onToggle={() => setIsOpen((open) => !open)}
       onVote={handleVote}
       voteOf={voteOf}
       isPending={isPending}
       errorFor={errorFor}
-      onReply={submitReply}
+      onReply={showsBusiness ? (_shown, payload) => submitReply(topic, payload) : submitReply}
       onEdit={editExperience}
       onDelete={removeExperience}
       isEditBusy={isEditBusy}

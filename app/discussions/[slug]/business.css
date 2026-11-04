@@ -1,0 +1,101 @@
+/* The header a business thread shows above its posts, and the first-post box of a business
+   thread that has none yet. Uses the site's own colours. */
+
+.biz-head {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin: 0 0 18px;
+}
+
+.biz-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.biz-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.biz-meta {
+  color: #5f5a50;
+  font-size: 14px;
+}
+
+.biz-about-label {
+  display: block;
+  margin-top: 14px;
+  color: #5f5a50;
+  font-size: 12px;
+}
+
+.biz-about {
+  margin: 2px 0 0;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.biz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.biz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.biz-btn.primary {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.biz-note {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border3);
+  color: #5f5a50;
+  font-size: 13px;
+}
+
+.biz-first {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin: 0 0 18px;
+}
+
+.biz-first h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.biz-first p {
+  margin: 0 0 12px;
+  color: #5f5a50;
+  font-size: 14px;
+}

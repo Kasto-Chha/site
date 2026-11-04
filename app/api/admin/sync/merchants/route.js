@@ -7,7 +7,9 @@ import { closeAuditEntry, openAuditEntry } from "../../../../../lib/admin/audit"
 import { adminSaveMessage, logDbError } from "../../../../../lib/dbError";
 import { BODY_LIMITS, readJsonBody } from "../../../../../lib/requestBody";
 import { validateCreate } from "../../../../../lib/sync/validate";
-import { threadExists } from "../../../../../lib/sync/threads";
+import { threadExists, threadTitleFor } from "../../../../../lib/sync/threads";
+import { merchantTitle } from "../../../../../lib/sync/slug";
+import { pinnedTitleFor } from "../../../../../lib/sync/threadPage";
 
 const AUDIT_FAILED = "Could not record this change in the audit log, so nothing was changed.";
 
@@ -60,7 +62,17 @@ export async function POST(request) {
     return NextResponse.json({ error: "Could not check the addresses. Has migration 0018 been run?" }, { status: 500 });
   }
 
-  const row = { id: crypto.randomUUID(), ...values, created_by: authResult.userId };
+  // The title a post must be sent under to land in this thread, pinned along with its address.
+  let threadTitle;
+  try {
+    const wanted = threadMode === "existing" ? await threadTitleFor(supabase, values.topic_slug) : merchantTitle(values);
+    threadTitle = pinnedTitleFor({ title: wanted, slug: values.topic_slug });
+  } catch (error) {
+    logDbError(context, error);
+    return NextResponse.json({ error: "Could not read the thread's title. Has migration 0019 been run?" }, { status: 500 });
+  }
+
+  const row = { id: crypto.randomUUID(), ...values, thread_title: threadTitle, created_by: authResult.userId };
 
   let auditId;
   try {

@@ -1,6 +1,7 @@
 import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../../lib/auth/roles";
 import { getMerchantById } from "../../../../lib/sync/merchants";
+import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import MerchantEditorClient from "./MerchantEditorClient";
 
 export const metadata = {
@@ -42,6 +43,7 @@ export default async function MerchantPage({ params }) {
     area: merchant.area,
     business_kind: merchant.business_kind,
     kind_label: merchant.kind_label || "",
+    thread_title: pinnedTitle(merchant),
     category: merchant.category,
     about: merchant.about || "",
     google_place_id: merchant.google_place_id || "",

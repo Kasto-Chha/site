@@ -28,7 +28,11 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 
 1. Foundation: the tables, security, the slug rules, the signed token, the readers.
 2. Admin: tag a business thread, with a simple businesses list and editor.
-3. The thread page becomes a business page, and every list that shows threads knows.
+3. The thread page becomes a business page. Split in two:
+   3a. the thread page itself: the business header, the empty-thread invitation, the
+       business's name and category on the page and its share card, the pinned thread title,
+       and links built from a place ID.
+   3b. the discussions list, the search suggestions and the cards that carry the name.
 4. QR codes and the hub.
 5. The Overview: scans, taps, posts and questions per business. Moved up so it shows real
    activity as soon as the first QR code is out. It is also where the dashboard shell
@@ -84,8 +88,31 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
   0020), and `kindDisplay()` shows "Business" for an Other business that has none (one
   tagged before the box existed). When the same kind keeps appearing, add it to
   `lib/sync/businessTypes.js` as a standard type.
-- Run migrations 0019 and 0020 before using the form: the search reads the view, and the
-  admin screens read the business-type words.
+
+## The business thread page (patch 3a)
+
+- A thread with an active business tagged to it shows a header above its posts: a Business
+  chip, the kind and area, the About text, and buttons to share an experience and, when the
+  links exist, to review on Google and see the place on Google Maps. It shows no hours,
+  menu, prices, phone number or photos (Google keeps those), and no Google rating. A thread
+  with no business, or one whose tag was removed, renders exactly as before.
+- The page is headed by the business's name and filed under its category. A thread that has
+  no posts yet is still a page: the header and an invitation to be first, kept out of search
+  engines until it has posts (then the ordinary rule applies).
+- **The pinned thread title (migration 0021).** A post lands in a thread only if it is sent
+  under the title that makes the thread's address. The address is pinned when a business is
+  tagged; the title is pinned with it (`sync_merchants.thread_title`): "Name, Area" for a new
+  thread, and the thread's existing title for a linked one. Renaming the business changes
+  only what is displayed, so it can never send a post to a different thread. The code checks
+  the title against the address every time and falls back to a title made from the address.
+- A reply on a business thread is sent under the thread's own title; the business's name is
+  only what is displayed (ThreadClient: displayTitle and displayCategory).
+- **Links from a place ID.** Enter the place ID once; empty review and Maps links are built
+  from it, and rebuilt if the ID changes (a link typed by hand is never replaced). Check each
+  generated link once on a real business.
+- Run migrations 0019 to 0021 before using the Sync screens: the search reads the thread
+  summary view, the admin screens read the business-type words, and the thread page reads the
+  pinned title.
 
 ## How the pieces fit
 
