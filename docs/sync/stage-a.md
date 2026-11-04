@@ -34,7 +34,7 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
        and links built from a place ID.
    3b. the discussions list and the Share box's suggestions: a business is named, marked and
        offered even with no posts. (Done.)
-4. QR codes and the hub.
+4. QR codes and the hub (done: scans, the hub, taps, and QR downloads).
 5. The Overview: scans, taps, posts and questions per business. Moved up so it shows real
    activity as soon as the first QR code is out. It is also where the dashboard shell
    (the canvas's dark sidebar and IBM Plex type) is introduced.
@@ -134,6 +134,49 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
   threads it returns.
 - Not changed: the home page's sections and the trending lists still show a thread by its
   first post's title. Add the business name there if it is wanted.
+
+## QR codes and the hub (patch 4)
+
+- **The journey.** A printed QR code opens `/q/<code>`. That route counts the scan, then sends
+  the customer to `/hub/<business>?c=<code>` (302, never 301: a code can be switched off). The
+  destination is built from the business's own address in the database, never from the
+  request, so it can only lead to a hub.
+- **A scan is counted once per person per ten minutes** (the `kc_q` cookie), and never for a
+  link preview, crawler or script (`isBot`). A code that is switched off, a business whose tag
+  was removed, an unknown or malformed code all go to the home page and are not counted.
+  Counting never blocks the customer: if it fails, they still reach the hub.
+- **The hub** is public (no login) and kept out of search engines (`noindex`, and robots.txt
+  disallows `/hub/` and `/q/`). It shows the business's name, kind and area and a few equal
+  options. An option appears only when it can really be done: sharing on KastoChha always;
+  the Google review and Maps options only when the business has a link that is Google's.
+  "Ask a question" and "Send a private note" arrive with the patches that build them (posting
+  and feedback), so there is no button for something that does not work yet. Every option is
+  the same size: the hub must not steer anyone toward or away from a Google review. The hub
+  shows no hours, menu, prices, phone number or photos. English only for now: the Nepali text
+  needs a native speaker's check before it goes live.
+- **Taps** are reported by the page with `sendBeacon` to `/api/sync/event` (a plain link, so the
+  hub works with no script). The route is public, so it is limited to 120 a minute per visitor
+  address (Upstash; if Upstash is not configured every check passes, as for the other limits),
+  accepts only `hub_share`, `hub_google` and `hub_maps` (a visitor cannot inflate scans or fake a
+  post), and credits a table only if that code belongs to the same business and is on. It stores
+  nothing about the person.
+- **In the admin** (a business's page, below the editor): add a code (a label such as Table 4,
+  Counter or Window; at most 30 per business), rename it, switch it off or on, and download it
+  as a PNG or as an A5 print sheet (PDF). The code itself is made on the server at random (8
+  characters, no look-alikes) and never changes: it is printed on a table, so the only way to
+  retire one is to switch it off and make another. Each code's scan count (all time and the last
+  7 days) is shown. Each change is audited first, like the rest of Sync.
+- **The address a code points at** is `NEXT_PUBLIC_SITE_URL` (or, if that is not set, the
+  address the admin is using), and it is shown under each code. Check it before printing:
+  a code printed from a preview deployment points at the preview. A QR code on a preview
+  deployment points at production when the variable is set for Previews too.
+- **The files.** The PNG is at least 1000 px with whole-pixel squares and a 4-square quiet
+  zone. The PDF is drawn with vectors and the standard Helvetica fonts, so it needs no
+  library and embeds no font; a name those fonts cannot draw (Devanagari) is left off the sheet,
+  and the QR code and the instruction stay. Both were scanned with a real QR reader in the tests.
+- **Dependencies.** `qrcode` (runtime, pure JavaScript, MIT) makes the squares. `jsqr`
+  (dev only, Apache-2.0) lets the tests scan the generated images.
+- No migration: the tables are from 0018.
 
 ## How the pieces fit
 

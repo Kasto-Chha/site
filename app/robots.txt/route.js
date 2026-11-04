@@ -9,6 +9,8 @@ Allow: /
 Allow: /api/og
 Disallow: /admin
 Disallow: /api
+Disallow: /hub/
+Disallow: /q/
 Sitemap: ${siteUrl}/sitemap.xml
 `;
 

@@ -3,6 +3,9 @@ import { requireRole, ROLE } from "../../../../lib/auth/roles";
 import { getMerchantById } from "../../../../lib/sync/merchants";
 import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import MerchantEditorClient from "./MerchantEditorClient";
+import QrCodesPanel from "./QrCodesPanel";
+import { createServerSupabase } from "../../../../lib/supabase/server";
+import { listQrCodes } from "../../../../lib/sync/qr";
 
 export const metadata = {
   title: "Business - KastoChha Admin",
@@ -54,5 +57,28 @@ export default async function MerchantPage({ params }) {
     questions: merchant.questions,
     hasOwner: Boolean(merchant.owner_user_id)
   };
-  return <MerchantEditorClient merchant={shown} />;
+  // The business's QR codes, with their scan counts. A failure is shown, never hidden as "none".
+  let codes = [];
+  let loadError = "";
+  try {
+    codes = await listQrCodes(createServerSupabase(), merchant.id);
+  } catch (error) {
+    console.error("Sync QR list failed:", error?.message || error);
+    loadError = "Could not load the QR codes.";
+  }
+
+  return (
+    <>
+      <MerchantEditorClient merchant={shown} />
+      <div className="admin-page">
+        <QrCodesPanel
+          merchantId={merchant.id}
+          canCreate={merchant.status === "active"}
+          siteUrl={process.env.NEXT_PUBLIC_SITE_URL || ""}
+          initialCodes={codes}
+          loadError={loadError}
+        />
+      </div>
+    </>
+  );
 }
