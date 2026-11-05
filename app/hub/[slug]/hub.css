@@ -103,3 +103,102 @@
   margin-top: 6px;
   color: var(--ink);
 }
+
+/* The private note: a plain form, the same width and feel as the options. */
+.hub-back {
+  display: inline-block;
+  margin-top: 14px;
+  color: #5f5a50;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.hub-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.hub-note-form label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.hub-note-form textarea,
+.hub-note-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.hub-note-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.hub-note-count {
+  align-self: flex-end;
+  color: #5f5a50;
+  font-size: 12px;
+}
+
+/* Not for people: out of sight, out of the tab order, and out of the layout. */
+.hub-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.hub-send {
+  min-height: 56px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--red);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hub-send:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hub-note-error {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fbe9e7;
+  color: #8a1c10;
+  font-size: 14px;
+}
+
+.hub-note-fine {
+  margin: 6px 0 0;
+  color: #5f5a50;
+  font-size: 13px;
+}
+
+.hub-note-done {
+  margin-top: 18px;
+}
+
+.hub-note-done h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.hub-note-done p {
+  margin: 0 0 16px;
+}

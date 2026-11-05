@@ -10,6 +10,9 @@ import { pingIndexNow } from "../../../lib/seo/indexnow";
 import { isDiscussionIndexable } from "../../../lib/seo/indexable";
 import { BODY_LIMITS, readJsonBody } from "../../../lib/requestBody";
 import { logDbError } from "../../../lib/dbError";
+import { logHubEvent } from "../../../lib/sync/qr";
+import { visitedCredit } from "../../../lib/sync/visited";
+import { ownsThread } from "../../../lib/sync/ownerReplies";
 
 // Detects the "column does not exist" error so we can keep working against a
 // database that has not had the topic_slug migration applied yet.
@@ -20,6 +23,14 @@ function isMissingColumn(error) {
     error?.code === "42703" ||
     message.includes("topic_slug")
   );
+}
+
+// The Visited label's column is missing, and nothing else is: a "source" that does not exist, with no
+// mention of topic_slug. (The error for a missing column names the column.)
+function isMissingSourceColumn(error) {
+  const message = (error?.message || "").toLowerCase();
+  const missing = error?.code === "PGRST204" || error?.code === "42703" || message.includes("column");
+  return missing && message.includes("source") && !message.includes("topic_slug");
 }
 
 export async function POST(request) {
@@ -134,6 +145,21 @@ export async function POST(request) {
       }
     }
 
+    // A business's linked owner replies to the posts on its page; they do not post experiences about their own
+    // business (that is the one thing a review system exists to prevent). Questions are fine. A failed lookup
+    // never blocks a post.
+    if (kind === "experience" && (await ownsThread(supabase, userId, slug))) {
+      return NextResponse.json(
+        { error: "You are the verified owner of this business, so you reply to posts on its page rather than posting experiences. Use Reply on a post." },
+        { status: 403 }
+      );
+    }
+
+    // The "Visited" label, for an experience posted within six hours of scanning this business's QR
+    // card (see lib/sync/visited.js). It only ever adds a label: whatever goes wrong there, the post
+    // below is saved exactly as it would have been.
+    const visited = kind === "experience" ? await visitedCredit({ supabase, request, slug, userId }) : null;
+
     const baseRow = {
       title,
       summary,
@@ -148,9 +174,20 @@ export async function POST(request) {
 
     let { data, error } = await supabase
       .from("reviews")
-      .insert({ ...baseRow, topic_slug: slug })
+      .insert({ ...baseRow, topic_slug: slug, ...(visited ? { source: "qr" } : {}) })
       .select()
       .single();
+
+    // The label's column missing (the Sync migration not run) must cost the post nothing but the
+    // label: save it again without it, and keep its thread. This comes FIRST because the fallback
+    // below would otherwise take a missing "source" for a missing "topic_slug" and drop the thread.
+    if (error && visited && isMissingSourceColumn(error)) {
+      ({ data, error } = await supabase
+        .from("reviews")
+        .insert({ ...baseRow, topic_slug: slug })
+        .select()
+        .single());
+    }
 
     // Fall back gracefully if the topic_slug column has not been added yet.
     if (error && isMissingColumn(error)) {
@@ -168,6 +205,12 @@ export async function POST(request) {
 
     // Ensure the client always receives a slug to group on, even on old DBs.
     const review = data?.topic_slug ? data : { ...data, topic_slug: slug };
+
+    // Count the labelled post against the business and the table it came from. Never awaited for
+    // its result: counting cannot fail a post.
+    if (visited && data?.source === "qr") {
+      await logHubEvent(supabase, { merchantId: visited.merchantId, qrCodeId: visited.qrCodeId, type: "post_created" });
+    }
 
     // Tell Bing and Yandex the thread changed, rather than waiting to be
     // crawled. Not awaited: a slow endpoint must never delay or fail a post.

@@ -14,7 +14,11 @@ import { shareMetadata, threadShareInfo } from "../../../lib/share";
 import { getMerchantByTopicSlug } from "../../../lib/sync/merchants";
 import { businessMetadata, businessPageFacts, pinnedTitle } from "../../../lib/sync/threadPage";
 import BusinessHeader from "./BusinessHeader";
+import AskComposer from "./AskComposer";
 import FirstPostComposer from "./FirstPostComposer";
+import { requireRole, ROLE } from "../../../lib/auth/roles";
+import { createServerSupabase } from "../../../lib/supabase/server";
+import { isOwnerOf, repliesForReviews } from "../../../lib/sync/ownerReplies";
 import "./business.css";
 import { isDiscussionIndexable, robotsFor } from "../../../lib/seo/indexable";
 import {
@@ -130,6 +134,25 @@ export default async function DiscussionThreadPage({ params }) {
   ]);
   const biz = merchant ? businessPageFacts(merchant) : null;
 
+  // A business's replies under its posts. The page shows them to everyone; only the account linked to the
+  // business gets the way to write one, and a team member the way to remove one. Both are decided here, on the
+  // server, from the signed-in account: the browser is only told the answer, never who the owner is. A reply
+  // that cannot be read is left out, and the page still works.
+  let ownerReplies = {};
+  let canReplyAsOwner = false;
+  let canModerate = false;
+  if (merchant) {
+    canReplyAsOwner = isOwnerOf(merchant, userId);
+    if (thread.length) {
+      try {
+        ownerReplies = await repliesForReviews(createServerSupabase(), thread.map((post) => post.id));
+      } catch {
+        ownerReplies = {};
+      }
+    }
+    if (userId && !canReplyAsOwner) canModerate = (await requireRole(ROLE.ADMIN)).ok;
+  }
+
   // A business that has been tagged but has no posts yet: its header and an invitation to be
   // first, instead of "not found".
   if (!thread.length && biz) {
@@ -162,7 +185,10 @@ export default async function DiscussionThreadPage({ params }) {
               postTitle={pinnedTitle(merchant)}
               category={biz.category}
               businessName={biz.name}
+              businessSlug={merchant.slug}
+              googleUrl={biz.reviewUrl}
             />
+            <AskComposer slug={slug} postTitle={pinnedTitle(merchant)} category={biz.category} businessName={biz.name} defaultOpen />
             <SharePanel url={`/discussions/${slug}`} text={biz.title} heading="Share this business" />
           </div>
         </section>
@@ -235,13 +261,21 @@ export default async function DiscussionThreadPage({ params }) {
           {biz ? (
             <>
               <BusinessHeader facts={biz} />
+              <AskComposer slug={slug} postTitle={pinnedTitle(merchant)} category={biz.category} businessName={biz.name} />
               <div id="share">
                 <ThreadClient
+                  key={thread.map((post) => post.id).join(",")}
                   reviews={thread}
                   threadSlug={slug}
                   myVotes={myVotes}
                   displayTitle={biz.title}
                   displayCategory={biz.category}
+                  googleUrl={biz.reviewUrl}
+                  businessSlug={merchant.slug}
+                  ownerReplies={ownerReplies}
+                  ownerName={biz.name}
+                  canReplyAsOwner={canReplyAsOwner}
+                  canModerate={canModerate}
                 />
               </div>
             </>

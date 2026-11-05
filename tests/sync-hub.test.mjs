@@ -172,7 +172,7 @@ const tap = (body, { ip = "203.0.113.7", raw } = {}) =>
 test("a tap on the hub is recorded against the business and the table", async () => {
   merchant(); qr();
   for (const type of HUB_CLICK_EVENTS) assert.equal((await tap({ slug: "himal-brew-house", code: "abc3k9xq", type })).status, 204, type);
-  assert.deepEqual(events().map((e) => e.event_type).sort(), ["hub_google", "hub_maps", "hub_share"]);
+  assert.deepEqual(events().map((e) => e.event_type).sort(), ["hub_ask", "hub_google", "hub_maps", "hub_note", "hub_share"]);
   assert.ok(events().every((e) => e.merchant_id === M1 && e.qr_code_id === Q1));
 });
 
@@ -201,7 +201,7 @@ test("a code that belongs to another business, or is switched off, is ignored, n
 
 test("only the taps the hub can make are accepted: not a scan, not a post, not an invented event", async () => {
   merchant(); qr();
-  for (const type of ["scan", "post_created", "google_copy", "hub_ask", "hub_note", "nonsense", "", undefined, null, 5, "HUB_SHARE", ["hub_share"]]) {
+  for (const type of ["scan", "post_created", "nonsense", "", undefined, null, 5, "HUB_SHARE", ["hub_share"]]) {
     assert.equal((await tap({ slug: "himal-brew-house", type })).status, 400, String(type));
   }
   assert.equal(events().length, 0, "a visitor cannot inflate scans or fake a post");
@@ -315,31 +315,33 @@ test("a business's codes are listed with their scans, all time and this week", a
 
 // ---------- what the hub offers ----------
 
-test("a hub with no Google links offers sharing on KastoChha, to the thread's own address", () => {
-  const actions = hubActions({ topic_slug: "himal-brew-house-jhamsikhel", google_review_url: null, google_maps_url: null });
-  assert.deepEqual(actions.map((a) => a.key), ["share"]);
-  assert.equal(actions[0].href, "/discussions/himal-brew-house-jhamsikhel#share");
-  assert.equal(actions[0].external, false);
-  assert.equal(actions[0].event, "hub_share");
+test("a hub with no Google links offers sharing, asking and a private note, each to its own place", () => {
+  const actions = hubActions({ slug: "himal-brew-house", topic_slug: "himal-brew-house-jhamsikhel", google_review_url: null, google_maps_url: null });
+  assert.deepEqual(actions.map((a) => a.key), ["share", "ask", "note"]);
+  assert.deepEqual(actions.map((a) => a.href), ["/discussions/himal-brew-house-jhamsikhel#share", "/discussions/himal-brew-house-jhamsikhel#ask", "/hub/himal-brew-house/note"]);
+  assert.deepEqual(actions.map((a) => a.external), [false, false, false]);
+  assert.deepEqual(actions.map((a) => a.event), ["hub_share", "hub_ask", "hub_note"]);
 });
 
 test("Google options appear only when there is a Google link, in the design's order, and all alike", () => {
-  const actions = hubActions({ topic_slug: "t", google_review_url: "https://g.page/r/abc/review", google_maps_url: "https://maps.app.goo.gl/abc" });
-  assert.deepEqual(actions.map((a) => a.key), ["share", "google", "maps"]);
-  assert.deepEqual(actions.map((a) => a.event), ["hub_share", "hub_google", "hub_maps"]);
-  assert.deepEqual(actions.map((a) => a.external), [false, true, true]);
+  const actions = hubActions({ slug: "s", topic_slug: "t", google_review_url: "https://g.page/r/abc/review", google_maps_url: "https://maps.app.goo.gl/abc" });
+  assert.deepEqual(actions.map((a) => a.key), ["share", "google", "ask", "note", "maps"], "the design's order: share, Google, ask, note, map");
+  assert.deepEqual(actions.map((a) => a.event), ["hub_share", "hub_google", "hub_ask", "hub_note", "hub_maps"]);
+  assert.deepEqual(actions.map((a) => a.external), [false, true, false, false, true]);
   for (const a of actions) assert.deepEqual(Object.keys(a).sort(), ["event", "external", "hint", "href", "key", "title"], "every option has the same shape: none is given more weight");
   assert.ok(actions.every((a) => HUB_CLICK_EVENTS.includes(a.event)), "every option reports an event the tap route accepts");
 });
 
 test("a link that is not Google's is never offered", () => {
-  const actions = hubActions({ topic_slug: "t", google_review_url: "https://evil.example/review", google_maps_url: "javascript:alert(1)" });
-  assert.deepEqual(actions.map((a) => a.key), ["share"]);
+  const actions = hubActions({ slug: "s", topic_slug: "t", google_review_url: "https://evil.example/review", google_maps_url: "javascript:alert(1)" });
+  assert.deepEqual(actions.map((a) => a.key), ["share", "ask", "note"]);
 });
 
 test("the options for things that do not exist yet are not shown", () => {
   const source = fs.readFileSync("lib/sync/hub.js", "utf8").replace(/^\s*\/\/.*$/gm, "");
-  assert.ok(!/key: "(ask|note)"/.test(source), "no button for a question or a private note until they work");
+  assert.match(source, /key: "ask"/, "asking works now");
+  assert.match(source, /key: "note"/, "and so does a private note: the inbox that receives it exists");
+  assert.ok(!/key: "(reply|chat|rate)"/.test(source), "nothing is offered that does not work");
 });
 
 test("the hub names the business and its kind", () => {

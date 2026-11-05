@@ -1,0 +1,71 @@
+/* A business's reply under one post: set apart from the posts around it, in the blue of the logo, so it reads as
+   the business speaking and never as another customer. */
+.owner-reply {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid #2f4b9a;
+  border-radius: 0 10px 10px 0;
+  background: rgba(47, 75, 154, 0.06);
+}
+
+.owner-reply-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.owner-reply-name {
+  font-weight: 600;
+}
+
+.owner-reply-badge {
+  padding: 1px 8px;
+  border: 1px solid rgba(31, 58, 138, 0.28);
+  border-radius: 999px;
+  background: #e8efff;
+  color: #1f3a8a;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.owner-reply-date {
+  color: #6b655a;
+}
+
+.owner-reply-text {
+  margin: 6px 0 0;
+  font-size: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.owner-reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.owner-reply-start {
+  margin-top: 8px;
+}
+
+.owner-reply-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.owner-reply-count {
+  color: #6b655a;
+  font-size: 12px;
+}

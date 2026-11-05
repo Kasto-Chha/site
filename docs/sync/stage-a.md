@@ -39,10 +39,10 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
 5. The Overview: scans, taps, posts and questions per business. Moved up so it shows real
    activity as soon as the first QR code is out. It is also where the dashboard shell
    (the canvas's dark sidebar and IBM Plex type) is introduced.
-6. Posting through the hub: the Visited label and the "copy and open Google" step.
+6. Posting through the hub: the Visited label, asking a question and the "copy and open Google" step (done).
 7. Private feedback and the admin inbox.
 8. Linking the owner's account, and the "Verified business" label.
-9. Pilot pack: a CSV export, a runbook, and a final smoke test.
+9. Pilot pack (done): a CSV export, a runbook, and a final smoke test.
 
 ## Patch 2 notes
 
@@ -261,6 +261,150 @@ patches. Google's API, AI drafting, the geo-grid, approvals and billing are not 
   top bar. The sidebar links and the range tabs are `<div role="navigation">`; a test fails if a
   `<nav>` comes back.
 - **No migration, no new package.** It reads what patches 2 to 4b collect.
+
+## Posting through the hub (patch 6)
+
+- **"Visited" works through a cookie, not a link.** Scanning a card (`/q/<code>`) gives the browser a
+  cookie for that one business, `kc_v_<slug>`: signed with SYNC_HUB_SECRET, good for 6 hours, bound to
+  the business and the card, HttpOnly (a script on the page cannot read it) and Secure over https. It
+  is given on every real scan, counted or not, so scanning again starts the 6 hours again. Link
+  previews, crawlers and scripts get none. Nothing about it is in the web address, so sharing a page
+  never shares the label, and the browser cannot ask for the label: it is decided on the server.
+- **Earning it.** An experience (never a question) posted on a tagged business's thread, with a good
+  cookie for that business, that is the person's first such post on that thread today (a Nepal day),
+  is stored with `source = 'qr'` and drawn with a Visited mark. It also counts as a `post_created`
+  event against the card. One a day per person per business is checked in the posting route, not in
+  the database, so two posts sent at the same instant could both be labelled: low stakes, and a
+  database rule would need an immutable day expression.
+- **What Visited means, and the page says it.** The person opened the business's QR link in the 6
+  hours before posting. It is not proof of a visit: a link can be forwarded.
+- **The label never costs a post.** No secret, no cookie, a bad, expired or other business's cookie, a
+  question, a removed business, a lookup that fails, a count that fails: each just means no label (or
+  no count) and the post is saved as it would have been. If the `source` column does not exist yet the
+  post is saved without it and keeps its thread (this is handled before the older topic_slug fallback,
+  which would otherwise take a missing `source` for a missing `topic_slug` and drop the thread). An
+  ordinary post, with no such cookie, does no extra lookup at all.
+- **Without SYNC_HUB_SECRET** (or with one shorter than 32 characters) no cookie is made and no post is
+  labelled; everything else works. The Overview says so.
+- **Ask a question.** The hub's options are now Share, Review on Google (if there is a Google link),
+  Ask a question, Find us on Google Maps (if there is a link). Ask goes to the business's page at
+  `#ask`: a box that posts a question (kind `question`, under the thread's pinned title, so it lands in
+  the right thread) which anyone can answer. It is open on a page with nothing else on it and closed
+  otherwise, and opens when the address ends in `#ask`. "Send a private note" arrives with the inbox.
+- **Copy my text and open Google.** After posting on a business that has a Google link, an offer (never
+  a step: "Not now" is as easy): copy the person's own words and open Google's review box. KastoChha
+  cannot post a Google review for anyone and says so. The order matters, and a real browser taught it:
+  the copy is made first and waited for (a second at most), and only then is Google opened, because a
+  browser refuses a copy once a new tab has taken focus (asking for both at once failed in Chrome). The
+  card always shows a plain "tap here to open it" link afterwards, for a browser that blocks the new
+  tab. If the copy is refused or slow, Google still opens and the page says it could not copy.
+- **New reportable events.** A visitor's browser may now report `hub_ask` and `google_copy` (taps), as
+  well as the hub's and the badge's. `scan`, `post_created` and the rest stay server-only.
+- **The Overview** counts Ask taps, copy-and-open-Google taps and Visited posts.
+- No migration: the `source` column and the event types are from 0018.
+
+## Private notes and the inbox (patch 7)
+
+- **For the customer.** The hub's "Send a private note" opens `/hub/<business>/note`: a box for the note (at
+  most 2,000 characters), an optional way to reach them (at most 120; any form: a number, an email, "ask for
+  Sita"), and a button. No login. It says plainly that only the business and the KastoChha team can read it and
+  that it is never posted. The page is kept out of search engines, like the hub.
+- **What is kept.** The note's words, the optional contact, which business it is for, whether it was flagged
+  urgent, its status and its dates (`sync_feedback`, migration 0018): nothing else. No address, no browser, no
+  account. A test fails if another column is ever written.
+- **The words never go where they should not.** A failed save logs the database's error *code* only, because a
+  database's message can quote the row that was refused, and the row is a private note. The audit log records
+  which note moved and where it stands, never its words or the contact. Notes are shown as text in the inbox,
+  never as markup.
+- **Guarding an open door without locking it.** There is no login, so: five notes per visitor address per ten
+  minutes (Upstash; a café's customers share one Wi-Fi address, so it is not lower); at most 100 notes per
+  business per day, counted in the database, so a flood stops even when Upstash is off; a hidden field no person
+  can see (a program that fills every field is told its note was sent, and nothing is stored); only words are
+  accepted. A business whose tag was removed takes no notes.
+- **"Urgent" is a nudge, never a decision.** A note is flagged when it contains words about food, hygiene,
+  safety or behaviour (whole words only: "great" is not "rat", "chair" is not "hair"; "not clean" and "wasn't
+  hygienic" count; a mouse counts only when one was seen or found, not "mouse pad"). Plain "staff" is left out
+  on purpose: "lovely staff" would be an emergency. A note with none of these words can be just as serious: a
+  person on the team reads every note before anything is forwarded. The few Devanagari words in the list need a
+  native speaker's check. Keep the lists in `lib/sync/feedback.js`.
+- **The inbox** (`/admin/sync/feedback`, with the number of new notes beside it in the sidebar and a line on the
+  Overview): tabs All, Urgent, New, In digest, Resolved, each with its exact count; open urgent notes first, then
+  newest first. A note moves new, in digest, resolved, and back (resolving stamps the time; reopening clears it).
+  "Forward now (copy)" copies one note to send on its own. Each business with new notes has a digest card: the
+  numbered message the team copies and sends on WhatsApp (urgent first, then oldest first, ending with the
+  reminder that notes are private, public posts are never removed on request, and there are no rewards for
+  reviews), and "Mark all sent", which moves that business's NEW notes (only those) to "in digest".
+- **A failed read is never an empty inbox.** If the inbox cannot load, it says so and shows nothing.
+- **Not built, on purpose.** Owners do not see notes: they arrive through the team's digest. Owner access comes
+  with owner linking (patch 8). There is no delete button: decide how long private notes are kept, and clear
+  resolved ones by hand (`delete from public.sync_feedback where status = 'resolved' and handled_at < ...`).
+- No migration: the table and its limits are from 0018.
+
+## Owner linking, "Verified business" and the owner's reply (patch 8)
+
+- **Linking an owner is done by hand, by the team, in two steps.** On a business's admin page, "Verified owner":
+  look the account up by the email the owner signed up to KastoChha with, check that it is the right person, then
+  link it. The account's email must be verified (the label means "we know who is behind this"). One account per
+  business (`sync_merchants.owner_user_id`); an account can be the owner of more than one business. Linking and
+  unlinking are admin-only and audited by account id (never an email or a name, not even in a failed entry).
+  Unlinking takes the right away at once. A business whose tag was removed cannot be given an owner.
+- **What the owner can do.** On their own business's page, reply to a post (an experience or a question): one reply
+  per post, up to 1,500 characters, shown directly under the post it answers with the business's name and a
+  "Verified business" label. They can edit and delete their own reply, and nothing else: they cannot touch anyone
+  else's post. They can NOT post an experience about their own business (they reply instead); questions are fine.
+  A reply cannot be replied to. The replies belong to the business, not to one person: a new owner can edit what
+  the business said.
+- **A team member** can remove a reply, and that is recorded (which reply and whose, never what it said). A team
+  member cannot reply as a business.
+- **A reply is not an experience, by construction.** It lives in its own table (`sync_owner_replies`, migration
+  0023), not among the posts. Everything that counts or ranks experiences (the Ramro / Thikai / Naramro tally,
+  experience counts, trending, votes, the Visited label, the Overview) reads `reviews` and never sees it. This is
+  different from the earlier plan (a reply as a new kind of post with a link to its post): the separate table is
+  safer, because no counting code, present or future, can mistake a reply for an experience. One reply per post
+  is a database rule (unique on the post), so a double click or two tabs cannot make two. A reply goes when its
+  post goes, and when its business goes.
+- **Who may do what is decided on the server, from the signed-in account.** The thread page tells the browser
+  only yes or no ("may reply", "may remove"), never who the owner is. A test fails if the owner's account id can
+  reach a page or a reply.
+- **The cost of "owners do not post experiences about their own business":** every experience post now makes one
+  small lookup (is the poster this business's linked owner?), on an indexed column. A failed lookup never blocks a
+  post.
+- **A defect found and fixed here.** The thread card never draws a question as a row (a question is a heading
+  there). The Ask box (patch 6) saved a business's question under the business's own title, so the question was
+  stored and never shown anywhere. A business page now shows its questions in their own "Questions about
+  <business>" section, newest first, with the business's reply under each; the person who asked can delete their
+  own question. The thread also remounts when its posts change, so a question just asked appears after the page
+  refreshes. Answers to a question are the business's reply and the experiences people share below it.
+- **Not built.** Replies show on the business's own page only, not inside the cards on the discussions list. An
+  owner cannot yet see a dashboard of unanswered posts. No notification is sent to an owner when someone posts.
+- Migration 0023 only adds the table; it does not touch `reviews`.
+
+## The pilot pack (patch 9)
+
+- **Three files to download** (`/admin/sync/export`, admin only, never cached): the businesses (every one ever
+  tagged, with what is set up for it), the QR cards (with how many times each was scanned, all time), and an
+  activity report per active business for 7 days, 30 days or all time (the Overview's own numbers, plus the
+  business's replies and private notes). "CSV" was taken to mean an export, not a bulk import: for a pilot of a
+  handful of cafés a report you can send each café is worth more than importing them, which takes a minute each by hand.
+- **Safe to open in a spreadsheet.** A name someone typed that begins with `=`, `+`, `-` or `@` (or a tab or a
+  carriage return, or those after spaces) would be run as a formula by Excel or Sheets. Such text gets a leading
+  apostrophe; numbers are left as numbers. Cells with commas, quotes or line breaks are quoted. Rows end with CRLF.
+  The file starts with a byte-order mark so Nepali names show correctly in Excel. Dates are Nepal time.
+- **Whole or not made.** Counts page past the server's 1,000-row cap; a read that fails, or more than 100,000 events
+  in one file, is an error the team sees, and no file is downloaded. Never a short file that looks complete.
+- **What is deliberately not in any file:** private notes (their words and contacts), a reply's words, account ids,
+  emails, the Google links themselves (only yes or no).
+- **The smoke test** (`scripts/sync-smoke.mjs`, logic in `lib/sync/smoke.mjs`): 14 quick checks for one test
+  business, run against any address. Read-only by default and safe on the live site: it identifies itself as a bot
+  (a test fails if the site's own bot detector stops recognising its name), so it is never counted as a scan; the only
+  requests that could write are an empty note (refused) and a spam-trap note (ignored). `--count-scan` makes one real
+  scan and says whether Visited labels are on; `--write` sends one real note marked SMOKE TEST. It exits 1 if
+  anything fails, and says not to go live. It was run against the real production build, and the checks match.
+- **The runbook** (`runbook.md`): setup, the migrations in order with how to verify them, onboarding a café, the
+  daily and weekly routines, the smoke test, what to do when someone asks, a symptoms table, and what is stored about
+  people. A test checks it against the repo (every migration named in order, every setting real, every screen real,
+  the commands matching), so it cannot quietly go stale.
+- No migration and no new package.
 
 ## How the pieces fit
 

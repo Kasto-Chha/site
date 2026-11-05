@@ -66,7 +66,8 @@ export function deriveThreadList(tables) {
 // The unique indexes the migrations create, by table: sync_merchants_slug_key and so on.
 const UNIQUE_KEYS = {
   sync_merchants: ["slug", "topic_slug"],
-  sync_qr_codes: ["code"]
+  sync_qr_codes: ["code"],
+  sync_owner_replies: ["review_id"]
 };
 
 export class FakePostgrest {
@@ -81,6 +82,7 @@ export class FakePostgrest {
       sync_events: [],
       sync_feedback: [],
       sync_merchants: [],
+      sync_owner_replies: [],
       sync_qr_codes: [],
       trending_search_rules: [],
       trending_topics: [],
@@ -105,6 +107,7 @@ export class FakePostgrest {
     this.beforeTrendingMigration = false;
     this.withDiscussionThreads = false;
     this.maxRows = null;
+    this.missingColumns = null;
     this.nextId = 1;
   }
 
@@ -116,6 +119,9 @@ export class FakePostgrest {
     this.failQuotaRpc = false;
     this.missingVoteRpc = false;
     this.beforeTrendingMigration = false;
+    this.withDiscussionThreads = false;
+    this.maxRows = null;
+    this.missingColumns = null;
     this.nextId = 1;
   }
 
@@ -272,7 +278,13 @@ export class FakePostgrest {
   }
 
   async listen() {
-    this.server = http.createServer((req, res) => this.#handle(req, res));
+    // FAKE_DB_LATENCY_MS makes every answer slow, the way a slow machine or a slow network would. Off by default.
+    // Run the suite with it set (for example 300) to prove no test depends on things happening quickly.
+    this.server = http.createServer((req, res) => {
+      const delay = Number(process.env.FAKE_DB_LATENCY_MS || 0);
+      if (delay > 0) setTimeout(() => this.#handle(req, res), delay);
+      else this.#handle(req, res);
+    });
     await new Promise((resolve) => this.server.listen(0, "127.0.0.1", resolve));
     this.port = this.server.address().port;
     this.url = `http://127.0.0.1:${this.port}`;
@@ -382,6 +394,15 @@ export class FakePostgrest {
       return send(res, 500, { code: "XX000", message: "simulated write failure" });
     }
     const incoming = Array.isArray(body) ? body : [body];
+    // A column the database does not have (a migration not yet run): refused the way PostgREST refuses
+    // it, naming the column. A test names them in `missingColumns`, as { table: ["column"] }.
+    for (const row of incoming) {
+      for (const column of (this.missingColumns && this.missingColumns[table]) || []) {
+        if (Object.prototype.hasOwnProperty.call(row, column)) {
+          return send(res, 400, { code: "PGRST204", message: `Could not find the '${column}' column of '${table}' in the schema cache` });
+        }
+      }
+    }
     for (const row of incoming) {
       const conflict = this.#uniqueConflict(table, [], row);
       if (conflict) return send(res, 409, conflict);

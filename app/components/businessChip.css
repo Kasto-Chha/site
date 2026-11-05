@@ -18,3 +18,18 @@
 .topic-suggest-biz {
   margin-left: 8px;
 }
+
+/* The Visited mark on a post: small, quiet, and green like the site's other "good" signals. */
+.exp-visited {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--green-pale);
+  color: var(--green);
+  border: 1px solid rgba(59, 109, 17, 0.25);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: middle;
+}

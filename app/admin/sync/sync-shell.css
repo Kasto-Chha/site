@@ -192,3 +192,21 @@
   .sync-shell .sync-side-foot { margin: 0 0 0 auto; flex-direction: row; }
   .sync-shell .sync-main { padding: 18px 14px 40px; }
 }
+
+/* ---- the feedback inbox, and the count beside it in the sidebar ---- */
+.sync-shell .sync-nav a { justify-content: space-between; gap: 8px; }
+.sync-shell .sync-count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #e0a96b; color: #2a1a06; font-size: 12px; font-weight: 600; text-align: center; }
+.sync-shell .fb-note { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.sync-shell .fb-note.urgent { background: #fffaf5; border-color: #f3d3bc; }
+.sync-shell .fb-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sync-shell .fb-biz { font-weight: 600; color: var(--s-ink); text-decoration: none; }
+.sync-shell a.fb-biz:hover { color: var(--s-teal); text-decoration: underline; }
+.sync-shell .fb-age { margin-left: auto; color: var(--s-muted); font-size: 13px; }
+.sync-shell .fb-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
+.sync-shell .fb-contact { color: var(--s-muted); font-size: 13px; overflow-wrap: anywhere; }
+.sync-shell .fb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.sync-shell .fb-copied { color: var(--s-teal); font-size: 13px; font-weight: 500; }
+.sync-shell .fb-digest h3 { margin: 0 0 4px; font-size: 16px; }
+.sync-shell .fb-digest-text { margin: 0 0 12px; padding: 12px 14px; background: var(--s-bg); border: 1px solid var(--s-line); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--sync-sans), system-ui, sans-serif; font-size: 14px; }
+.sync-shell .ov-tabs a .mono { margin-left: 4px; opacity: 0.8; }
+.sync-shell .fb-removed { color: var(--s-muted); font-size: 13px; }

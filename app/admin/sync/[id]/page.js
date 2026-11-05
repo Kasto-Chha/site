@@ -5,6 +5,8 @@ import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
+import OwnerPanel from "./OwnerPanel";
+import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { listQrCodes } from "../../../../lib/sync/qr";
@@ -79,6 +81,17 @@ export default async function MerchantPage({ params }) {
     badgeError = "Could not load the badge counts.";
   }
 
+  // Who the linked owner is, for the team to see. If their account cannot be read just now, the page still says one
+  // is linked rather than saying there is none.
+  let owner = null;
+  if (merchant.owner_user_id) {
+    try {
+      owner = describeClerkUser(await getClerkUser(merchant.owner_user_id));
+    } catch {
+      owner = { unreadable: true };
+    }
+  }
+
   return (
     <>
       <MerchantEditorClient merchant={shown} />
@@ -90,6 +103,9 @@ export default async function MerchantPage({ params }) {
           initialCodes={codes}
           loadError={loadError}
         />
+      </div>
+      <div className="admin-page">
+        <OwnerPanel merchantId={merchant.id} owner={owner} active={merchant.status !== "cancelled"} />
       </div>
       <div className="admin-page">
         <BadgePanel

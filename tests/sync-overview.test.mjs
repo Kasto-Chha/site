@@ -219,11 +219,11 @@ test("last 7 days: exact totals for every kind of event", () => {
   const o = build("7d");
   assert.equal(o.rangeLabel, "Last 7 days");
   assert.equal(o.totals.scans, 5, "4 with a table, 1 whose table is unknown (days 0.5, 1, 2, 3, 6.9)");
-  assert.deepEqual(o.totals.taps, { share: 2, google: 1, maps: 0 });
+  assert.deepEqual(o.totals.taps, { share: 2, ask: 0, google: 1, copy: 0, maps: 0 });
   assert.equal(o.totals.tapsTotal, 3);
   assert.deepEqual(o.totals.badge, { open: 1, share: 1, ask: 0 });
   assert.equal(o.totals.badgeClicks, 1);
-  assert.deepEqual(o.totals.posts, { experiences: 1, questions: 2 });
+  assert.deepEqual(o.totals.posts, { experiences: 1, questions: 2, visited: 0 });
   assert.equal(o.totals.postsTotal, 3);
 });
 
@@ -231,15 +231,15 @@ test("last 30 days and all time widen the same counts, exactly", () => {
   const m = build("30d");
   assert.equal(m.rangeLabel, "Last 30 days");
   assert.equal(m.totals.scans, 8, "A: 0.5, 1, 2, 3, 6.9, 10, 25 days (7) and C: 12 days (1)");
-  assert.deepEqual(m.totals.taps, { share: 3, google: 1, maps: 1 });
+  assert.deepEqual(m.totals.taps, { share: 3, ask: 0, google: 1, copy: 0, maps: 1 });
   assert.deepEqual(m.totals.badge, { open: 1, share: 1, ask: 1 });
-  assert.deepEqual(m.totals.posts, { experiences: 2, questions: 2 });
+  assert.deepEqual(m.totals.posts, { experiences: 2, questions: 2, visited: 0 });
   const all = build("all");
   assert.equal(all.rangeLabel, "All time");
   assert.equal(all.totals.scans, 9, "adds the scan 45 days ago");
-  assert.deepEqual(all.totals.taps, { share: 3, google: 1, maps: 1 });
+  assert.deepEqual(all.totals.taps, { share: 3, ask: 0, google: 1, copy: 0, maps: 1 });
   assert.deepEqual(all.totals.badge, { open: 2, share: 1, ask: 1 }, "adds the open 50 days ago");
-  assert.deepEqual(all.totals.posts, { experiences: 3, questions: 2 }, "adds the post 100 days ago");
+  assert.deepEqual(all.totals.posts, { experiences: 3, questions: 2, visited: 0 }, "adds the post 100 days ago");
 });
 
 test("a business that was removed, and a business nobody knows, count for nothing", () => {
@@ -376,7 +376,7 @@ test("rows with an unreadable date are ignored, not counted and not fatal", () =
 });
 
 test("an event type the overview does not know is ignored, never counted as something else", () => {
-  const o = buildOverview({ merchants: [A], qrCodes: [], events: [ev("mA", "post_created", ago(1)), ev("mA", "google_copy", ago(1)), ev("mA", "hub_ask", ago(1)), ev("mA", "mystery", ago(1))], posts: [], now: NOW });
+  const o = buildOverview({ merchants: [A], qrCodes: [], events: [ev("mA", "post_created", ago(1)), ev("mA", "hub_note", ago(1)), ev("mA", "badge_view", ago(1)), ev("mA", "mystery", ago(1))], posts: [], now: NOW });
   assert.deepEqual([o.totals.scans, o.totals.tapsTotal, o.totals.badge.open, o.totals.badgeClicks], [0, 0, 0, 0]);
 });
 
@@ -478,13 +478,13 @@ test("the sidebar marks exactly one link as current, for every Sync address", ()
     ["/admin/sync", "/admin/sync"], ["/admin/sync/", "/admin/sync"], ["/admin/sync?range=30d", "/admin/sync"],
     ["/admin/sync/businesses", "/admin/sync/businesses"], ["/admin/sync/businesses/", "/admin/sync/businesses"],
     ["/admin/sync/11111111-1111-4111-8111-111111111111", "/admin/sync/businesses"],
-    ["/admin/sync/new", "/admin/sync/new"], ["/admin/sync/new/", "/admin/sync/new"],
+    ["/admin/sync/new", "/admin/sync/new"], ["/admin/sync/new/", "/admin/sync/new"], ["/admin/sync/feedback", "/admin/sync/feedback"], ["/admin/sync/feedback/", "/admin/sync/feedback"], ["/admin/sync/feedback?status=urgent", "/admin/sync/feedback"], ["/admin/sync/export", "/admin/sync/export"], ["/admin/sync/export/", "/admin/sync/export"],
     ["/admin/sync/11111111-1111-4111-8111-111111111111/", "/admin/sync/businesses"],
     ["/admin", null], ["/", null], ["", null], [undefined, null], ["/admin/sync/a/b", null]
   ];
   for (const [path, expected] of cases) assert.equal(currentNav(path), expected, String(path));
   for (const path of ["/admin/sync", "/admin/sync/businesses", "/admin/sync/new", "/admin/sync/abc"]) assert.equal(SYNC_NAV.filter((i) => i.match(path)).length, 1, `${path}: more than one link would be marked`);
-  assert.deepEqual(SYNC_NAV.map((i) => i.label), ["Overview", "Businesses", "Tag a business"]);
+  assert.deepEqual(SYNC_NAV.map((i) => i.label), ["Overview", "Businesses", "Feedback", "Export", "Tag a business"]);
 });
 
 // ---------- guards on the screens ----------

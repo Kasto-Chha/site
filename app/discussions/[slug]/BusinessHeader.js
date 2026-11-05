@@ -23,6 +23,7 @@ export default function BusinessHeader({ facts }) {
 
       <div className="biz-actions">
         <a className="biz-btn primary" href="#share">Share your experience</a>
+        <a className="biz-btn" href="#ask">Ask a question</a>
         {facts.reviewUrl ? (
           <a className="biz-btn" href={facts.reviewUrl} target="_blank" rel="noopener noreferrer">Review on Google</a>
         ) : null}
@@ -33,6 +34,7 @@ export default function BusinessHeader({ facts }) {
 
       <p className="biz-note">
         KastoChha doesn&apos;t sell, hide or rank reviews. What follows is what customers wrote, in their own words.
+        A post marked Visited was written by someone who opened this business&apos;s QR link in the 6 hours before posting. It is not proof of a visit.
       </p>
     </section>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import GoogleCopyCard from "./GoogleCopyCard";
 import useRequireSignIn from "../../components/useRequireSignIn";
 import { verdictTone } from "../../../lib/topics";
 
@@ -13,12 +14,14 @@ const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 // instead. It posts under `postTitle`, the title pinned when the business was tagged: that
 // is the title that makes the thread's own address, so the post lands in this thread and
 // not in a new one. Once it is posted the page refreshes into the ordinary thread view.
-export default function FirstPostComposer({ slug, postTitle, category, businessName }) {
+export default function FirstPostComposer({ slug, postTitle, category, businessName, businessSlug = "", googleUrl = "" }) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [verdict, setVerdict] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  // The words just posted, held so the "copy my text and open Google" offer can use them.
+  const [posted, setPosted] = useState("");
 
   const requireSignIn = useRequireSignIn({
     draftKey: `thread:${slug}`,
@@ -51,7 +54,9 @@ export default function FirstPostComposer({ slug, postTitle, category, businessN
       }
       setText("");
       setVerdict("");
-      router.refresh();
+      // A business with a Google link gets the offer before the page changes under the visitor.
+      if (googleUrl) setPosted(summary);
+      else router.refresh();
     } catch {
       setError("Could not post your experience. Try again.");
     } finally {
@@ -67,6 +72,17 @@ export default function FirstPostComposer({ slug, postTitle, category, businessN
       return;
     }
     send(summary, verdict);
+  }
+
+  if (posted) {
+    return (
+      <div id="share">
+        <GoogleCopyCard text={posted} googleUrl={googleUrl} businessSlug={businessSlug} onClose={() => router.refresh()} />
+        <p>
+          <button type="button" className="biz-btn" onClick={() => router.refresh()}>See the discussion</button>
+        </p>
+      </div>
+    );
   }
 
   return (

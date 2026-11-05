@@ -398,7 +398,9 @@ test("the header shows only what the team entered, opens Google in a new tab saf
   assert.match(header, /facts\.reviewUrl \?/);
   assert.match(header, /facts\.mapsUrl \?/);
   assert.match(header, /KastoChha doesn&apos;t sell, hide or rank reviews/);
-  const code = header.replace(/^\s*\/\/.*$/gm, ""); // the comments say what it leaves out; look only at the code
+  // The comments say what it leaves out; look only at the code. The one sentence explaining the Visited
+  // mark says "6 hours" (how recent a scan must be), which is not a business's opening hours.
+  const code = header.replace(/^\s*\/\/.*$/gm, "").replace(/in the 6 hours before posting/g, "");
   for (const forbidden of [/\bhours\b/i, /\bphone\b/i, /\bmenu\b/i, /\bprice/i, /dangerouslySetInnerHTML/]) assert.ok(!forbidden.test(code), `the header mentions ${forbidden}`);
 });
 

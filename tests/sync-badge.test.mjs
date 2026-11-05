@@ -14,7 +14,7 @@ import { FakePostgrest } from "./support/fake-postgrest.js";
 const { GET: checkRoute, OPTIONS: checkOptions } = await import("../app/api/badge/check/route.js");
 const { POST: tapRoute } = await import("../app/api/sync/event/route.js");
 const { badgeSnippet, badgeCheckAnswer, badgeStats, BADGE_SITE_DEFAULT } = await import("../lib/sync/badge.js");
-const { EVENT_TYPES, BADGE_EVENTS, PUBLIC_EVENTS, HUB_CLICK_EVENTS } = await import("../lib/sync/qr.js");
+const { EVENT_TYPES, BADGE_EVENTS, PUBLIC_EVENTS, HUB_CLICK_EVENTS, PAGE_CLICK_EVENTS } = await import("../lib/sync/qr.js");
 const { createServerSupabase } = await import("../lib/supabase/server.js");
 
 const WIDGET = fs.readFileSync("public/badge-widget.js", "utf8");
@@ -72,8 +72,8 @@ const events = (type) => fake.tables.sync_events.filter((e) => !type || e.event_
 test("the badge reports three things, which the database and the code agree on", () => {
   assert.deepEqual(BADGE_EVENTS, ["badge_open", "badge_share", "badge_ask"]);
   for (const type of BADGE_EVENTS) assert.ok(EVENT_TYPES.includes(type), type);
-  assert.deepEqual(PUBLIC_EVENTS, [...HUB_CLICK_EVENTS, ...BADGE_EVENTS]);
-  for (const forbidden of ["scan", "post_created", "google_copy", "hub_ask", "hub_note"]) assert.ok(!PUBLIC_EVENTS.includes(forbidden), `${forbidden} must stay server-only`);
+  assert.deepEqual(PUBLIC_EVENTS, [...HUB_CLICK_EVENTS, ...PAGE_CLICK_EVENTS, ...BADGE_EVENTS]);
+  for (const forbidden of ["scan", "post_created"]) assert.ok(!PUBLIC_EVENTS.includes(forbidden), `${forbidden} must stay server-only`);
 });
 
 test("the migration adds the badge events, drops the old public list, and can be run again", () => {
@@ -190,11 +190,11 @@ test("if the database cannot be read, there is no badge, and no error page", asy
 
 test("guessing is limited per address: the 121st in a minute is refused, another address is not", async () => {
   merchant();
-  let ok = 0, limited = null;
-  for (let i = 0; i < 125; i += 1) {
-    const res = await ask(`guess-${i}`, { ip: "198.51.100.9" });
-    if (res.status === 200) ok += 1; else limited = res;
-  }
+  // All sent at once, so they fall in the same minute however slow each answer is (sent one after another on a slow
+  // machine, the minute could roll over part-way and let more through, which proves nothing about the limit).
+  const results = await Promise.all(Array.from({ length: 125 }, (_, i) => ask(`guess-${i}`, { ip: "198.51.100.9" })));
+  const ok = results.filter((res) => res.status === 200).length;
+  const limited = results.find((res) => res.status === 429);
   assert.equal(ok, 120);
   assert.equal(limited.status, 429);
   assert.deepEqual(await limited.json(), { allowed: false, error: "Too many requests." });
@@ -236,7 +236,7 @@ test("a badge click is never credited to a table, even if it names one", async (
 
 test("the tap route still refuses what a visitor must never be able to record", async () => {
   merchant();
-  for (const type of ["scan", "post_created", "google_copy", "hub_ask", "hub_note", "badge_view", "BADGE_OPEN", ""]) assert.equal((await tap({ slug: "himal-brew-house", type })).status, 400, type);
+  for (const type of ["scan", "post_created", "badge_view", "BADGE_OPEN", ""]) assert.equal((await tap({ slug: "himal-brew-house", type })).status, 400, type);
   assert.equal((await tap({ slug: "no-such", type: "badge_open" })).status, 404);
   merchant({ id: "33333333-3333-4333-8333-333333333333", slug: "gone", topic_slug: "gone-x", status: "cancelled" });
   assert.equal((await tap({ slug: "gone", type: "badge_open" })).status, 404, "a removed business counts nothing");
@@ -245,7 +245,20 @@ test("the tap route still refuses what a visitor must never be able to record", 
 
 // ---------- the badge script, in a simulated page ----------
 
-const settle = (ms = 80) => new Promise((resolve) => setTimeout(resolve, ms));
+// Wait until the page has finished talking to the server, however long that takes. This used to wait a fixed
+// 80 ms, which was enough on a fast machine and not on a slow one (a test that looks for the badge before it has
+// been drawn fails for nothing). The page's own requests are counted, and the wait ends once none is in flight and
+// it has stayed that way for three short checks, so the page's reaction to the last answer has also finished.
+let inflight = 0;
+const settle = async () => {
+  const started = Date.now();
+  let quiet = 0;
+  while (quiet < 3) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    quiet = inflight === 0 ? quiet + 1 : 0;
+    if (Date.now() - started > 15000) throw new Error("the page never finished its requests");
+  }
+};
 
 // A page on someone else's website with the one-line snippet on it. `reply` can stand in for the
 // server's answers to prove how the badge handles an answer that is wrong.
@@ -265,10 +278,15 @@ async function visit({ attr = `data-business="himal-brew-house"`, reply, extraSc
     beforeParse(window) {
       if (!noFetch) {
         window.fetch = async (url, options = {}) => {
-          calls.push({ url: String(url), options });
-          if (fetchBroken) throw new TypeError("Failed to fetch");
-          if (reply && String(url).includes("/api/badge/check")) return reply(String(url));
-          return route(String(url), options);
+          inflight += 1;
+          try {
+            calls.push({ url: String(url), options });
+            if (fetchBroken) throw new TypeError("Failed to fetch");
+            if (reply && String(url).includes("/api/badge/check")) return await reply(String(url));
+            return await route(String(url), options);
+          } finally {
+            inflight -= 1;
+          }
         };
       }
       window.console.error = (...a) => logs.push(a.join(" "));

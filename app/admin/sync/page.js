@@ -1,6 +1,8 @@
 import { NOINDEX_NOFOLLOW } from "../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 import { createServerSupabase } from "../../../lib/supabase/server";
+import { countNewFeedback } from "../../../lib/sync/feedback";
+import { hubTokenConfigured } from "../../../lib/sync/hubToken";
 import { formatCount, loadOverview, parseRange } from "../../../lib/sync/overview";
 import { countLabel } from "../../../lib/sync/text";
 import { ActivityBars, BusinessTable, RangeTabs, ScansChart, StatTile, TopCodes } from "./OverviewParts";
@@ -40,6 +42,14 @@ export default async function SyncOverviewPage({ searchParams }) {
     error = "Could not load the overview. Nothing below is shown, so it cannot be mistaken for no activity. Try again in a moment.";
   }
 
+  // Private notes waiting for the team. Left out if they cannot be counted: the overview does not depend on them.
+  let notes = null;
+  try {
+    notes = await countNewFeedback(createServerSupabase());
+  } catch {
+    notes = null;
+  }
+
   return (
     <>
       <div className="ov-head">
@@ -54,6 +64,16 @@ export default async function SyncOverviewPage({ searchParams }) {
         </div>
       </div>
 
+      {notes && notes.total > 0 ? (
+        <div className="ov-banner" role="status">
+          {countLabel(notes.total, "new private note", "new private notes")} waiting{notes.urgent > 0 ? ` (${notes.urgent} urgent)` : ""}. <a href="/admin/sync/feedback">Open the inbox &rarr;</a>
+        </div>
+      ) : null}
+      {!hubTokenConfigured() ? (
+        <div className="ov-banner" role="status">
+          Visited labels are off: SYNC_HUB_SECRET is not set in Vercel, or is shorter than 32 characters. Scans, the hub and posting all work; posts just will not carry the Visited label until it is set.
+        </div>
+      ) : null}
       {error ? <div className="ov-banner" role="alert">{error}</div> : null}
       {data?.truncated ? <div className="ov-banner" role="status">Some counts are partial: there are more records than can be read in one go. Treat the totals as a minimum.</div> : null}
 
@@ -77,13 +97,13 @@ export default async function SyncOverviewPage({ searchParams }) {
             <StatTile
               label="Hub taps"
               value={formatCount(data.totals.tapsTotal)}
-              sub={`Share ${formatCount(data.totals.taps.share)} · Google ${formatCount(data.totals.taps.google)} · Maps ${formatCount(data.totals.taps.maps)}`}
+              sub={`Share ${formatCount(data.totals.taps.share)} · Ask ${formatCount(data.totals.taps.ask)} · Google ${formatCount(data.totals.taps.google + data.totals.taps.copy)} · Maps ${formatCount(data.totals.taps.maps)}`}
             />
             <StatTile label="Website badge opens" value={formatCount(data.totals.badge.open)} sub={`${formatCount(data.totals.badgeClicks)} clicked a link`} />
             <StatTile
               label="Posts"
               value={formatCount(data.totals.postsTotal)}
-              sub={`${countLabel(data.totals.posts.experiences, "experience", "experiences")} · ${countLabel(data.totals.posts.questions, "question", "questions")}`}
+              sub={`${countLabel(data.totals.posts.experiences, "experience", "experiences")} · ${countLabel(data.totals.posts.questions, "question", "questions")}${data.totals.posts.visited > 0 ? ` · ${data.totals.posts.visited} Visited` : ""}`}
             />
           </div>
 

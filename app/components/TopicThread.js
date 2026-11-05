@@ -16,6 +16,18 @@ import { formatTimeAgo, scoreOf, verdictTone } from "../../lib/topics";
 import { categoryLabel, categoryTone } from "../../lib/categories";
 import { isoTime } from "./sectionHelpers";
 import "./businessChip.css";
+import OwnerReplyBlock from "./OwnerReply";
+
+// "Visited": this post was written by someone who opened the business's QR link in the 6 hours
+// before posting, and it is the first such post from them on this thread today (lib/sync/visited.js).
+// It is not proof of a visit: a link can be forwarded.
+function VisitedMark() {
+  return (
+    <span className="exp-visited" title="Opened this business's QR link in the 6 hours before posting. Not proof of a visit.">
+      Visited
+    </span>
+  );
+}
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 
@@ -40,7 +52,10 @@ export default function TopicThread({
   // the composer opens with their own words rather than empty.
   restoredReply = null,
   // The thread's own page links to itself, so it opts out.
-  showPermalink = true
+  showPermalink = true,
+  // On a business's page only: the business's replies under its posts, and who may write them. Null elsewhere,
+  // and then nothing changes.
+  ownerThread = null
 }) {
   const total = topic.verdicts.pos + topic.verdicts.neu + topic.verdicts.neg;
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
@@ -243,6 +258,7 @@ export default function TopicThread({
             <span className="topic-preview-by">
               {topic.top.author_name || "Anonymous"}:
             </span>{" "}
+            {topic.top.source === "qr" ? <VisitedMark /> : null}
             {topic.top.summary}
           </p>
         )
@@ -331,6 +347,7 @@ export default function TopicThread({
                     <span className="exp-author">
                       {exp.author_name || "Anonymous"}
                     </span>
+                    {exp.source === "qr" ? <VisitedMark /> : null}
                     {isOp(exp) ? <span className="exp-op">OP</span> : null}
                     {timeLabel ? (
                       <time dateTime={isoTime(exp.created_at)}>{timeLabel}</time>
@@ -469,6 +486,7 @@ export default function TopicThread({
                       ) : null}
                     </div>
                   )}
+                  {ownerThread ? <OwnerReplyBlock exp={exp} ownerThread={ownerThread} /> : null}
                 </div>
               </div>
             );

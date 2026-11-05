@@ -124,11 +124,14 @@ export function ActivityBars({ totals }) {
   const items = [
     ["QR scans", totals.scans],
     ["Hub: Share your experience tapped", totals.taps.share],
+    ["Hub: Ask a question tapped", totals.taps.ask],
     ["Hub: Review on Google tapped", totals.taps.google],
+    ["Copy my text and open Google tapped", totals.taps.copy],
     ["Hub: Find us on Google Maps tapped", totals.taps.maps],
     ["Website badge opened", totals.badge.open],
     ["Badge: Share clicked", totals.badge.share],
-    ["Badge: Ask clicked", totals.badge.ask]
+    ["Badge: Ask clicked", totals.badge.ask],
+    ["Posts marked Visited", totals.posts.visited]
   ];
   const max = Math.max(1, ...items.map(([, n]) => n));
   return (
