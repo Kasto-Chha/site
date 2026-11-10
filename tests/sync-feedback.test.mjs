@@ -106,6 +106,24 @@ test("ordinary notes, praise, and words that merely contain a flagged word are n
   for (const notText of [undefined, null, 5, "", "   "]) assert.equal(isUrgent(notText), false, String(notText));
 });
 
+test("the exact sentences that were missed on the live site are flagged (check F6)", () => {
+  // Found in testing: on the production build these were plain, because the single-word pattern was mistranslated
+  // by the builder. Only the phrase rules ("not clean") worked there.
+  for (const text of [
+    "There was a cockroach near the counter.", "A rat ran across the floor", "The milk was expired", "The table was not clean at all.",
+    "Dirty plates", "rotten fruit", "moldy bread", "I felt sick after lunch", "the staff were rude"
+  ]) assert.equal(isUrgent(text), true, text);
+  for (const text of ["Lovely staff and great coffee, thank you!", "Nice music in the evening.", "Please add more seating near the window."])
+    assert.equal(isUrgent(text), false, text);
+});
+
+test("a hyphen, a comma or an apostrophe still separates words, and a digit joins them", () => {
+  assert.equal(isUrgent("moldy-looking bread"), true);
+  assert.equal(isUrgent("dirty,rotten"), true);
+  assert.equal(isUrgent("rat2"), false, "a digit makes it a different word, as the old word boundary did");
+  assert.equal(isUrgent("rats"), true);
+});
+
 test("the flag only looks at the words of the note, and is the same in any case", () => {
   assert.equal(isUrgent("HYGIENE"), true);
   assert.equal(isUrgent("Cockroach!"), true);
@@ -325,17 +343,17 @@ test("a junk or oversized body takes nothing and breaks nothing", async () => {
   assert.equal(stored().length, 0);
 });
 
-test("one visitor can send five notes in ten minutes, and the sixth waits; someone else is unaffected", async () => {
+test("one visitor can send twenty notes in five minutes, and the twenty-first waits; someone else is unaffected", async () => {
   seed();
   const results = [];
-  for (let i = 0; i < 7; i += 1) results.push((await send({ slug: "himal-brew-house", note: `note ${i}` }, { ip: "198.51.100.9" })).status);
-  assert.deepEqual(results, [201, 201, 201, 201, 201, 429, 429]);
-  assert.equal(stored().length, 5);
+  for (let i = 0; i < 22; i += 1) results.push((await send({ slug: "himal-brew-house", note: `note ${i}` }, { ip: "198.51.100.9" })).status);
+  assert.deepEqual(results, [...Array(20).fill(201), 429, 429]);
+  assert.equal(stored().length, 20);
   const limited = await send({ slug: "himal-brew-house", note: "again" }, { ip: "198.51.100.9" });
   assert.ok(Number(limited.headers.get("retry-after")) >= 1);
   assert.match((await limited.json()).error, /wait a few minutes/);
   assert.equal((await send({ slug: "himal-brew-house", note: "different visitor" }, { ip: "198.51.100.10" })).status, 201);
-  assert.match(fs.readFileSync("lib/ratelimit.js", "utf8"), /note: \{ tokens: 5, window: "10 m" \}/);
+  assert.match(fs.readFileSync("lib/ratelimit.js", "utf8"), /note: \{ tokens: 20, window: "5 m" \}/);
 });
 
 test("if the limiter is down, a note still goes through (a flood is stopped by the daily cap instead)", async () => {
@@ -354,7 +372,7 @@ test("a business can receive only so many notes a day, and yesterday's do not co
   assert.equal(over.status, 429);
   assert.match((await over.json()).error, /try again tomorrow/);
   assert.equal((await send({ slug: "momo-hub", note: "another business is not affected" }, { ip: "198.51.100.22" })).status, 201);
-  assert.equal(DAILY_CAP_PER_BUSINESS, 100);
+  assert.equal(DAILY_CAP_PER_BUSINESS, 200);
 });
 
 test("if the note cannot be saved, the visitor gets a plain message, and the words never reach a log", async () => {

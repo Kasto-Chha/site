@@ -21,6 +21,10 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type"
 };
 
+export const dynamic = "force-dynamic";
+// Reading the database must always be fresh; the one-minute memory this route wants is set in its response headers below.
+export const fetchCache = "force-no-store";
+
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }

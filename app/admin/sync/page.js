@@ -1,7 +1,8 @@
 import { NOINDEX_NOFOLLOW } from "../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 import { createServerSupabase } from "../../../lib/supabase/server";
-import { countNewFeedback } from "../../../lib/sync/feedback";
+import { limiterStatus } from "../../../lib/ratelimit";
+import { DAILY_CAP_PER_BUSINESS, countNewFeedback } from "../../../lib/sync/feedback";
 import { hubTokenConfigured } from "../../../lib/sync/hubToken";
 import { formatCount, loadOverview, parseRange } from "../../../lib/sync/overview";
 import { countLabel } from "../../../lib/sync/text";
@@ -50,6 +51,14 @@ export default async function SyncOverviewPage({ searchParams }) {
     notes = null;
   }
 
+  // Whether the speed limits are really on. A failed check must never take the page down: it is a warning, nothing more.
+  let limiter = { state: "on" };
+  try {
+    limiter = await limiterStatus();
+  } catch {
+    limiter = { state: "on" };
+  }
+
   return (
     <>
       <div className="ov-head">
@@ -72,6 +81,12 @@ export default async function SyncOverviewPage({ searchParams }) {
       {!hubTokenConfigured() ? (
         <div className="ov-banner" role="status">
           Visited labels are off: SYNC_HUB_SECRET is not set in Vercel, or is shorter than 32 characters. Scans, the hub and posting all work; posts just will not carry the Visited label until it is set.
+        </div>
+      ) : null}
+      {limiter.state !== "on" ? (
+        <div className="ov-banner" role="status">
+          Speed limits are off: {limiter.detail} Until this is fixed, nothing slows a flood of notes, taps, posts or votes. A business
+          can still receive at most {DAILY_CAP_PER_BUSINESS} private notes a day.
         </div>
       ) : null}
       {error ? <div className="ov-banner" role="alert">{error}</div> : null}

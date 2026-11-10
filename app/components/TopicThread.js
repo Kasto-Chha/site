@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+
+import { boxAlreadyHoldsDraft, draftToApply } from "../../lib/restoreDraft";
 
 import {
   IconArrowDown,
@@ -72,6 +74,31 @@ export default function TopicThread({
   const [replyError, setReplyError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const composerRef = useRef(null);
+  // True from the moment a draft typed before signing in is put back, until the reply is posted.
+  const [keptNote, setKeptNote] = useState(false);
+
+  // The saved draft arrives after this box is on the page, so it cannot be read only at first render: take it when it
+  // comes, open the thread if it is collapsed, and bring the box into view with the cursor in it.
+  useEffect(() => {
+    if (!restoredReply) return undefined;
+    const apply = draftToApply(replyText, restoredReply);
+    if (!apply && !boxAlreadyHoldsDraft(replyText, restoredReply)) return undefined;
+    if (apply) {
+      setReplyText(apply.summary);
+      setReplyVerdict(apply.verdict);
+    }
+    setKeptNote(true);
+    if (!isOpen) onToggle(topic.slug);
+    const timer = setTimeout(() => {
+      const box = composerRef.current;
+      if (!box) return;
+      box.scrollIntoView({ block: "center", behavior: "smooth" });
+      box.focus({ preventScroll: true });
+    }, 80);
+    return () => clearTimeout(timer);
+    // Only a new draft matters here; the rest is read as it stands when it arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredReply]);
 
   // Inline editor state for whichever of my own experiences is open.
   const [editingId, setEditingId] = useState(null);
@@ -169,6 +196,7 @@ export default function TopicThread({
       if (result?.ok) {
         setReplyText("");
         setReplyVerdict("");
+        setKeptNote(false);
       } else if (result?.error) {
         setReplyError(result.error);
       }
@@ -494,6 +522,11 @@ export default function TopicThread({
 
           {onReply ? (
             <form className="thread-composer" onSubmit={submitReply}>
+              {keptNote && replyText ? (
+                <p className="thread-kept" role="status">
+                  We kept what you wrote.
+                </p>
+              ) : null}
               <textarea
                 ref={composerRef}
                 className="thread-composer-input"

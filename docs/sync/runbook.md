@@ -12,7 +12,7 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 | `NEXT_PUBLIC_SITE_URL` | The site's address, `https://www.kastochhanepal.com`. QR codes are made from it. |
 | `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | The database. The service key stays on the server. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Sign-in. |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | The speed limits (private notes, posting). Without them the limits are off. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | The speed limits (private notes, posting, taps, votes). Without them, or if the database cannot be reached, the limits are off and the Overview says "Speed limits are off". Copy both from the database's REST API section in Upstash, and use the main token, not the read-only one. |
 | `SYNC_HUB_SECRET` | Makes the "Visited" label possible. At least 32 characters: make one with `openssl rand -hex 32`. Without it everything works except the label, and the Overview says so. |
 
 **Database steps**, in the Supabase SQL editor, in this order, each once. Run only the ones not already run.
@@ -71,8 +71,10 @@ Add `--count-scan` to also make one real scan and check the cookies and the Visi
 | The hub does not open, or goes to the home page | Is the business active, not removed? Is the card switched on (business page, QR codes)? |
 | Scans are not counted | Are you testing from a script or a link preview? Those are never counted, by design. Scan with a phone camera. A second scan within 10 minutes is not counted again. |
 | "Visited" never appears | The Overview says "Visited labels are off" if `SYNC_HUB_SECRET` is missing or short. Also: the person must scan, then post within 6 hours, and only the first such post of the day on that café gets it. |
-| A private note does not arrive | Look in the inbox with the All tab. A visitor can send 5 notes in 10 minutes, and a café can receive 100 a day. A removed café takes none. |
+| A private note does not arrive | Look in the inbox with the All tab. A visitor can send 20 notes in 5 minutes, and a business can receive 200 a day. A removed café takes none. |
 | An owner cannot reply | Is their account linked (business page, Verified owner)? Is it the right account? A former owner is refused at once. They reply from the café's page, under a post. |
+| The Overview says "Speed limits are off" | It says why. Missing: add the two Upstash settings in Vercel and redeploy. "Could not be reached": does the Upstash database still exist and show as active? "WRONGPASS": the token does not belong to that database, or it is the read-only one. Test the pair from a terminal with `curl "$URL/ping" -H "Authorization: Bearer $TOKEN"`; it should answer PONG. Until it is fixed, the only thing limiting private notes is the daily cap for each business. |
+| A removed business's card, or a switched-off card, still goes to the hub | It should take effect at once. If it does not, redeploy, and tell whoever is fixing the site: the scan address must never reuse an earlier answer from the database. |
 | The Overview says it could not load | It is telling you the truth: it will not show zeros it could not read. Reload; if it persists, look at the database. |
 | An export says there is too much data | Choose a shorter range. |
 | A post by the owner was refused | By design: an owner replies to posts, and does not post experiences about their own café. |

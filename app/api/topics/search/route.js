@@ -5,6 +5,9 @@ import { searchTokens, ilikeAnyClause, relevanceScore } from "../../../../lib/se
 import { withBusinesses } from "../../../../lib/sync/suggest";
 
 export const dynamic = "force-dynamic";
+// force-dynamic alone does not stop Next from reusing an earlier answer from the database in a route handler:
+// a removed tag or a switched-off card kept being served the old answer (found in testing, check K3).
+export const fetchCache = "force-no-store";
 
 // ---------------------------------------------------------------------------
 // Existing threads matching what someone is typing into the topic field.

@@ -3,6 +3,9 @@ import { SCAN_COOKIE, SCAN_COOKIE_SECONDS, findQrByCode, isBot, isValidCode, log
 import { visitCookieFor } from "../../../lib/sync/visited";
 
 export const dynamic = "force-dynamic";
+// force-dynamic alone does not stop Next from reusing an earlier answer from the database in a route handler:
+// a removed tag or a switched-off card kept being served the old answer (found in testing, check K3).
+export const fetchCache = "force-no-store";
 
 function cookieValue(request, name) {
   const header = request.headers.get("cookie") || "";
