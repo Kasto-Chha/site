@@ -22,12 +22,12 @@ test("ordinary threads are unchanged: one card per thread, newest post represent
   assert.deepEqual(cards.map((card) => card.business), [null, null, null]);
 });
 
-test("a business's card is represented by its newest experience, not by a question, and its replies leave the questions out", () => {
+test("a business's card is represented by its newest experience, not by a question, and shows no reply count", () => {
   const pool = newestFirst([...Array.from({ length: 8 }, () => row("ram-cafe-test", "experience", "lovely")), row("ram-cafe-test", "question", "vegan options?"), row("ram-cafe-test", "question", "open sunday?")]);
   const [card] = pickCards(pool, { businesses: { "ram-cafe-test": BIZ("Ram's Cafe", "Cafe") } });
   assert.equal(card.review.kind, "experience", "the newest rows are questions, and neither stands for the thread");
   assert.equal(card.review.summary, "lovely");
-  assert.equal(card.replies, 7, "eight experiences and two questions is seven replies");
+  assert.equal(card.replies, null, "a business's card has no reply count: its experiences are separate customers");
   assert.equal(card.business.title, "Ram's Cafe, Test");
 });
 
@@ -74,5 +74,6 @@ test("the home page loads the businesses alongside its threads, keeps only those
   const grid = fs.readFileSync("app/components/DiscussionsGrid.js", "utf8");
   assert.match(grid, /pickCards\(reviews, \{ businesses, limit \}\)/);
   assert.match(grid, /<span className="topic-biz-chip">Business<\/span>/);
+  assert.match(grid, /replies === null \? null : <span className="disc-replies">/, "no reply count is drawn for a business's card");
   assert.match(grid, /business \? business\.title : review\.title \|\| review\.topic/);
 });

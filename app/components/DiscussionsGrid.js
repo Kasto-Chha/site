@@ -105,7 +105,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6, businesses = 
             <div className="disc-divider" />
 
             <div className="disc-foot">
-              <span className="disc-replies">{replies} {replies === 1 ? "reply" : "replies"}</span>
+              {replies === null ? null : <span className="disc-replies">{replies} {replies === 1 ? "reply" : "replies"}</span>}
               <span className="disc-likes"><IconThumb className="icon" /> {likes}</span>
               {time ? (
                 <time className="disc-time" dateTime={isoTime(review.created_at)}>

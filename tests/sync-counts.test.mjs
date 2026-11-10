@@ -13,10 +13,10 @@ const WORDS = "a calm place with friendly staff and good coffee where people sit
 const post = (kind, i) => ({ id: `${kind}-${i}`, kind, topic: MERCHANT.thread_title, title: MERCHANT.thread_title, summary: `${WORDS} number ${i}`, verdict: kind === "question" ? null : "Ramro chha" });
 const many = (kind, n) => Array.from({ length: n }, (_, i) => post(kind, i));
 
-test("the counts line: a business page gives experiences, replies and questions; a question thread gives its answers", () => {
-  assert.equal(threadCountsLine([...many("experience", 8), ...many("question", 2)], { business: true }), "8 experiences \u00b7 7 replies \u00b7 2 questions");
-  assert.equal(threadCountsLine(many("experience", 1), { business: true }), "1 experience \u00b7 0 replies");
-  assert.equal(threadCountsLine([...many("experience", 2), ...many("question", 1)], { business: true }), "2 experiences \u00b7 1 reply \u00b7 1 question");
+test("the counts line: a business page gives experiences and questions, with no replies; an ordinary thread keeps its replies; a question thread gives its answers", () => {
+  assert.equal(threadCountsLine([...many("experience", 8), ...many("question", 2)], { business: true }), "8 experiences \u00b7 2 questions");
+  assert.equal(threadCountsLine(many("experience", 1), { business: true }), "1 experience");
+  assert.equal(threadCountsLine([...many("experience", 2), ...many("question", 1)], { business: true }), "2 experiences \u00b7 1 question");
   assert.equal(threadCountsLine(many("question", 2), { business: true }), "0 experiences \u00b7 2 questions");
   // An ordinary thread that opens with a question: one question and two answers is two experiences, with no replies.
   assert.equal(threadCountsLine([post("question", 0), ...many("experience", 2)]), "2 experiences");
