@@ -25,7 +25,11 @@ export default function BusinessQuestions({ questions, businessName, ownerThread
         return (
           <article className="biz-question" id={`q-${q.id}`} key={q.id}>
             <div className="biz-question-head">
-              <span className="exp-author">{q.author_name || "Anonymous"}</span> asked · {shortDate(q.created_at)}{q.updated_at ? " · edited" : ""}
+              <span className="exp-author">{q.author_name || "Anonymous"}</span>{q.from_business ? (
+                <span className="owner-reply-badge" title="Asked by the account the KastoChha team linked to this business.">
+                  From the business
+                </span>
+              ) : null} asked · {shortDate(q.created_at)}{q.updated_at ? " · edited" : ""}
             </div>
             <p className="biz-question-text">{q.summary}</p>
             {ownerThread ? <OwnerReplyBlock exp={q} ownerThread={ownerThread} /> : null}

@@ -128,6 +128,7 @@ export function ActivityBars({ totals }) {
     ["Hub: Review on Google tapped", totals.taps.google],
     ["Copy my text and open Google tapped", totals.taps.copy],
     ["Hub: Find us on Google Maps tapped", totals.taps.maps],
+    ["Hub: Send a private note tapped", totals.taps.note],
     ["Website badge opened", totals.badge.open],
     ["Badge: Share clicked", totals.badge.share],
     ["Badge: Ask clicked", totals.badge.ask],

@@ -4,6 +4,8 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
+import { signInUrl } from "../../lib/signInUrl";
+
 // Admin stays reachable at /admin directly (server-side role gate);
 // it is intentionally not linked from the nav.
 export default function NavAuth() {
@@ -21,7 +23,7 @@ export default function NavAuth() {
   return (
     <div className="nav-auth">
       <SignedOut>
-        <Link href="/sign-in" className="btn-outline">Sign in</Link>
+        <Link href={signInUrl(pathname)} className="btn-outline">Sign in</Link>
       </SignedOut>
       <SignedIn>
         <UserButton afterSignOutUrl={afterSignOutUrl} />

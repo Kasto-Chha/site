@@ -219,7 +219,7 @@ test("last 7 days: exact totals for every kind of event", () => {
   const o = build("7d");
   assert.equal(o.rangeLabel, "Last 7 days");
   assert.equal(o.totals.scans, 5, "4 with a table, 1 whose table is unknown (days 0.5, 1, 2, 3, 6.9)");
-  assert.deepEqual(o.totals.taps, { share: 2, ask: 0, google: 1, copy: 0, maps: 0 });
+  assert.deepEqual(o.totals.taps, { share: 2, ask: 0, google: 1, copy: 0, maps: 0, note: 0 });
   assert.equal(o.totals.tapsTotal, 3);
   assert.deepEqual(o.totals.badge, { open: 1, share: 1, ask: 0 });
   assert.equal(o.totals.badgeClicks, 1);
@@ -231,13 +231,13 @@ test("last 30 days and all time widen the same counts, exactly", () => {
   const m = build("30d");
   assert.equal(m.rangeLabel, "Last 30 days");
   assert.equal(m.totals.scans, 8, "A: 0.5, 1, 2, 3, 6.9, 10, 25 days (7) and C: 12 days (1)");
-  assert.deepEqual(m.totals.taps, { share: 3, ask: 0, google: 1, copy: 0, maps: 1 });
+  assert.deepEqual(m.totals.taps, { share: 3, ask: 0, google: 1, copy: 0, maps: 1, note: 0 });
   assert.deepEqual(m.totals.badge, { open: 1, share: 1, ask: 1 });
   assert.deepEqual(m.totals.posts, { experiences: 2, questions: 2, visited: 0 });
   const all = build("all");
   assert.equal(all.rangeLabel, "All time");
   assert.equal(all.totals.scans, 9, "adds the scan 45 days ago");
-  assert.deepEqual(all.totals.taps, { share: 3, ask: 0, google: 1, copy: 0, maps: 1 });
+  assert.deepEqual(all.totals.taps, { share: 3, ask: 0, google: 1, copy: 0, maps: 1, note: 0 });
   assert.deepEqual(all.totals.badge, { open: 2, share: 1, ask: 1 }, "adds the open 50 days ago");
   assert.deepEqual(all.totals.posts, { experiences: 3, questions: 2, visited: 0 }, "adds the post 100 days ago");
 });
@@ -376,8 +376,18 @@ test("rows with an unreadable date are ignored, not counted and not fatal", () =
 });
 
 test("an event type the overview does not know is ignored, never counted as something else", () => {
-  const o = buildOverview({ merchants: [A], qrCodes: [], events: [ev("mA", "post_created", ago(1)), ev("mA", "hub_note", ago(1)), ev("mA", "badge_view", ago(1)), ev("mA", "mystery", ago(1))], posts: [], now: NOW });
+  const o = buildOverview({ merchants: [A], qrCodes: [], events: [ev("mA", "post_created", ago(1)), ev("mA", "some_future_event", ago(1)), ev("mA", "badge_view", ago(1)), ev("mA", "mystery", ago(1))], posts: [], now: NOW });
   assert.deepEqual([o.totals.scans, o.totals.tapsTotal, o.totals.badge.open, o.totals.badgeClicks], [0, 0, 0, 0]);
+});
+
+test("a tap on \"Send a private note\" is counted with the other hub taps, in the totals and for its business (patch 11b)", () => {
+  // The database held 52 hub taps in testing and the Overview said 17: the private-note taps were stored and never counted.
+  const o = buildOverview({ merchants: [A], qrCodes: [], events: [ev("mA", "hub_share", ago(1)), ev("mA", "hub_note", ago(1)), ev("mA", "hub_note", ago(2)), ev("mA", "hub_note", ago(3))], posts: [], range: "7d", now: NOW });
+  assert.equal(o.totals.taps.note, 3);
+  assert.equal(o.totals.tapsTotal, 4, "one share and three notes");
+  assert.equal(o.rows.find((row) => row.id === "mA").taps, 4, "the per-business count, which the Activity export uses, includes them too");
+  const old = buildOverview({ merchants: [A], qrCodes: [], events: [ev("mA", "hub_note", ago(40))], posts: [], range: "7d", now: NOW });
+  assert.equal(old.totals.taps.note, 0, "outside the range, like every other tap");
 });
 
 test("a read that was cut short is passed on, so the page can say the totals are a minimum", () => {

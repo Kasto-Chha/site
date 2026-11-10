@@ -42,6 +42,10 @@ export default function GoogleCopyCard({ text, googleUrl, businessSlug, onClose 
     <section className="biz-copy" id="google-copy-card" aria-label="Post your experience on Google too">
       <h2>Your experience is on KastoChha.</h2>
       <p>Want it on Google too? We can&apos;t post for you, because a Google review has to be written by you, on Google. But we can copy your words and open the box.</p>
+      <p className="biz-copy-note">
+        Google keeps one review per person for each place. If you have reviewed this business there before, Google will open your
+        earlier review for editing instead of a new one.
+      </p>
       <textarea className="thread-composer-input" readOnly rows={4} value={text} aria-label="Your experience" autoComplete="off" />
       <div className="biz-copy-actions">
         <button type="button" className="biz-btn primary" onClick={go} disabled={busy}>Copy my text and open Google</button>

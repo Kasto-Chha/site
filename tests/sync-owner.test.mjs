@@ -441,6 +441,18 @@ test("replacing an owner is one recorded change, and the old owner loses the rig
   assert.equal((await edit(r.id, { body: "the new owner edits what the business said" })).status, 200, "the replies are the business's, not one person's");
 });
 
+test("what the replace-owner warning promises (patch 11b): the old owner's replies stay on the page, and the new owner can remove them", async () => {
+  seed(); const r = seedReply();
+  as("user_admin");
+  assert.equal((await link(A.id, { userId: "user_owner_b" })).status, 200);
+  assert.ok(replies().some((row) => row.id === r.id && row.body === "Thank you for coming."), "the reply is still there after the owner is replaced");
+  as("user_owner_a");
+  assert.equal((await remove(r.id)).status, 403, "the old owner can no longer remove it");
+  as("user_owner_b");
+  assert.equal((await remove(r.id)).status, 200, "the new owner can");
+  assert.equal(replies().some((row) => row.id === r.id), false);
+});
+
 test("linking the same account again changes and records nothing", async () => {
   seed(); as("user_admin");
   assert.equal((await link(A.id, { userId: "user_owner_a" })).status, 200);
@@ -556,7 +568,13 @@ test("the reply block: the label, who sees which buttons, and nothing a stranger
 test("the admin panel links in two steps, and says what an owner can and cannot do", () => {
   const panel = read("app/admin/sync/[id]/OwnerPanel.js");
   assert.match(panel, /\/api\/admin\/sync\/owner-lookup/);
-  assert.match(panel, /disabled=\{busy \|\| !found\.verified\}/);
+  assert.match(panel, /disabled=\{Boolean\(busy\) \|\| !found\.verified\}/, "an account whose email is not verified cannot be linked or replace the owner");
+  // Replacing an owner is a confirmed step with a warning (patch 11b); the first link on a business is not.
+  assert.match(panel, /onClick=\{owner \? \(\) => setConfirmReplace\(true\) : link\}/);
+  assert.match(panel, /Yes, replace/);
+  assert.match(panel, /This replaces \{ownerLabel\} as the verified owner\./);
+  assert.match(panel, /Replies they already wrote stay\s+on the page, and the new owner can edit or remove them\./);
+  assert.match(panel, /This account is already the verified owner\./);
   assert.match(panel, /they cannot post experiences about their own business/);
   assert.match(panel, /Unlink this owner\?/);
   const page = read("app/admin/sync/[id]/page.js");

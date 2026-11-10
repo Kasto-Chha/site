@@ -18,7 +18,7 @@ import AskComposer from "./AskComposer";
 import FirstPostComposer from "./FirstPostComposer";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 import { createServerSupabase } from "../../../lib/supabase/server";
-import { isOwnerOf, repliesForReviews } from "../../../lib/sync/ownerReplies";
+import { isOwnerOf, ownerAccountOf, repliesForReviews } from "../../../lib/sync/ownerReplies";
 import { publicPosts } from "../../../lib/publicPosts";
 import "./business.css";
 import { isDiscussionIndexable, robotsFor } from "../../../lib/seo/indexable";
@@ -217,7 +217,7 @@ export default async function DiscussionThreadPage({ params }) {
   // Oldest first, so the opening experience carries the thread's title.
   const op = thread[0];
   // What goes to the browser: the posts without anyone's account id (lib/publicPosts.js).
-  const posts = publicPosts(thread, userId);
+  const posts = publicPosts(thread, userId, { businessOwnerId: ownerAccountOf(merchant) });
   const title = biz ? biz.title : op.topic || op.title || "KastoChha discussion";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 

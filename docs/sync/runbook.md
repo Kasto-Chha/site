@@ -23,6 +23,7 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 4. `0021_sync_thread_title.sql`: pins each business's thread title.
 5. `0022_sync_badge_events.sql`: lets the website badge record its events. Check it worked: `select pg_get_constraintdef(oid) from pg_constraint where conname = 'sync_events_type_check';` and look for `badge_open`.
 6. `0023_sync_owner_replies.sql`: a business's replies. Check: `select count(*) from public.sync_owner_replies;` returns 0.
+7. `0024_sync_audit_log_private.sql`: closes the admin audit log to the public key. Run it once; it changes no data. Check, with the project URL and the public (anon) key: `curl -s "$URL/rest/v1/admin_audit_log?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"` now says `permission denied for table admin_audit_log` (before it, it answered an empty list).
 
 The old website badge table can be dropped by hand once it is empty: `select count(*) from public.badge_businesses;` and, if it says 0, `drop table public.badge_businesses;`.
 

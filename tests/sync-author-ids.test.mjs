@@ -74,6 +74,28 @@ test("a post the viewer has just made is the opener's when the thread is new or 
   assert.equal(newPostByOpener([theirs, { created_at: "2026-11-09T00:00:00Z", mine: true }]), false);
 });
 
+test("a question asked by the business's own account is marked from_business (patch 11b); nothing else is, and the account never leaves the server", () => {
+  const OWNER = "user_alice_SECRET";
+  const rows = [
+    row({ id: "q1", topic_slug: "t", kind: "question", user_id: OWNER, at: "2026-11-01T00:00:00Z" }),
+    row({ id: "q2", topic_slug: "t", kind: "question", user_id: "user_bob_SECRET", at: "2026-11-02T00:00:00Z" }),
+    row({ id: "e1", topic_slug: "t", kind: "experience", user_id: OWNER, at: "2026-11-03T00:00:00Z" }),
+    row({ id: "q3", topic_slug: "t", kind: "question", user_id: null, at: "2026-11-04T00:00:00Z" })
+  ];
+  const out = Object.fromEntries(publicPosts(rows, "user_bob_SECRET", { businessOwnerId: OWNER }).map((post) => [post.id, post.from_business]));
+  assert.deepEqual(out, { q1: true, q2: false, e1: false, q3: false }, "only a question from the owner's account; an old experience from that account is not relabelled");
+  assert.doesNotMatch(JSON.stringify(publicPosts(rows, "user_bob_SECRET", { businessOwnerId: OWNER })), /_SECRET/);
+  for (const none of [undefined, null, ""]) assert.ok(publicPosts(rows, null, { businessOwnerId: none }).every((post) => post.from_business === false), "a thread with no owner marks nothing");
+  assert.ok(publicPosts(rows, null).every((post) => post.from_business === false), "and so does an ordinary thread");
+});
+
+test("the business page tells the helper who the owner is, through the owner helper, and the label is drawn on the question", () => {
+  const read = (file) => fs.readFileSync(file, "utf8");
+  assert.match(read("app/discussions/[slug]/page.js"), /publicPosts\(thread, userId, \{ businessOwnerId: ownerAccountOf\(merchant\) \}\)/);
+  assert.doesNotMatch(read("app/discussions/[slug]/page.js"), /owner_user_id/, "the page file never names the owner's account field");
+  assert.match(read("app/discussions/[slug]/BusinessQuestions.js"), /q\.from_business \? \(\s*<span className="owner-reply-badge"[^>]*>\s*From the business\s*<\/span>/);
+});
+
 // ---------- through the real routes ----------
 
 const fake = new FakePostgrest();
@@ -155,7 +177,7 @@ test("no code that runs in the browser reads an account id, and each place that 
   assert.deepEqual(offenders, [], "a client file reads user_id: have the server send an answer instead (lib/publicPosts.js)");
   const read = (file) => fs.readFileSync(file, "utf8");
   const page = read("app/discussions/[slug]/page.js");
-  assert.match(page, /const posts = publicPosts\(thread, userId\);/);
+  assert.match(page, /const posts = publicPosts\(thread, userId, \{ businessOwnerId: ownerAccountOf\(merchant\) \}\);/);
   assert.equal((page.match(/reviews=\{posts\}/g) || []).length, 2, "both the business and the ordinary thread get the cleaned posts");
   assert.doesNotMatch(page, /reviews=\{thread\}/);
   assert.match(read("app/discussions/page.js"), /reviews=\{publicPosts\(threadPage\.rows, userId\)\}/);

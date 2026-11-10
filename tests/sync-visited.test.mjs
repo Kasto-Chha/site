@@ -485,7 +485,7 @@ test("the overview counts the new taps and the Visited posts, and only experienc
     ],
     range: "7d", now: NOW
   });
-  assert.deepEqual(o.totals.taps, { share: 1, ask: 2, google: 0, copy: 1, maps: 0 });
+  assert.deepEqual(o.totals.taps, { share: 1, ask: 2, google: 0, copy: 1, maps: 0, note: 0 });
   assert.equal(o.totals.tapsTotal, 4);
   assert.deepEqual(o.totals.posts, { experiences: 2, questions: 1, visited: 1 }, "the old one is outside the week, and a question is never Visited");
   assert.equal(o.rows[0].visited, 1);

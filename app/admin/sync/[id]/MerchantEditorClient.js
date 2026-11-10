@@ -185,7 +185,7 @@ export default function MerchantEditorClient({ merchant }) {
         </p>
         <div className="admin-actions">
           <button type="button" className="btn-outline" onClick={toggle} disabled={saving}>
-            {active ? "Remove tag" : "Restore tag"}
+            {saving ? "Working…" : active ? "Remove tag" : "Restore tag"}
           </button>
         </div>
       </div>

@@ -112,7 +112,7 @@ export default async function SyncOverviewPage({ searchParams }) {
             <StatTile
               label="Hub taps"
               value={formatCount(data.totals.tapsTotal)}
-              sub={`Share ${formatCount(data.totals.taps.share)} · Ask ${formatCount(data.totals.taps.ask)} · Google ${formatCount(data.totals.taps.google + data.totals.taps.copy)} · Maps ${formatCount(data.totals.taps.maps)}`}
+              sub={`Share ${formatCount(data.totals.taps.share)} · Ask ${formatCount(data.totals.taps.ask)} · Google ${formatCount(data.totals.taps.google + data.totals.taps.copy)} · Maps ${formatCount(data.totals.taps.maps)} · Note ${formatCount(data.totals.taps.note)}`}
             />
             <StatTile label="Website badge opens" value={formatCount(data.totals.badge.open)} sub={`${formatCount(data.totals.badgeClicks)} clicked a link`} />
             <StatTile

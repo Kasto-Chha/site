@@ -27,7 +27,7 @@ export function QrCodeRow({ code, siteUrl, busy, onRename, onToggle }) {
         <a className="btn-outline" href={`${base}?format=png`}>PNG</a>
         <a className="btn-outline" href={`${base}?format=pdf`}>Print sheet (PDF)</a>
         <button type="button" className="btn-outline" onClick={onRename} disabled={busy}>Rename</button>
-        <button type="button" className="btn-outline" onClick={onToggle} disabled={busy}>{code.active ? "Switch off" : "Switch on"}</button>
+        <button type="button" className="btn-outline" onClick={onToggle} disabled={busy}>{busy ? "Working…" : code.active ? "Switch off" : "Switch on"}</button>
       </div>
     </div>
   );

@@ -210,3 +210,9 @@
 .sync-shell .fb-digest-text { margin: 0 0 12px; padding: 12px 14px; background: var(--s-bg); border: 1px solid var(--s-line); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--sync-sans), system-ui, sans-serif; font-size: 14px; }
 .sync-shell .ov-tabs a .mono { margin-left: 4px; opacity: 0.8; }
 .sync-shell .fb-removed { color: var(--s-muted); font-size: 13px; }
+
+/* A button that cannot be pressed right now looks it, so nobody presses a held button twice, or wonders whether a press
+   took (found in testing: the disabled rules existed but nothing showed them). A button that is working also says so. */
+.sync-shell .btn-red:disabled,
+.sync-shell .btn-outline:disabled,
+.sync-shell button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
