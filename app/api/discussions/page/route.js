@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 
+import { publicPosts } from "../../../../lib/publicPosts";
 import { getThreadPage } from "../../../../lib/supabase/queries";
 import { getBusinessesByTopicSlugs } from "../../../../lib/sync/merchants";
 
@@ -31,11 +33,20 @@ export async function GET(request) {
     ? Math.min(Math.max(requested, 0), MAX_OFFSET)
     : 0;
 
+  // Who is looking, so each post can say whether it is theirs without sending anyone's account id. A failure here means
+  // signed out, never an error.
+  let userId = null;
+  try {
+    ({ userId } = await auth());
+  } catch {
+    userId = null;
+  }
+
   try {
     const { rows, hasMore } = await getThreadPage({ offset, limit: PAGE_SIZE });
     // The businesses among these threads, so the list can name and mark them.
     const businesses = await getBusinessesByTopicSlugs(rows.map((row) => row.topic_slug));
-    return NextResponse.json({ rows, hasMore, nextOffset: offset + PAGE_SIZE, businesses });
+    return NextResponse.json({ rows: publicPosts(rows, userId), hasMore, nextOffset: offset + PAGE_SIZE, businesses });
   } catch (error) {
     console.warn("[discussions/page]", error?.message || error);
     // Never break the page over a failed "load more" — what is already on

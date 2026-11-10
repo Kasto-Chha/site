@@ -8,6 +8,7 @@ import { LIMITS, lengthError } from "../../../lib/validate";
 import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 import { pingIndexNow } from "../../../lib/seo/indexnow";
 import { isDiscussionIndexable } from "../../../lib/seo/indexable";
+import { publicPost } from "../../../lib/publicPosts";
 import { BODY_LIMITS, readJsonBody } from "../../../lib/requestBody";
 import { logDbError } from "../../../lib/dbError";
 import { logHubEvent } from "../../../lib/sync/qr";
@@ -235,7 +236,7 @@ export async function POST(request) {
       // Never block a publish on a search-engine ping.
     }
 
-    return NextResponse.json({ review });
+    return NextResponse.json({ review: publicPost(review, userId) });
   } catch (error) {
     console.error("POST /api/reviews failed:", error?.message || error);
     return NextResponse.json({ error: "Failed to save your post. Please try again." }, { status: 500 });

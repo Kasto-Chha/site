@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import BusinessQuestions from "./BusinessQuestions";
 import GoogleCopyCard from "./GoogleCopyCard";
 import { revealWhenPresent } from "../../../lib/revealNew";
+import { newPostByOpener } from "../../../lib/publicPosts";
 import TopicThread from "../../components/TopicThread";
 import useReviewVotes from "../../components/useReviewVotes";
 import useExperienceEdits from "../../components/useExperienceEdits";
@@ -77,7 +78,8 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {}, d
 
       const data = await response.json();
       if (data?.review) {
-        setItems((prev) => [data.review, ...prev]);
+        // It comes back without any account id and marked as the viewer's own; whether it is the opener's follows from the thread.
+        setItems((prev) => [{ ...data.review, by_op: newPostByOpener(prev) }, ...prev]);
       }
       // The Google card, when there is one, repeats the words just posted and holds the next step, so it is what to bring
       // into view; otherwise the new post itself.

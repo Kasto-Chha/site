@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { publicPosts } from "../../lib/publicPosts";
 
 import ExperienceClient from "./ExperienceClient";
 
@@ -81,7 +82,7 @@ export default async function DiscussionsPage({ searchParams }) {
         dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbSchema(siteUrl, breadcrumbTrail)) }}
       />
       <ExperienceClient
-        reviews={threadPage.rows}
+        reviews={publicPosts(threadPage.rows, userId)}
         businesses={businesses}
         hasMore={threadPage.hasMore}
         nextOffset={offset + PAGE_SIZE}

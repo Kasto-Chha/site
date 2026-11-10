@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicPost } from "../../../../lib/publicPosts";
 import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
@@ -98,7 +99,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "Could not save your edit." }, { status: 500 });
   }
 
-  return NextResponse.json({ review: data });
+  return NextResponse.json({ review: publicPost(data, userId) });
 }
 
 export async function DELETE(request, { params }) {

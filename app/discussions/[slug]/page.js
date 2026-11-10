@@ -19,6 +19,7 @@ import FirstPostComposer from "./FirstPostComposer";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { isOwnerOf, repliesForReviews } from "../../../lib/sync/ownerReplies";
+import { publicPosts } from "../../../lib/publicPosts";
 import "./business.css";
 import { isDiscussionIndexable, robotsFor } from "../../../lib/seo/indexable";
 import {
@@ -215,6 +216,8 @@ export default async function DiscussionThreadPage({ params }) {
 
   // Oldest first, so the opening experience carries the thread's title.
   const op = thread[0];
+  // What goes to the browser: the posts without anyone's account id (lib/publicPosts.js).
+  const posts = publicPosts(thread, userId);
   const title = biz ? biz.title : op.topic || op.title || "KastoChha discussion";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -264,7 +267,7 @@ export default async function DiscussionThreadPage({ params }) {
               <div id="share">
                 <ThreadClient
                   key={thread.map((post) => post.id).join(",")}
-                  reviews={thread}
+                  reviews={posts}
                   threadSlug={slug}
                   myVotes={myVotes}
                   displayTitle={biz.title}
@@ -279,7 +282,7 @@ export default async function DiscussionThreadPage({ params }) {
               </div>
             </>
           ) : (
-            <ThreadClient reviews={thread} threadSlug={slug} myVotes={myVotes} />
+            <ThreadClient reviews={posts} threadSlug={slug} myVotes={myVotes} />
           )}
           <SharePanel
             url={`/discussions/${slug}`}

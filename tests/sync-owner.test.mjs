@@ -628,7 +628,7 @@ test("the questions section: the question's own words, who asked and when, the b
   assert.match(src, /^"use client";/);
   assert.match(src, /className="biz-question-text">\{q\.summary\}/);
   assert.match(src, /<OwnerReplyBlock exp=\{q\} ownerThread=\{ownerThread\} \/>/);
-  assert.match(src, /const mine = Boolean\(user\?\.id\) && q\.user_id === user\.id;/);
+  assert.match(src, /const mine = q\.mine === true;/, "delete shows only on the asker's own question: the server says which questions are the viewer's (patch 12)");
   assert.match(src, /\{mine \? \(/);
   assert.match(src, /if \(!questions\.length\) return null;/);
   assert.ok(!/dangerouslySetInnerHTML|supabase|owner_user_id|author_user_id/.test(src));

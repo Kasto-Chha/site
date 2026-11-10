@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 
 import { boxAlreadyHoldsDraft, draftToApply } from "../../lib/restoreDraft";
 
@@ -61,7 +60,6 @@ export default function TopicThread({
 }) {
   const total = topic.verdicts.pos + topic.verdicts.neu + topic.verdicts.neg;
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
-  const { user } = useUser();
 
   // The thread's slug is its address. Every experience inside it links here,
   // so the topic accumulates on one page instead of splitting across one URL
@@ -106,8 +104,9 @@ export default function TopicThread({
   const [editVerdict, setEditVerdict] = useState("");
   const [confirmingId, setConfirmingId] = useState(null);
 
-  // Only the author sees edit/delete. The API checks this again on every write.
-  const isMine = (exp) => Boolean(user?.id) && exp.user_id === user.id;
+  // Only the author sees edit/delete. The server says which posts are the viewer's (`mine`, see lib/publicPosts.js), and the
+  // API checks it again on every write.
+  const isMine = (exp) => exp.mine === true;
 
   const startEdit = (exp) => {
     setEditingId(exp.id);
@@ -151,8 +150,10 @@ export default function TopicThread({
     .map((id) => topic.experiences.find((exp) => exp.id === id))
     .filter(Boolean);
 
+  // Written by whoever opened the thread: the server says so (`by_op`). A post that has not come from the server yet (one
+  // just made on a list) falls back to the name, as it always did for rows with no account.
   const isOp = (exp) => {
-    if (topic.op?.user_id && exp.user_id) return exp.user_id === topic.op.user_id;
+    if (typeof exp.by_op === "boolean") return exp.by_op;
     return Boolean(topic.op?.author_name) && exp.author_name === topic.op.author_name;
   };
 

@@ -354,7 +354,7 @@ const read = (file) => fs.readFileSync(file, "utf8");
 
 test("the thread page leaves an ordinary thread exactly as it was", () => {
   const page = read("app/discussions/[slug]/page.js");
-  assert.match(page, /\) : \(\s*<ThreadClient reviews=\{thread\} threadSlug=\{slug\} myVotes=\{myVotes\} \/>\s*\)\}/, "the ordinary thread's component call changed");
+  assert.match(page, /\) : \(\s*<ThreadClient reviews=\{posts\} threadSlug=\{slug\} myVotes=\{myVotes\} \/>\s*\)\}/, "the ordinary thread's component call changed (it now gets the posts without account ids: patch 12)");
   assert.match(page, /if \(!thread\.length && !merchant\) return \{ title: "Discussion not found - KastoChha" \}/);
   assert.match(page, /<h1 className="page-title">Discussion not found<\/h1>/);
   assert.match(page, /const title = biz \? biz\.title : op\.topic \|\| op\.title \|\| "KastoChha discussion"/);
