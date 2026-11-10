@@ -39,7 +39,7 @@ export default function GoogleCopyCard({ text, googleUrl, businessSlug, onClose 
   }
 
   return (
-    <section className="biz-copy" aria-label="Post your experience on Google too">
+    <section className="biz-copy" id="google-copy-card" aria-label="Post your experience on Google too">
       <h2>Your experience is on KastoChha.</h2>
       <p>Want it on Google too? We can&apos;t post for you, because a Google review has to be written by you, on Google. But we can copy your words and open the box.</p>
       <textarea className="thread-composer-input" readOnly rows={4} value={text} aria-label="Your experience" autoComplete="off" />

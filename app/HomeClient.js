@@ -181,7 +181,8 @@ export default function HomeClient({
   questions = [],
   trendingSearches = [],
   trendingVotes = {},
-  battleVotes = {}
+  battleVotes = {},
+  businesses = {}
 }) {
   const verdictRef = useRef(null);
   const activeTabRef = useRef("share");
@@ -765,7 +766,7 @@ export default function HomeClient({
             <a href="/discussions" className="sec-all">All discussions -&gt;</a>
           </div>
 
-          <DiscussionsGrid reviews={reviews} limit={6} />
+          <DiscussionsGrid reviews={reviews} limit={6} businesses={businesses} />
 
 {/* Open questions sit directly under the discussion grid: "here is the
               conversation, and here is where it needs you". The share block

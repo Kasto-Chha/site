@@ -25,9 +25,9 @@ export default function BusinessQuestions({ questions, businessName, ownerThread
         const mine = Boolean(user?.id) && q.user_id === user.id;
         const error = errorFor ? errorFor(q.id) : "";
         return (
-          <article className="biz-question" key={q.id}>
+          <article className="biz-question" id={`q-${q.id}`} key={q.id}>
             <div className="biz-question-head">
-              <span className="exp-author">{q.author_name || "Anonymous"}</span> asked · {shortDate(q.created_at)}
+              <span className="exp-author">{q.author_name || "Anonymous"}</span> asked · {shortDate(q.created_at)}{q.updated_at ? " · edited" : ""}
             </div>
             <p className="biz-question-text">{q.summary}</p>
             {ownerThread ? <OwnerReplyBlock exp={q} ownerThread={ownerThread} /> : null}

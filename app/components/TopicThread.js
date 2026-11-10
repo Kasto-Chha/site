@@ -380,6 +380,11 @@ export default function TopicThread({
                     {timeLabel ? (
                       <time dateTime={isoTime(exp.created_at)}>{timeLabel}</time>
                     ) : null}
+                    {exp.updated_at ? (
+                      <span className="exp-edited" title="The words or the verdict were changed after this was posted.">
+                        · edited
+                      </span>
+                    ) : null}
                     {exp.verdict ? (
                       <span className={`exp-verdict ${tone}`}>{exp.verdict}</span>
                     ) : null}

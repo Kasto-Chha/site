@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import BusinessQuestions from "./BusinessQuestions";
 import GoogleCopyCard from "./GoogleCopyCard";
+import { revealWhenPresent } from "../../../lib/revealNew";
 import TopicThread from "../../components/TopicThread";
 import useReviewVotes from "../../components/useReviewVotes";
 import useExperienceEdits from "../../components/useExperienceEdits";
@@ -78,7 +79,14 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {}, d
       if (data?.review) {
         setItems((prev) => [data.review, ...prev]);
       }
-      if (googleUrl && summary) setLastPost(summary);
+      // The Google card, when there is one, repeats the words just posted and holds the next step, so it is what to bring
+      // into view; otherwise the new post itself.
+      if (googleUrl && summary) {
+        setLastPost(summary);
+        revealWhenPresent("google-copy-card");
+      } else if (data?.review?.id) {
+        revealWhenPresent(`exp-${data.review.id}`);
+      }
       return { ok: true };
     } catch {
       return { ok: false, error: "Could not post your reply. Try again." };
@@ -104,12 +112,18 @@ export default function ThreadClient({ reviews = [], threadSlug, myVotes = {}, d
         replies,
         save: async (reviewId, body) => {
           const result = await ownerCall("/api/sync/owner-replies", "POST", { reviewId, body });
-          if (result.ok) setReplies((prev) => ({ ...prev, [reviewId]: result.data.reply }));
+          if (result.ok) {
+            setReplies((prev) => ({ ...prev, [reviewId]: result.data.reply }));
+            revealWhenPresent(`reply-${result.data.reply.id}`);
+          }
           return result;
         },
         edit: async (replyId, body) => {
           const result = await ownerCall(`/api/sync/owner-replies/${replyId}`, "PUT", { body });
-          if (result.ok) setReplies((prev) => ({ ...prev, [result.data.reply.review_id]: result.data.reply }));
+          if (result.ok) {
+            setReplies((prev) => ({ ...prev, [result.data.reply.review_id]: result.data.reply }));
+            revealWhenPresent(`reply-${result.data.reply.id}`);
+          }
           return result;
         },
         remove: async (replyId) => {

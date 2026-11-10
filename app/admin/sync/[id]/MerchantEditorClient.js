@@ -104,7 +104,7 @@ export default function MerchantEditorClient({ merchant }) {
           <label className="admin-label" htmlFor="thread-title">Thread title (permanent)</label>
           <input id="thread-title" autoComplete="off" className="admin-input" type="text" value={merchant.thread_title} readOnly />
         </div>
-        <div className="admin-helper">None of these can change after tagging. Posts are sent under the thread title, so renaming the business never splits its thread. The hub itself arrives with the QR patch.</div>
+        <div className="admin-helper">None of these can change after tagging. Posts are sent under the thread title, so renaming the business never splits its thread.</div>
       </div>
 
       <form className="admin-form admin-panel" onSubmit={save}>

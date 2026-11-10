@@ -12,7 +12,7 @@ import {
 import { topicSlug } from "../../../lib/slug";
 import { shareMetadata, threadShareInfo } from "../../../lib/share";
 import { getMerchantByTopicSlug } from "../../../lib/sync/merchants";
-import { businessMetadata, businessPageFacts, pinnedTitle } from "../../../lib/sync/threadPage";
+import { businessMetadata, businessPageFacts, pinnedTitle, experiencesOnly, threadCountsLine } from "../../../lib/sync/threadPage";
 import BusinessHeader from "./BusinessHeader";
 import AskComposer from "./AskComposer";
 import FirstPostComposer from "./FirstPostComposer";
@@ -215,7 +215,6 @@ export default async function DiscussionThreadPage({ params }) {
 
   // Oldest first, so the opening experience carries the thread's title.
   const op = thread[0];
-  const replies = thread.length - 1;
   const title = biz ? biz.title : op.topic || op.title || "KastoChha discussion";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -223,7 +222,8 @@ export default async function DiscussionThreadPage({ params }) {
   // opening post with replies attached. Describing this as an Article would
   // misrepresent it — nobody wrote it, a community accumulated it.
   const schema = jsonLd(
-    discussionSchema(siteUrl, { slug, title, experiences: thread }),
+    // On a business's page the data describes what customers shared: its questions are not experiences.
+    discussionSchema(siteUrl, { slug, title, experiences: biz ? experiencesOnly(thread) : thread }),
     breadcrumbSchema(siteUrl, [
       { name: "Discussions", path: "/discussions" },
       { name: title, path: `/discussions/${slug}` }
@@ -244,9 +244,8 @@ export default async function DiscussionThreadPage({ params }) {
               <div className="page-kicker">{biz ? biz.category : op.category}</div>
               <h1 className="page-title">{biz ? biz.name : title}</h1>
               <p className="page-sub">
-                {thread.length} experience{thread.length === 1 ? "" : "s"} ·{" "}
-                {replies} {replies === 1 ? "reply" : "replies"} — read what the
-                community says, vote, and add your own.
+                {threadCountsLine(thread, { business: Boolean(biz) })} — read what the community says, vote, and add
+                your own.
               </p>
             </div>
             <a className="sec-all" href="/discussions">

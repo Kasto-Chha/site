@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { revealWhenPresent } from "../../lib/revealNew";
 
 import useRequireSignIn from "./useRequireSignIn";
 
@@ -59,6 +60,7 @@ export default function useExperienceEdits(setItems) {
             item.id === id ? { ...item, ...(data.review || { summary: body }) } : item
           )
         );
+        revealWhenPresent(`exp-${id}`);
         return { ok: true };
       } catch {
         setError(id, "Network problem — your edit was not saved.");

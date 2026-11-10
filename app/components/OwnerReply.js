@@ -9,7 +9,7 @@ import { REPLY_MAX, shortDate } from "../../lib/sync/ownerReplies";
 // the KastoChha team has checked that the account belongs to it.
 export function ReplyView({ name, reply, children }) {
   return (
-    <div className="owner-reply">
+    <div className="owner-reply" id={`reply-${reply.id}`}>
       <div className="owner-reply-head">
         <span className="owner-reply-name">{name}</span>
         <span className="owner-reply-badge" title="Written by the account the KastoChha team linked to this business.">Verified business</span>

@@ -11,6 +11,8 @@ import {
 } from "./sectionHelpers";
 import { IconThumb } from "./icons";
 import { topicSlug } from "../../lib/slug";
+import "./businessChip.css";
+import { pickCards } from "../../lib/homeCards";
 
 const AV_CLASSES = ["av-a", "av-b", "av-c"];
 
@@ -20,15 +22,13 @@ const slugOf = (review) =>
 // Community discussions grid, built from the shared `reviews` pool. Each card
 // is a "kasto chha?" thread with a participant avatar stack, a quoted opener,
 // and reply / upvote / time meta. Clicking a card opens the full thread page.
-export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
+export default function DiscussionsGrid({ reviews = [], limit = 6, businesses = {} }) {
   // Real reply counts: how many other rows share each card's topic within the
   // loaded pool (rather than the seeded comment_count column). The same pass
   // collects each thread's distinct authors for the avatar stack, newest first.
-  const threadSize = new Map();
   const participants = new Map();
   for (const review of reviews) {
     const slug = slugOf(review);
-    threadSize.set(slug, (threadSize.get(slug) || 0) + 1);
     const name = (review.author_name || "").trim();
     if (!name) continue;
     if (!participants.has(slug)) participants.set(slug, []);
@@ -36,22 +36,9 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
     if (!names.includes(name)) names.push(name);
   }
 
-  // One card per THREAD, not per row.
-  //
-  // This used to slice the raw list, so a thread with three replies produced
-  // three identical cards all linking to the same page — the grid looked like
-  // it held six discussions when it held two. The newest row represents each
-  // thread, since reviews arrive newest-first and that is the most recent
-  // thing said on it.
-  const seen = new Set();
-  const items = [];
-  for (const review of reviews) {
-    const slug = slugOf(review);
-    if (seen.has(slug)) continue;
-    seen.add(slug);
-    items.push(review);
-    if (items.length >= limit) break;
-  }
+  // One card per thread, and what each card says about it, are decided in lib/homeCards.js.
+  const cards = pickCards(reviews, { businesses, limit });
+  const items = cards.map((card) => card.review);
 
   if (items.length === 0) {
     return (
@@ -68,7 +55,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
     <div className="disc-grid">
       {items.map((review, index) => {
         const tone = catTone(review.category);
-        const replies = Math.max((threadSize.get(slugOf(review)) || 1) - 1, 0);
+        const { business, replies } = cards[index];
         const likes = review.upvotes || 0;
         const time = formatTimeAgo(review.created_at);
         const stack = (participants.get(slugOf(review)) || []).slice(0, 3);
@@ -79,6 +66,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
               <div className="disc-cat" style={{ color: tone }}>
                 <span className="tcard-glyph" style={{ background: tone }} aria-hidden />
                 {catLabel(review.category)}
+                {business ? <span className="topic-biz-chip">Business</span> : null}
               </div>
               {stack.length > 0 ? (
                 <div className="disc-avatars" aria-hidden>
@@ -97,7 +85,7 @@ export default function DiscussionsGrid({ reviews = [], limit = 6 }) {
 
             <h3 className="disc-title">
               <a className="disc-link" href={`/discussions/${slugOf(review)}`}>
-                {review.title || review.topic}
+                {business ? business.title : review.title || review.topic}
               </a>
             </h3>
             {/* The quote shows what someone SAID about the topic, so it has to

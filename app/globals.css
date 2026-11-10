@@ -918,7 +918,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .verdict-chip.neu{background:#FEF4D3;color:var(--gold);border-color:rgba(201,148,10,.22)}
 .verdict-chip.neg{background:var(--red-pale);color:var(--red);border-color:rgba(200,16,46,.18)}
 
-.topic-preview{font-size:.96rem;color:var(--muted);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.topic-preview{white-space:pre-line;font-size:.96rem;color:var(--muted);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .topic-preview-by{color:var(--ink);font-weight:700}
 
 /* Actions group left, meta pushed right — with three actions in the row,
@@ -946,7 +946,8 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 .exp-verdict.pos{background:var(--green-pale);color:var(--green)}
 .exp-verdict.neu{background:#FEF4D3;color:var(--gold)}
 .exp-verdict.neg{background:var(--red-pale);color:var(--red)}
-.exp-text{font-size:.96rem;color:var(--muted);line-height:1.7;overflow-wrap:anywhere}
+.exp-edited{color:var(--muted2);font-size:.82rem}
+.exp-text{white-space:pre-line;font-size:.96rem;color:var(--muted);line-height:1.7;overflow-wrap:anywhere}
 .exp-op{
 	font-family:var(--font-mono), monospace;font-size:.58rem;font-weight:700;letter-spacing:.8px;
 	color:var(--red);background:var(--red-pale);border:1px solid rgba(200,16,46,.25);
@@ -2088,7 +2089,7 @@ ol.chat-md-list li{list-style:decimal}
 .disc-av.av-b{background:linear-gradient(135deg,var(--gold),#e0a93c)}
 .disc-av.av-c{background:linear-gradient(135deg,#2563eb,#5b54e6)}
 .disc-title{font-family:var(--font-serif),serif;font-size:1.32rem;font-weight:800;letter-spacing:-.4px;line-height:1.2;margin-bottom:12px}
-.disc-quote{font-size:.9rem;color:var(--muted);line-height:1.6;font-style:italic;margin-bottom:18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.disc-quote{white-space:pre-line;font-size:.9rem;color:var(--muted);line-height:1.6;font-style:italic;margin-bottom:18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .disc-divider{height:1px;background:var(--border);margin-bottom:16px}
 .disc-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:2px}
 .disc-replies{
@@ -2367,3 +2368,9 @@ button.sec-all{background:none;border:none;padding:0;cursor:pointer}
 	.reel-card{flex-basis:158px;padding:16px}
 	.reel-title{font-size:.98rem}
 }
+
+/* The item someone has just posted, edited or replied to is brought into view and rings briefly (lib/revealNew.js). */
+.just-posted{animation:kc-just-posted 2.4s ease-out}
+.just-posted:focus{outline:none}
+@keyframes kc-just-posted{0%{box-shadow:0 0 0 5px rgba(200,16,46,.38)}100%{box-shadow:0 0 0 5px rgba(200,16,46,0)}}
+@media (prefers-reduced-motion:reduce){.just-posted{animation:none;outline:2px solid var(--ink);outline-offset:4px}}

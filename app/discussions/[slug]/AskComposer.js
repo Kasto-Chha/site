@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { revealWhenPresent } from "../../../lib/revealNew";
 import { useRouter } from "next/navigation";
 
 import useRequireSignIn from "../../components/useRequireSignIn";
@@ -58,8 +59,11 @@ export default function AskComposer({ slug, postTitle, category, businessName, d
         setError(data?.error || "Could not post your question. Try again.");
         return;
       }
+      const saved = await response.json().catch(() => ({}));
       setText("");
       router.refresh();
+      // The page refreshes its data, then draws the question; bring it into view when it arrives.
+      if (saved?.review?.id) revealWhenPresent(`q-${saved.review.id}`);
     } catch {
       setError("Could not post your question. Try again.");
     } finally {

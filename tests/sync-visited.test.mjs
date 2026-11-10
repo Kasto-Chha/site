@@ -527,11 +527,11 @@ test("the Visited mark is drawn on a post, both in a card's preview and in the f
 
 test("the Google offer is made after a post, on both ways of posting, and an ordinary thread renders as it did", () => {
   const client = read("app/discussions/[slug]/ThreadClient.js");
-  assert.match(client, /if \(googleUrl && summary\) setLastPost\(summary\)/);
+  assert.match(client, /if \(googleUrl && summary\) \{\s*setLastPost\(summary\);/, "the offer is still made after a post (patch 11a also brings it into view)");
   assert.match(client, /if \(!googleUrl \|\| !lastPost\) return withQuestions;/, "no offer showing: nothing is added");
   assert.match(client, /const withQuestions = ownerName \?[\s\S]*: \(\s*thread\s*\);/, "an ordinary thread (no business) renders just the thread, exactly as before");
   const first = read("app/discussions/[slug]/FirstPostComposer.js");
-  assert.match(first, /if \(googleUrl\) setPosted\(summary\);\s*else router\.refresh\(\);/);
+  assert.match(first, /if \(googleUrl\) \{\s*setPosted\(summary\);[\s\S]*?\} else \{\s*router\.refresh\(\);/, "offer for a business with a Google link, otherwise the page refreshes (patch 11a also brings the result into view)");
   assert.match(first, /<GoogleCopyCard text=\{posted\}/);
   const page = read("app/discussions/[slug]/page.js");
   assert.equal((page.match(/googleUrl=\{biz\.reviewUrl\}/g) || []).length, 2);

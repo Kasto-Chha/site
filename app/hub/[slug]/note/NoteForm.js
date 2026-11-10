@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CONTACT_MAX, NOTE_MAX } from "../../../../lib/sync/feedback";
+import { revealWhenPresent } from "../../../../lib/revealNew";
 
 // The form for a private note. No login: a customer at a table should be able to say "the washroom was not
 // clean" without making an account. It sends words and, if the person chooses, a way to reach them. The
@@ -14,6 +15,9 @@ export default function NoteForm({ slug, name }) {
   const [website, setWebsite] = useState("");
   const [state, setState] = useState("writing"); // writing | sending | sent
   const [error, setError] = useState("");
+
+  // When the note is sent the form is replaced by a thank-you; bring it into view with the screen reader's attention on it.
+  useEffect(() => (state === "sent" ? revealWhenPresent("note-thanks") : undefined), [state]);
 
   async function submit(event) {
     event.preventDefault();
@@ -44,7 +48,7 @@ export default function NoteForm({ slug, name }) {
 
   if (state === "sent") {
     return (
-      <div className="hub-note-done" role="status">
+      <div className="hub-note-done" id="note-thanks" role="status">
         <h2>Thank you.</h2>
         <p>Your note is on its way to the team at {name}. It is private: it will not be posted anywhere.</p>
         <a className="hub-action" href={`/hub/${slug}`}>

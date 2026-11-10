@@ -84,9 +84,13 @@ async function getCommunityContext(query) {
     // wider candidate set, and rank in JS by how many words each one matched.
     const tokens = searchTokens(query);
 
+    // Experiences only. A question is not something anyone shared: an unanswered "Do you have vegan options?" quoted as
+    // community experience reads oddly, and a question's answers are experiences filed under its own title, so they are
+    // still found (found in testing: the chat searched every post, questions included).
     const reviewQuery = supabase
       .from("reviews")
-      .select("topic, title, summary, verdict, category, created_at");
+      .select("topic, title, summary, verdict, category, created_at")
+      .neq("kind", "question");
 
     if (tokens.length) {
       reviewQuery.or(ilikeAnyClause(tokens, ["topic", "title", "summary"]));

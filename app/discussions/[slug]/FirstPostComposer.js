@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { revealWhenPresent } from "../../../lib/revealNew";
 import { useRouter } from "next/navigation";
 
 import GoogleCopyCard from "./GoogleCopyCard";
@@ -52,11 +53,18 @@ export default function FirstPostComposer({ slug, postTitle, category, businessN
         setError(data?.error || "Could not post your experience. Try again.");
         return;
       }
+      const saved = await response.json().catch(() => ({}));
       setText("");
       setVerdict("");
-      // A business with a Google link gets the offer before the page changes under the visitor.
-      if (googleUrl) setPosted(summary);
-      else router.refresh();
+      // A business with a Google link gets the offer before the page changes under the visitor, and the offer is what to
+      // bring into view; otherwise the page refreshes and the new post is.
+      if (googleUrl) {
+        setPosted(summary);
+        revealWhenPresent("google-copy-card");
+      } else {
+        router.refresh();
+        if (saved?.review?.id) revealWhenPresent(`exp-${saved.review.id}`);
+      }
     } catch {
       setError("Could not post your experience. Try again.");
     } finally {
