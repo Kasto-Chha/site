@@ -216,3 +216,21 @@
 .sync-shell .btn-red:disabled,
 .sync-shell .btn-outline:disabled,
 .sync-shell button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Tasks (patch 13): the filter chips, a task's pills, and its due date. */
+.sync-shell .sync-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.sync-shell .sync-chip { border: 1px solid #c9d1cc; background: #fff; color: #1d2b27; border-radius: 999px; padding: 6px 14px; font: inherit; cursor: pointer; }
+.sync-shell .sync-chip.on { background: #0f5c55; border-color: #0f5c55; color: #fff; }
+.sync-shell .sync-chip-n { opacity: 0.7; margin-left: 4px; }
+.sync-shell .sync-task-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.sync-shell .sync-task-details { white-space: pre-line; }
+.sync-shell .sync-pill { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; background: #e3ecf5; color: #19406b; }
+.sync-shell .sync-pill.waiting { background: #fbefd2; color: #7a5200; }
+.sync-shell .sync-pill.done { background: #dff1e4; color: #1d5a32; }
+.sync-shell .sync-pill.crit { background: #f6d9d9; color: #8a1c1c; }
+.sync-shell .sync-due.now { color: #8a1c1c; font-weight: 500; }
+.sync-shell .sync-task.urgent { border-left: 3px solid #8a1c1c; }
+
+/* Team (patch 13): the businesses an operator works on, each with a small remove button. */
+.sync-shell .sync-assigned { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.sync-shell .sync-x { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 0 2px; }

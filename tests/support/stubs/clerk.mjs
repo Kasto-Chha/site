@@ -39,6 +39,15 @@ export const clerkClient = async () => ({
       if (defined && userId !== state().userId && !state().roles?.[userId]) throw Object.assign(new Error("Not Found"), { status: 404 });
       return { id: userId, publicMetadata: { role: state().roles?.[userId] || "user" } };
     },
+    // Changing an account's role, as the role routes do: it merges into what the account already carries, and the next
+    // lookup (getUser, or a role check) sees it. `metadataWrites` records each call so a test can see what was sent.
+    updateUserMetadata: async (userId, { publicMetadata = {} } = {}) => {
+      if (state().clerkDown) throw new Error("Clerk is down");
+      const s = state();
+      s.metadataWrites = [...(s.metadataWrites || []), { userId, publicMetadata }];
+      if (publicMetadata.role) s.roles = { ...(s.roles || {}), [userId]: publicMetadata.role };
+      return { id: userId, publicMetadata };
+    },
     getUserList: async ({ emailAddress = [] } = {}) => {
       if (state().clerkDown) throw new Error("Clerk is down");
       const wanted = emailAddress.map((e) => String(e).toLowerCase());

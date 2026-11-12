@@ -8,7 +8,8 @@ import { BusinessTypeSelect, CategoryControl, KindLabelField } from "../Category
 import { countLabel } from "../../../../lib/sync/text";
 import { ABOUT_MAX } from "../../../../lib/sync/validate";
 
-export default function MerchantEditorClient({ merchant }) {
+// `operatorView` is an operator's version of the page: the details form, without the section that removes or restores the tag.
+export default function MerchantEditorClient({ merchant, operatorView = false }) {
   const router = useRouter();
   const [businessName, setBusinessName] = useState(merchant.business_name);
   const [area, setArea] = useState(merchant.area);
@@ -176,6 +177,7 @@ export default function MerchantEditorClient({ merchant }) {
         </div>
       </form>
 
+      {operatorView ? null : (
       <div className="admin-panel">
         <h2>{active ? "Remove the business tag" : "Restore the business tag"}</h2>
         <p className="admin-helper">
@@ -189,6 +191,7 @@ export default function MerchantEditorClient({ merchant }) {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

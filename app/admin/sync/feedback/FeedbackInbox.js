@@ -35,6 +35,30 @@ export default function FeedbackInbox({ notes, digests }) {
     }
   }
 
+  // A task for this business, started from the note: the note's words are its details and the note stays as it is. The
+  // customer's contact details are not copied, only what they wrote.
+  async function makeTask(note) {
+    setBusy(note.id);
+    setMessage("");
+    try {
+      const line = String(note.message || "").replace(/\s+/g, " ").trim();
+      await call("/api/admin/sync/tasks", "POST", {
+        merchantId: note.business.id,
+        title: `Private note: ${line.length > 90 ? `${line.slice(0, 89)}…` : line}`,
+        details: note.message,
+        type: "other",
+        source: "note",
+        sourceNoteId: note.id
+      });
+      setCopied((c) => ({ ...c, [note.id]: "Task made. It is on the Tasks page." }));
+      setTimeout(() => setCopied((c) => ({ ...c, [note.id]: "" })), 4000);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function copy(key, text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -60,6 +84,7 @@ export default function FeedbackInbox({ notes, digests }) {
             busy={busy === note.id}
             copied={copied[note.id]}
             onCopy={() => copy(note.id, forwardText({ businessName: note.business?.business_name ?? "this business", note }))}
+            onTask={makeTask}
             onStatus={(n, status) => run(n.id, () => call(`/api/admin/sync/feedback/${n.id}`, "PUT", { status }))}
           />
         ))}

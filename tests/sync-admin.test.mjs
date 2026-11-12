@@ -372,21 +372,28 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const SCREENS = ["app/admin/sync/page.js", "app/admin/sync/businesses/page.js", "app/admin/sync/feedback/page.js", "app/admin/sync/export/page.js", "app/admin/sync/new/page.js", "app/admin/sync/[id]/page.js"];
 const ROUTES = ["app/api/admin/sync/threads/route.js", "app/api/admin/sync/merchants/route.js", "app/api/admin/sync/merchants/[id]/route.js"];
 
-test("every Sync admin screen checks for an admin first, and stays out of search", () => {
+// Patch 13: the businesses list, a business's page and its edit route ask for the TEAM (an admin or an operator) and then limit an
+// operator themselves. Everything else here still asks for an admin. tests/sync-permissions.test.mjs holds the full table.
+const TEAM_GATED = new Set(["app/admin/sync/businesses/page.js", "app/admin/sync/[id]/page.js", "app/api/admin/sync/merchants/[id]/route.js"]);
+const gateOf = (source) => Math.min(...[source.indexOf("requireRole("), source.indexOf("syncAccess(")].filter((i) => i >= 0));
+
+test("every Sync admin screen checks for an admin (or, where meant for operators too, the team) first, and stays out of search", () => {
   for (const file of SCREENS) {
     const source = read(file);
-    assert.match(source, /requireRole\(ROLE\.ADMIN\)/, `${file} does not require an admin`);
+    if (TEAM_GATED.has(file)) assert.match(source, /await syncAccess\(\)/, `${file} does not check the team`);
+    else assert.match(source, /requireRole\(ROLE\.ADMIN\)/, `${file} does not require an admin`);
     assert.match(source, /robots: NOINDEX_NOFOLLOW/, `${file} can be indexed`);
-    assert.ok(source.indexOf("requireRole(") < source.indexOf("return <") || !source.includes("return <"), `${file} renders before checking the role`);
+    assert.ok(gateOf(source) < source.indexOf("return <") || !source.includes("return <"), `${file} renders before checking the role`);
   }
 });
 
-test("every Sync admin route checks for an admin before it reads anything", () => {
+test("every Sync admin route checks for an admin (or the team, for the edit route) before it reads anything", () => {
   for (const file of ROUTES) {
     const source = read(file);
     for (const handler of source.match(/export async function (GET|POST|PUT)[^{]*\{[\s\S]*?\n\}/g) || []) {
-      assert.match(handler, /requireRole\(ROLE\.ADMIN\)/, `${file}: a handler does not require an admin`);
-      const gate = handler.indexOf("requireRole(");
+      if (TEAM_GATED.has(file)) assert.match(handler, /await syncAccess\(\)/, `${file}: a handler does not check the team`);
+      else assert.match(handler, /requireRole\(ROLE\.ADMIN\)/, `${file}: a handler does not require an admin`);
+      const gate = gateOf(handler);
       for (const later of ["readJsonBody(", "createServerSupabase("]) {
         if (handler.includes(later)) assert.ok(gate < handler.indexOf(later), `${file}: ${later} comes before the role check`);
       }

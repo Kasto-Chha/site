@@ -24,8 +24,19 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 5. `0022_sync_badge_events.sql`: lets the website badge record its events. Check it worked: `select pg_get_constraintdef(oid) from pg_constraint where conname = 'sync_events_type_check';` and look for `badge_open`.
 6. `0023_sync_owner_replies.sql`: a business's replies. Check: `select count(*) from public.sync_owner_replies;` returns 0.
 7. `0024_sync_audit_log_private.sql`: closes the admin audit log to the public key. Run it once; it changes no data. Check, with the project URL and the public (anon) key: `curl -s "$URL/rest/v1/admin_audit_log?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"` now says `permission denied for table admin_audit_log` (before it, it answered an empty list).
+8. `0025_sync_team_and_tasks.sql`: the operator list, which businesses each operator works on, and the team's tasks. Run it on staging first, then on the live project when the patch is released. Safe to run twice; it changes no existing table. Check: `select count(*) from public.sync_tasks;` returns 0, and with the public key `curl -s "$URL/rest/v1/sync_tasks?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"` says `permission denied for table sync_tasks`.
 
 The old website badge table can be dropped by hand once it is empty: `select count(*) from public.badge_businesses;` and, if it says 0, `drop table public.badge_businesses;`.
+
+## Operators and tasks
+
+An **operator** is a team member who works on the businesses an admin gives them and cannot change anything else. To add one: the person signs up on the site first; then, on **Team**, enter their email, press **Look up**, check it is the right account, and confirm. Give them businesses on the Team page or on a business's own page, under **Assigned operators**.
+
+An operator sees only **Tasks** and **Businesses** in the menu, and only the businesses assigned to them. They can edit those businesses' details and work their tasks. They cannot remove or restore a tag, link an owner, touch QR cards or the website badge, read private notes, see the Overview or exports, or reach the Team page.
+
+To stop someone being an operator, press **Remove operator** on the Team page: their access ends at once and their tasks become nobody's. A business's linked owner cannot be made an operator.
+
+**Tasks** is the team's to-do list: one thing to do for one business, who does it, and by when. Admins can start one from a private note with **Make a task** in the inbox; it copies what the customer wrote, never their contact details. The Overview shows how many open tasks are due today or earlier, in Nepal time.
 
 ## Onboard a café
 

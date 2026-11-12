@@ -2,6 +2,9 @@ import { NOINDEX_NOFOLLOW } from "../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../lib/auth/roles";
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { limiterStatus } from "../../../lib/ratelimit";
+import { redirect } from "next/navigation";
+import { syncAccess } from "../../../lib/sync/access";
+import { dueTaskCount, nepalToday } from "../../../lib/sync/tasks";
 import { DAILY_CAP_PER_BUSINESS, countNewFeedback } from "../../../lib/sync/feedback";
 import { hubTokenConfigured } from "../../../lib/sync/hubToken";
 import { formatCount, loadOverview, parseRange } from "../../../lib/sync/overview";
@@ -22,6 +25,8 @@ const TABLE_LIMIT = 25;
 export default async function SyncOverviewPage({ searchParams }) {
   const authResult = await requireRole(ROLE.ADMIN);
   if (!authResult.ok) {
+    // An operator's home is their task list, not the Overview, which is for admins.
+    if ((await syncAccess()).ok) redirect("/admin/sync/tasks");
     return (
       <div className="admin-page">
         <h1>Admin access required</h1>
@@ -33,6 +38,13 @@ export default async function SyncOverviewPage({ searchParams }) {
 
   const range = parseRange(searchParams?.range);
   const now = Date.now();
+  // Open tasks due today (Nepal time) or earlier. Never worth failing the page over: it shows 0 if it cannot be read.
+  let tasksDue = 0;
+  try {
+    tasksDue = await dueTaskCount(createServerSupabase(), nepalToday(now));
+  } catch {
+    tasksDue = 0;
+  }
   let data = null;
   let error = "";
   try {
@@ -108,6 +120,7 @@ export default async function SyncOverviewPage({ searchParams }) {
               sub={data.withoutActiveCode > 0 ? `${countLabel(data.withoutActiveCode, "business", "businesses")} without a working QR code` : "All have a working QR code"}
               warn={data.withoutActiveCode > 0}
             />
+            <StatTile label="Tasks due today" value={formatCount(tasksDue)} sub={tasksDue === 1 ? "open task due today or overdue" : "open tasks due today or overdue"} />
             <StatTile label="QR scans" value={formatCount(data.totals.scans)} sub={data.rangeLabel} />
             <StatTile
               label="Hub taps"

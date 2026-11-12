@@ -1,5 +1,7 @@
 import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
-import { requireRole, ROLE } from "../../../../lib/auth/roles";
+import { createServerSupabase } from "../../../../lib/supabase/server";
+import { syncAccess } from "../../../../lib/sync/access";
+import { assignedMerchantIds } from "../../../../lib/sync/team";
 import { kindDisplay } from "../../../../lib/sync/businessTypes";
 import { listMerchantsForAdmin } from "../../../../lib/sync/merchants";
 import { countLabel } from "../../../../lib/sync/text";
@@ -13,8 +15,8 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function SyncAdminPage() {
-  const authResult = await requireRole(ROLE.ADMIN);
-  if (!authResult.ok) {
+  const access = await syncAccess();
+  if (!access.ok) {
     return (
       <div className="admin-page">
         <h1>Admin access required</h1>
@@ -24,7 +26,20 @@ export default async function SyncAdminPage() {
     );
   }
 
-  const { merchants, error } = await listMerchantsForAdmin();
+  // An admin sees every business; an operator sees only the ones assigned to them. If their assignments cannot be read they see an error, never all.
+  let onlyIds = null;
+  let scopeError = "";
+  if (!access.isAdmin) {
+    try {
+      onlyIds = await assignedMerchantIds(createServerSupabase(), access.userId);
+    } catch {
+      onlyIds = [];
+      scopeError = "Could not load your businesses.";
+    }
+  }
+  const listed = await listMerchantsForAdmin({ onlyIds });
+  const merchants = listed.merchants;
+  const error = scopeError || listed.error;
 
   return (
     <div className="admin-page">
@@ -38,15 +53,15 @@ export default async function SyncAdminPage() {
           </p>
         </div>
         <div className="admin-actions">
-          <a className="btn-outline" href="/admin/sync">Overview</a>
-          <a className="btn-red" href="/admin/sync/new">Tag a business</a>
+          {access.isAdmin ? <a className="btn-outline" href="/admin/sync">Overview</a> : <a className="btn-outline" href="/admin/sync/tasks">Tasks</a>}
+          {access.isAdmin ? <a className="btn-red" href="/admin/sync/new">Tag a business</a> : null}
         </div>
       </div>
 
       {error ? <div className="admin-banner">{error}</div> : null}
 
       {!error && merchants.length === 0 ? (
-        <div className="admin-empty">No business has been tagged yet. Tag the first one to start a pilot.</div>
+        <div className="admin-empty">{access.isAdmin ? "No business has been tagged yet. Tag the first one to start a pilot." : "No business has been assigned to you yet. An admin gives you one on the Team page."}</div>
       ) : (
         <div className="admin-list">
           {merchants.map((m) => (

@@ -1,11 +1,13 @@
 import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
-import { requireRole, ROLE } from "../../../../lib/auth/roles";
+import { syncAccess } from "../../../../lib/sync/access";
+import { isAssigned, listOperators, operatorsOfMerchant } from "../../../../lib/sync/team";
 import { getMerchantById } from "../../../../lib/sync/merchants";
 import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
 import OwnerPanel from "./OwnerPanel";
+import AssignmentsPanel from "./AssignmentsPanel";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
 import { createServerSupabase } from "../../../../lib/supabase/server";
@@ -19,8 +21,8 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function MerchantPage({ params }) {
-  const authResult = await requireRole(ROLE.ADMIN);
-  if (!authResult.ok) {
+  const access = await syncAccess();
+  if (!access.ok) {
     return (
       <div className="admin-page">
         <h1>Admin access required</h1>
@@ -30,7 +32,9 @@ export default async function MerchantPage({ params }) {
     );
   }
 
-  const { merchant, error } = await getMerchantById(params.id);
+  const { merchant: found, error } = await getMerchantById(params.id);
+  // An operator is shown a business only if it is assigned to them. Otherwise the page is the same as for one that does not exist.
+  const merchant = found && (access.isAdmin || (await isAssigned(createServerSupabase(), access.userId, found.id))) ? found : null;
   if (error || !merchant) {
     return (
       <div className="admin-page">
@@ -61,6 +65,18 @@ export default async function MerchantPage({ params }) {
     questions: merchant.questions,
     hasOwner: Boolean(merchant.owner_user_id)
   };
+  // An operator gets the details form and their way to the tasks, and nothing from the admin-only panels below, which are not even read.
+  if (!access.isAdmin) {
+    return (
+      <>
+        <MerchantEditorClient merchant={shown} operatorView />
+        <div className="admin-page">
+          <a className="btn-outline" href="/admin/sync/tasks">Tasks</a>
+        </div>
+      </>
+    );
+  }
+
   // The business's QR codes, with their scan counts. A failure is shown, never hidden as "none".
   let codes = [];
   let loadError = "";
@@ -92,6 +108,26 @@ export default async function MerchantPage({ params }) {
     }
   }
 
+  // The operators on this business, and the ones that could be added. Names are looked up now; only ids are stored.
+  let assigned = [];
+  let available = [];
+  try {
+    const supabase = createServerSupabase();
+    const [onThis, everyone] = await Promise.all([operatorsOfMerchant(supabase, merchant.id), listOperators(supabase)]);
+    const named = async (id) => {
+      try {
+        const user = describeClerkUser(await getClerkUser(id));
+        return { id, name: user?.name || user?.email || "An operator" };
+      } catch {
+        return { id, name: "An operator" };
+      }
+    };
+    assigned = await Promise.all(onThis.map(named));
+    available = await Promise.all(everyone.map((row) => row.operator_user_id).filter((id) => !onThis.includes(id)).map(named));
+  } catch (failure) {
+    console.error("Sync assignments read failed:", failure?.message || failure);
+  }
+
   return (
     <>
       <MerchantEditorClient merchant={shown} />
@@ -106,6 +142,9 @@ export default async function MerchantPage({ params }) {
       </div>
       <div className="admin-page">
         <OwnerPanel merchantId={merchant.id} owner={owner} active={merchant.status !== "cancelled"} />
+      </div>
+      <div className="admin-page">
+        <AssignmentsPanel merchantId={merchant.id} assigned={assigned} available={available} />
       </div>
       <div className="admin-page">
         <BadgePanel

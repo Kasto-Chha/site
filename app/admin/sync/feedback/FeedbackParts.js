@@ -23,7 +23,7 @@ export function FeedbackTabs({ filter, counts }) {
   );
 }
 
-export function FeedbackNote({ note, age, busy, copied, onStatus, onCopy }) {
+export function FeedbackNote({ note, age, busy, copied, onStatus, onCopy, onTask }) {
   const open = note.is_urgent && note.status !== "resolved";
   return (
     <article className={`ov-card fb-note${open ? " urgent" : ""}`}>
@@ -44,6 +44,7 @@ export function FeedbackNote({ note, age, busy, copied, onStatus, onCopy }) {
         {note.status !== "resolved" ? <button type="button" className="btn-outline" onClick={() => onStatus(note, "resolved")} disabled={busy}>Resolve</button> : null}
         {note.status === "in_digest" ? <button type="button" className="btn-outline" onClick={() => onStatus(note, "new")} disabled={busy}>Back to new</button> : null}
         {note.status === "resolved" ? <button type="button" className="btn-outline" onClick={() => onStatus(note, "new")} disabled={busy}>Reopen</button> : null}
+        {note.business && onTask ? <button type="button" className="btn-outline" onClick={() => onTask(note)} disabled={busy}>Make a task</button> : null}
         {copied ? <span className="fb-copied" role="status">{copied}</span> : null}
       </div>
     </article>

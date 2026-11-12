@@ -494,7 +494,7 @@ test("the sidebar marks exactly one link as current, for every Sync address", ()
   ];
   for (const [path, expected] of cases) assert.equal(currentNav(path), expected, String(path));
   for (const path of ["/admin/sync", "/admin/sync/businesses", "/admin/sync/new", "/admin/sync/abc"]) assert.equal(SYNC_NAV.filter((i) => i.match(path)).length, 1, `${path}: more than one link would be marked`);
-  assert.deepEqual(SYNC_NAV.map((i) => i.label), ["Overview", "Businesses", "Feedback", "Export", "Tag a business"]);
+  assert.deepEqual(SYNC_NAV.map((i) => i.label), ["Overview", "Tasks", "Businesses", "Feedback", "Export", "Team", "Tag a business"]);
 });
 
 // ---------- guards on the screens ----------
@@ -514,9 +514,10 @@ test("the overview is admin-only, read fresh, and says so when it cannot load ra
   assert.ok(!/dangerouslySetInnerHTML|lib\/supabase|createServerSupabase/.test(parts), "the display pieces read nothing and inject nothing");
 });
 
-test("the dark look is only on Sync, and only for an admin", () => {
+test("the dark look is only on Sync, and only for the team: an admin, or an operator with their own links", () => {
   const layout = read("app/admin/sync/layout.js");
-  assert.match(layout, /if \(!authResult\.ok\) return children;/, "anyone else gets the page's own plain message, with no sidebar");
+  assert.match(layout, /const access = await syncAccess\(\);\s*if \(!access\.ok\) return children;/, "anyone else gets the page's own plain message, with no sidebar");
+  assert.match(layout, /isAdmin=\{access\.isAdmin\}/, "the menu knows which of the two it is showing");
   assert.match(layout, /IBM_Plex_Sans/);
   assert.match(layout, /IBM_Plex_Mono/);
   assert.match(layout, /import "\.\/sync-shell\.css"/);

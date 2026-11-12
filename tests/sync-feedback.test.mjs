@@ -564,11 +564,13 @@ test("the inbox is admin-only, says when it could not load rather than showing a
 
 test("the sidebar counts new notes beside Feedback, and the overview mentions them, neither able to fail a page", () => {
   const layout = read("app/admin/sync/layout.js");
-  assert.match(layout, /feedbackNew = \(await countNewFeedback\(createServerSupabase\(\)\)\)\.total;/);
+  // Only admins see the notes (patch 13 lets an operator in the sidebar, with no Feedback link), and a failed count shows no number.
+  assert.match(layout, /if \(access\.isAdmin\) feedbackNew = \(await countNewFeedback\(supabase\)\)\.total;/);
   assert.match(layout, /catch \{\s*feedbackNew = 0;/);
-  assert.match(layout, /<SyncNav feedbackNew=\{feedbackNew\} \/>/);
+  assert.match(layout, /<SyncNav feedbackNew=\{feedbackNew\} tasksDue=\{tasksDue\} isAdmin=\{access\.isAdmin\} \/>/);
   const nav = read("app/admin/sync/SyncNav.js");
-  assert.match(nav, /item\.badge && feedbackNew > 0/);
+  assert.match(nav, /item\.badge && counts\[item\.badge\] > 0/);
+  assert.match(nav, /const counts = \{ feedback: feedbackNew, tasks: tasksDue \};/);
   const overview = read("app/admin/sync/page.js");
   assert.match(overview, /notes && notes\.total > 0/);
   assert.match(overview, /catch \{\s*notes = null;/);

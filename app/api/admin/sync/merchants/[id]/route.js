@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { createServerSupabase } from "../../../../../../lib/supabase/server";
-import { requireRole, ROLE } from "../../../../../../lib/auth/roles";
+import { syncAccess } from "../../../../../../lib/sync/access";
+import { isAssigned } from "../../../../../../lib/sync/team";
 import { closeAuditEntry, openAuditEntry } from "../../../../../../lib/admin/audit";
 import { adminSaveMessage, logDbError } from "../../../../../../lib/dbError";
 import { BODY_LIMITS, readJsonBody } from "../../../../../../lib/requestBody";
@@ -15,16 +16,25 @@ const AUDIT_FAILED = "Could not record this change in the audit log, so nothing 
 // or restore it. The two addresses are fixed once tagged. A removed tag keeps the
 // thread and every post; only the business header and extras go.
 export async function PUT(request, { params }) {
-  const authResult = await requireRole(ROLE.ADMIN);
+  // An admin may do everything here. An operator (patch 13) may edit the details of a business assigned to them, and
+  // nothing else: removing or restoring the tag changes what the public sees, so it stays with admins.
+  const authResult = await syncAccess();
   if (!authResult.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: authResult.status });
   }
   if (!UUID_RE.test(params.id || "")) {
     return NextResponse.json({ error: "Invalid id." }, { status: 400 });
   }
+  if (!authResult.isAdmin && !(await isAssigned(createServerSupabase(), authResult.userId, params.id))) {
+    // Not assigned looks exactly like not existing.
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
 
   const parsed = await readJsonBody(request, BODY_LIMITS.small);
   if (parsed.response) return parsed.response;
+  if (!authResult.isAdmin && parsed.data && typeof parsed.data === "object" && Object.prototype.hasOwnProperty.call(parsed.data, "status")) {
+    return NextResponse.json({ error: "Only an admin can remove or restore a business's tag." }, { status: 403 });
+  }
 
   const supabase = createServerSupabase();
   const context = "admin sync update merchant";
