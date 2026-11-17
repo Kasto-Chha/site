@@ -4,6 +4,8 @@ import { syncAccess } from "../../../../lib/sync/access";
 import { assignedMerchantIds } from "../../../../lib/sync/team";
 import { kindDisplay } from "../../../../lib/sync/businessTypes";
 import { listMerchantsForAdmin } from "../../../../lib/sync/merchants";
+import { readStages } from "../../../../lib/sync/stageStore";
+import { STAGE_LABELS, stageInfo, stageLine } from "../../../../lib/sync/stage";
 import { countLabel } from "../../../../lib/sync/text";
 
 export const metadata = {
@@ -40,6 +42,8 @@ export default async function SyncAdminPage() {
   const listed = await listMerchantsForAdmin({ onlyIds });
   const merchants = listed.merchants;
   const error = scopeError || listed.error;
+  // The stage of each business. If it cannot be read the list still shows, and says why.
+  const stages = merchants.length ? await readStages(createServerSupabase(), merchants.map((m) => m.id)) : { rows: new Map(), failed: false };
 
   return (
     <div className="admin-page">
@@ -64,7 +68,9 @@ export default async function SyncAdminPage() {
         <div className="admin-empty">{access.isAdmin ? "No business has been tagged yet. Tag the first one to start a pilot." : "No business has been assigned to you yet. An admin gives you one on the Team page."}</div>
       ) : (
         <div className="admin-list">
-          {merchants.map((m) => (
+          {merchants.map((m) => {
+            const stage = stageInfo(stages.rows.get(m.id));
+            return (
             <div className="admin-row" key={m.id}>
               <div>
                 <div className="admin-row-title">
@@ -75,16 +81,19 @@ export default async function SyncAdminPage() {
                 </div>
               </div>
               <div className="admin-row-actions">
-                <span className={`admin-status ${m.status === "active" ? "published" : "draft"}`}>
-                  {m.status === "active" ? "Active" : "Tag removed"}
+                <span className={`sync-pill ${stage.stage === "wip" ? "waiting" : stage.stage === "active" ? "done" : ""}`} title={stageLine(stage)}>
+                  {stage.known ? STAGE_LABELS[stage.stage] : "No stage"}
                 </span>
+                {stage.stage === "wip" ? <span className="admin-row-meta">Day {stage.day} of {stage.total}</span> : null}
                 <a className="btn-outline" href={`/discussions/${m.topic_slug}`}>View thread</a>
                 <a className="btn-outline" href={`/admin/sync/${m.id}`}>Open</a>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
+      {stages.failed ? <div className="admin-banner" role="status">The stages could not be read. Has the Sync migration 0026 been run?</div> : null}
     </div>
   );
 }

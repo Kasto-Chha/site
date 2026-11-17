@@ -8,6 +8,9 @@ import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
 import OwnerPanel from "./OwnerPanel";
 import AssignmentsPanel from "./AssignmentsPanel";
+import StagePanel from "./StagePanel";
+import { stageInfo } from "../../../../lib/sync/stage";
+import { readStage } from "../../../../lib/sync/stageStore";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
 import { createServerSupabase } from "../../../../lib/supabase/server";
@@ -65,12 +68,21 @@ export default async function MerchantPage({ params }) {
     questions: merchant.questions,
     hasOwner: Boolean(merchant.owner_user_id)
   };
+  // The stage. A failed read shows "no stage" with the reason, and never breaks the page.
+  let stage = { known: false };
+  try {
+    stage = stageInfo(await readStage(createServerSupabase(), merchant.id));
+  } catch {
+    stage = { known: false };
+  }
+
   // An operator gets the details form and their way to the tasks, and nothing from the admin-only panels below, which are not even read.
   if (!access.isAdmin) {
     return (
       <>
         <MerchantEditorClient merchant={shown} operatorView />
         <div className="admin-page">
+          <StagePanel merchantId={merchant.id} info={stage} isAdmin={false} />
           <a className="btn-outline" href="/admin/sync/tasks">Tasks</a>
         </div>
       </>
@@ -131,6 +143,9 @@ export default async function MerchantPage({ params }) {
   return (
     <>
       <MerchantEditorClient merchant={shown} />
+      <div className="admin-page">
+        <StagePanel merchantId={merchant.id} info={stage} isAdmin />
+      </div>
       <div className="admin-page">
         <QrCodesPanel
           merchantId={merchant.id}

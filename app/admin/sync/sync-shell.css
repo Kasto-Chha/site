@@ -234,3 +234,7 @@
 /* Team (patch 13): the businesses an operator works on, each with a small remove button. */
 .sync-shell .sync-assigned { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .sync-shell .sync-x { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 0 2px; }
+
+/* Stage (patch 14a): the trial's progress bar. */
+.sync-shell .sync-bar { height: 8px; background: #E6EAE6; border-radius: 4px; margin: 8px 0; }
+.sync-shell .sync-bar i { display: block; height: 8px; background: #0F5C55; border-radius: 4px; }

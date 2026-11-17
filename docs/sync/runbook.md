@@ -25,8 +25,17 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 6. `0023_sync_owner_replies.sql`: a business's replies. Check: `select count(*) from public.sync_owner_replies;` returns 0.
 7. `0024_sync_audit_log_private.sql`: closes the admin audit log to the public key. Run it once; it changes no data. Check, with the project URL and the public (anon) key: `curl -s "$URL/rest/v1/admin_audit_log?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"` now says `permission denied for table admin_audit_log` (before it, it answered an empty list).
 8. `0025_sync_team_and_tasks.sql`: the operator list, which businesses each operator works on, and the team's tasks. Run it on staging first, then on the live project when the patch is released. Safe to run twice; it changes no existing table. Check: `select count(*) from public.sync_tasks;` returns 0, and with the public key `curl -s "$URL/rest/v1/sync_tasks?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"` says `permission denied for table sync_tasks`.
+9. `0026_sync_stages.sql`: adds a stage (WIP, Active or Free) and the 90-day trial dates to every business, as private columns. Run it **before** pushing the patch. Safe to run twice; it changes no existing value. Every business that already exists becomes **WIP**, with the trial starting the day you run it, because nobody is paying yet. Check: `select business_name, stage, trial_ends_on from public.sync_merchants;` shows WIP and a date 90 days away.
 
 The old website badge table can be dropped by hand once it is empty: `select count(*) from public.badge_businesses;` and, if it says 0, `drop table public.badge_businesses;`.
+
+## Stages and the 90-day trial
+
+Every business has a stage. **WIP** is the trial, with onboarding inside it: the whole service runs until the decision day. **Active** means they pay. **Free** means they chose not to pay: the business keeps its page, label, QR cards and badge on KastoChha, and we do nothing on its Google side.
+
+A business you tag starts as WIP for 90 days. A trial that reaches its end date with no yes becomes **Free on its own**; nothing runs in the background, the dates are simply read when a page opens. Check-ins fall on days 30, 60 and 80, and from the last 10 days the business page says "Decide by" with the date. Day 0 is the day the trial starts and day 90 is the decision day.
+
+On a business's page, the **Stage** panel (admins only) has the moves: **Make Active**, **Move to Free**, **Start a trial again**, and **Change the end date** (which needs a reason). **Move to Free** cannot finish until you tick that KastoChha has been removed as a manager on the business's Google profile, which you do yourself in Google. Every move is recorded in the audit log with the stage and the dates, never the note's words. An Active business never goes back to a trial; to run another trial, move it to Free first.
 
 ## Operators and tasks
 
