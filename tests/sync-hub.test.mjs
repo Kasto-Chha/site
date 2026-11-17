@@ -554,6 +554,7 @@ test("robots.txt keeps crawlers off the hub and the scan route, and still lets s
   const body = await (await GET()).text();
   assert.match(body, /^Disallow: \/hub\/$/m);
   assert.match(body, /^Disallow: \/q\/$/m);
+  assert.match(body, /^Disallow: \/report\/$/m);
   assert.match(body, /^Allow: \/api\/og$/m);
   assert.match(body, /^Disallow: \/api$/m);
   assert.ok(body.indexOf("Allow: /api/og") < body.indexOf("Disallow: /api"));

@@ -86,6 +86,7 @@ export class FakePostgrest {
       sync_operators: [],
       sync_owner_replies: [],
       sync_prospects: [],
+      sync_report_settings: [],
       sync_qr_codes: [],
       sync_tasks: [],
       trending_search_rules: [],

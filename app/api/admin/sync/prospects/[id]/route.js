@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { createServerSupabase } from "../../../../../../lib/supabase/server";
@@ -7,6 +8,7 @@ import { logDbError } from "../../../../../../lib/dbError";
 import { BODY_LIMITS, readJsonBody } from "../../../../../../lib/requestBody";
 import { findSamePlace, getProspect, planProspect } from "../../../../../../lib/sync/prospects";
 import { nepalDay } from "../../../../../../lib/sync/time";
+import { contactsFrom, readSettings } from "../../../../../../lib/sync/reportSettings";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -35,7 +37,9 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: "Could not read the prospect. Has migration 0027 been run?" }, { status: 500 });
   }
 
-  const plan = planProspect(current, parsed.data, nepalDay(Date.now()));
+  // Recording a send keeps a copy of the report's price and numbers as they are today.
+  const contacts = parsed.data?.action === "sent" ? contactsFrom(await readSettings(supabase)) : undefined;
+  const plan = planProspect(current, parsed.data, nepalDay(Date.now()), () => crypto.randomBytes(24).toString("base64url"), contacts);
   if (!plan.ok) return NextResponse.json({ error: plan.error }, { status: plan.status });
 
   // Renaming must not make it the same place as another prospect or a business.

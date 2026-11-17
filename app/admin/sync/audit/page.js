@@ -44,6 +44,7 @@ export default async function AuditListPage({ searchParams }) {
           </p>
         </div>
         <div className="admin-actions">
+          <a className="btn-outline" href="/admin/sync/audit/settings">Report settings</a>
           <a className="btn-red" href="/admin/sync/audit/new">New audit</a>
         </div>
       </div>

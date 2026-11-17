@@ -27,7 +27,7 @@ const NUMBER_QUESTIONS = [
 
 const today = () => new Date(Date.now() + 345 * 60 * 1000).toISOString().slice(0, 10);
 
-export default function AuditClient({ prospect }) {
+export default function AuditClient({ prospect, report }) {
   const router = useRouter();
   const editable = isEditable(prospect.status);
   const [facts, setFacts] = useState(() => Object.fromEntries(Object.entries(prospect.facts).map(([k, v]) => [k, String(v)])));
@@ -90,6 +90,16 @@ export default function AuditClient({ prospect }) {
     } catch (failure) {
       setError(failure.message);
       setBusy(false);
+    }
+  }
+
+  async function copy(text, what) {
+    setError("");
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage(`${what} copied.`);
+    } catch {
+      setError("Could not copy. Select the text and copy it by hand.");
     }
   }
 
@@ -182,6 +192,58 @@ export default function AuditClient({ prospect }) {
             <button type="button" className="btn-red" disabled={busy || !factsChecked || !draftsChecked || prospect.status === "new"} onClick={() => send({ action: "make_report", factsChecked, draftsChecked }, "The report is ready.")}>Make the report</button>
           </div>
         </div>
+      ) : null}
+
+      {report.linkOn ? (
+        <div className="admin-panel">
+          <h2>The report</h2>
+          {report.missing.length > 0 ? (
+            <div className="admin-banner" role="status">
+              The report still shows {report.missing.join(", ")}. Fill them in under <a href="/admin/sync/audit/settings">Report settings</a> before you send it.
+            </div>
+          ) : null}
+          <div className="admin-actions">
+            <a className="btn-outline" href={`/admin/sync/audit/${prospect.id}/report`} target="_blank" rel="noopener noreferrer">Preview the full report</a>
+            <a className="btn-outline" href={`/admin/sync/audit/${prospect.id}/report?view=summary`} target="_blank" rel="noopener noreferrer">Preview the short summary</a>
+          </div>
+          {report.frozen ? <p className="admin-helper">The price and numbers in this report were saved when it was sent, so changing Report settings later does not change it.</p> : null}
+          <p className="admin-helper">For a PDF: open a preview, press <strong>Print or save as PDF</strong>, and choose <strong>Save as PDF</strong> as the printer. Nothing is built on the server.</p>
+          <div className="admin-field">
+            <label className="admin-label" htmlFor="l-full">Private link, full report</label>
+            <input id="l-full" className="admin-input" readOnly value={report.links.full} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn-outline" onClick={() => copy(report.links.full, "The full link")}>Copy</button>
+          </div>
+          <div className="admin-field">
+            <label className="admin-label" htmlFor="l-sum">Private link, short summary</label>
+            <input id="l-sum" className="admin-input" readOnly value={report.links.summary} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn-outline" onClick={() => copy(report.links.summary, "The summary link")}>Copy</button>
+          </div>
+          <p className="admin-helper">
+            {report.opens === 0 ? "Not opened yet." : `Opened ${report.opens} ${report.opens === 1 ? "time" : "times"}${report.lastOpened ? `, last on ${report.lastOpened.slice(0, 10)}` : ""}.`}{" "}
+            Link-preview robots and your own previews are not counted. Anyone who has the link can read the report, so send it only to the business.
+          </p>
+          <div className="admin-actions">
+            <button type="button" className="btn-outline" disabled={busy} onClick={() => send({ action: "new_link" }, "A new link was made. The old one no longer works, and the count started again.")}>Make a new link</button>
+            <button type="button" className="btn-outline" disabled={busy} onClick={() => send({ action: "stop_link" }, "The link is off. Make the report again to turn it on.")}>Stop the link</button>
+          </div>
+          <h3>Words to send with it</h3>
+          <div className="admin-field">
+            <label className="admin-label" htmlFor="t-sub">Email subject</label>
+            <input id="t-sub" className="admin-input" readOnly value={report.texts.subject} onFocus={(e) => e.target.select()} />
+          </div>
+          <div className="admin-field">
+            <label className="admin-label" htmlFor="t-mail">Email</label>
+            <textarea id="t-mail" className="admin-textarea" rows={12} readOnly value={report.texts.email} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn-outline" onClick={() => copy(report.texts.email, "The email")}>Copy the email</button>
+          </div>
+          <div className="admin-field">
+            <label className="admin-label" htmlFor="t-wa">WhatsApp message</label>
+            <textarea id="t-wa" className="admin-textarea" rows={3} readOnly value={report.texts.whatsapp} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn-outline" onClick={() => copy(report.texts.whatsapp, "The WhatsApp message")}>Copy the message</button>
+          </div>
+        </div>
+      ) : report.hasLink ? (
+        <div className="admin-banner" role="status">The private link is off until the report is made again.</div>
       ) : null}
 
       {prospect.status === "report_ready" || prospect.status === "sent" ? (

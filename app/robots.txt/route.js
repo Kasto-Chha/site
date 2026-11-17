@@ -11,6 +11,7 @@ Disallow: /admin
 Disallow: /api
 Disallow: /hub/
 Disallow: /q/
+Disallow: /report/
 Sitemap: ${siteUrl}/sitemap.xml
 `;
 
