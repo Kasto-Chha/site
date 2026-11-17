@@ -25,7 +25,7 @@ async function fetchThreads({ query, category, includeTagged, offset, signal }) 
 
 const NO_RESULTS = { threads: [], total: 0, hasMore: false, addressNotFound: false };
 
-export default function NewMerchantClient() {
+export default function NewMerchantClient({ initial = null }) {
   const router = useRouter();
 
   // Step 1: the thread. mode is "" (nothing chosen: the search shows), "existing" (a
@@ -34,7 +34,7 @@ export default function NewMerchantClient() {
   const [picked, setPicked] = useState(null);
   const [prefill, setPrefill] = useState(NO_PREFILL);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initial?.businessName || "");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [includeTagged, setIncludeTagged] = useState(false);
   const [results, setResults] = useState(NO_RESULTS);
@@ -43,18 +43,18 @@ export default function NewMerchantClient() {
   const [searchError, setSearchError] = useState("");
 
   // Step 2: the details. There is no category here: it follows the business type.
-  const [businessName, setBusinessName] = useState("");
-  const [area, setArea] = useState("");
-  const [businessKind, setBusinessKind] = useState(DEFAULT_BUSINESS_KIND);
+  const [businessName, setBusinessName] = useState(initial?.businessName || "");
+  const [area, setArea] = useState(initial?.area || "");
+  const [businessKind, setBusinessKind] = useState(initial?.businessKind || DEFAULT_BUSINESS_KIND);
   // What an Other business is, in the admin's own words. Only used for the Other type.
-  const [kindLabel, setKindLabel] = useState("");
+  const [kindLabel, setKindLabel] = useState(initial?.kindLabel || "");
   // A category chosen by hand, only when the admin clicks "Change category". Empty means: use the type's.
   const [categoryOverride, setCategoryOverride] = useState("");
   const [pickingCategory, setPickingCategory] = useState(false);
   const [about, setAbout] = useState("");
   const [googlePlaceId, setGooglePlaceId] = useState("");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
-  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState(initial?.googleMapsUrl || "");
   const [hubSlug, setHubSlug] = useState("");
   const [hubTouched, setHubTouched] = useState(false);
 
@@ -151,7 +151,8 @@ export default function NewMerchantClient() {
           businessName, area, businessKind, kindLabel: businessKind === OTHER_KIND ? kindLabel : "", categoryOverride: activeOverride, about, googlePlaceId, googleReviewUrl, googleMapsUrl,
           threadMode: mode,
           threadSlug: picked ? picked.slug : undefined,
-          hubSlug: shownHub
+          hubSlug: shownHub,
+          prospectId: initial?.prospectId || undefined
         })
       });
       const data = await res.json().catch(() => ({}));

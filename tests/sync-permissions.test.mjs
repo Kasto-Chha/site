@@ -168,7 +168,7 @@ test("a refused request changes nothing: no database write, no role change, no a
 test("the menu shows an operator only Tasks and Businesses, and an admin everything; showing a link never grants anything", async () => {
   const { navFor } = await import("../lib/sync/nav.js");
   assert.deepEqual(navFor(false).map((item) => item.label), ["Tasks", "Businesses"]);
-  assert.deepEqual(navFor(true).map((item) => item.label), ["Overview", "Tasks", "Businesses", "Feedback", "Export", "Team", "Tag a business"]);
+  assert.deepEqual(navFor(true).map((item) => item.label), ["Overview", "Tasks", "Businesses", "Audit", "Feedback", "Export", "Team", "Tag a business"]);
 });
 
 test("the screens' wiring: Delete only for an admin, an operator can only give a task to themselves, a note's task copies no contact, and the Overview tells operators where to go", () => {

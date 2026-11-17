@@ -488,13 +488,14 @@ test("the sidebar marks exactly one link as current, for every Sync address", ()
     ["/admin/sync", "/admin/sync"], ["/admin/sync/", "/admin/sync"], ["/admin/sync?range=30d", "/admin/sync"],
     ["/admin/sync/businesses", "/admin/sync/businesses"], ["/admin/sync/businesses/", "/admin/sync/businesses"],
     ["/admin/sync/11111111-1111-4111-8111-111111111111", "/admin/sync/businesses"],
+    ["/admin/sync/audit", "/admin/sync/audit"], ["/admin/sync/audit/", "/admin/sync/audit"], ["/admin/sync/audit/new", "/admin/sync/audit"], ["/admin/sync/audit/11111111-1111-4111-8111-111111111111", "/admin/sync/audit"], ["/admin/sync/audit?status=sent", "/admin/sync/audit"],
     ["/admin/sync/new", "/admin/sync/new"], ["/admin/sync/new/", "/admin/sync/new"], ["/admin/sync/feedback", "/admin/sync/feedback"], ["/admin/sync/feedback/", "/admin/sync/feedback"], ["/admin/sync/feedback?status=urgent", "/admin/sync/feedback"], ["/admin/sync/export", "/admin/sync/export"], ["/admin/sync/export/", "/admin/sync/export"],
     ["/admin/sync/11111111-1111-4111-8111-111111111111/", "/admin/sync/businesses"],
     ["/admin", null], ["/", null], ["", null], [undefined, null], ["/admin/sync/a/b", null]
   ];
   for (const [path, expected] of cases) assert.equal(currentNav(path), expected, String(path));
   for (const path of ["/admin/sync", "/admin/sync/businesses", "/admin/sync/new", "/admin/sync/abc"]) assert.equal(SYNC_NAV.filter((i) => i.match(path)).length, 1, `${path}: more than one link would be marked`);
-  assert.deepEqual(SYNC_NAV.map((i) => i.label), ["Overview", "Tasks", "Businesses", "Feedback", "Export", "Team", "Tag a business"]);
+  assert.deepEqual(SYNC_NAV.map((i) => i.label), ["Overview", "Tasks", "Businesses", "Audit", "Feedback", "Export", "Team", "Tag a business"]);
 });
 
 // ---------- guards on the screens ----------

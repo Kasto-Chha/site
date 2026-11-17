@@ -17,6 +17,8 @@ import { TASK_STATUS_LABELS, TASK_TYPE_LABELS, listTasks, nepalToday, sortTasks,
 import { kindDisplay } from "../../../../lib/sync/businessTypes";
 import { familyInfo, taskTypeLabel } from "../../../../lib/sync/families";
 import { readStageHistory } from "../../../../lib/sync/stageHistory";
+import { prospectOfMerchant } from "../../../../lib/sync/prospects";
+import { scoreFacts } from "../../../../lib/sync/audit";
 import { countLabel } from "../../../../lib/sync/text";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
@@ -85,6 +87,17 @@ export default async function MerchantPage({ params, searchParams }) {
     stage = { known: false };
   }
   const google = googleLink(shown);
+  // The score when we started, from the audit this business was tagged from. Admins only; a problem reading it just hides the line.
+  let audit = null;
+  if (access.isAdmin && tab === "overview") {
+    try {
+      const prospect = await prospectOfMerchant(createServerSupabase(), merchant.id);
+      const score = prospect ? scoreFacts(prospect.facts).score : null;
+      if (prospect && score !== null) audit = { id: prospect.id, score };
+    } catch {
+      audit = null;
+    }
+  }
 
   return (
     <>
@@ -116,7 +129,7 @@ export default async function MerchantPage({ params, searchParams }) {
         </div>
       </div>
 
-      {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} /> : null}
+      {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} audit={audit} /> : null}
       {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
       {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
@@ -127,7 +140,7 @@ export default async function MerchantPage({ params, searchParams }) {
 
 // ---------- Overview ----------
 
-function OverviewTab({ merchant, stage }) {
+function OverviewTab({ merchant, stage, audit }) {
   const family = familyInfo(merchant.business_kind);
   return (
     <>
@@ -150,6 +163,7 @@ function OverviewTab({ merchant, stage }) {
             <div><dt>Hub</dt><dd>/hub/{merchant.slug}</dd></div>
             <div><dt>Owner</dt><dd>{merchant.hasOwner ? "Linked" : "Not linked yet"}</dd></div>
             <div><dt>Business tag</dt><dd>{merchant.status === "active" ? "On" : "Removed"}</dd></div>
+            {audit ? <div><dt>Google profile score when we started</dt><dd>{audit.score}/100 <a href={`/admin/sync/audit/${audit.id}`}>Open the audit</a></dd></div> : null}
           </dl>
         </div>
       </div>

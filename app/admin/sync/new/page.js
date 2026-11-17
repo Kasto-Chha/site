@@ -1,5 +1,7 @@
 import { NOINDEX_NOFOLLOW } from "../../../../lib/seo/indexable";
 import { requireRole, ROLE } from "../../../../lib/auth/roles";
+import { createServerSupabase } from "../../../../lib/supabase/server";
+import { getProspect } from "../../../../lib/sync/prospects";
 import NewMerchantClient from "./NewMerchantClient";
 
 export const metadata = {
@@ -7,7 +9,9 @@ export const metadata = {
   robots: NOINDEX_NOFOLLOW
 };
 
-export default async function NewMerchantPage() {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function NewMerchantPage({ searchParams }) {
   const authResult = await requireRole(ROLE.ADMIN);
   if (!authResult.ok) {
     return (
@@ -18,5 +22,18 @@ export default async function NewMerchantPage() {
       </div>
     );
   }
-  return <NewMerchantClient />;
+  // Tagging a business from an audit prospect: its details come across, so nothing is typed twice.
+  let initial = null;
+  const id = Array.isArray(searchParams?.prospect) ? searchParams.prospect[0] : searchParams?.prospect;
+  if (typeof id === "string" && UUID_RE.test(id)) {
+    try {
+      const prospect = await getProspect(createServerSupabase(), id);
+      if (prospect && !prospect.merchant_id) {
+        initial = { prospectId: prospect.id, businessName: prospect.business_name, area: prospect.area, businessKind: prospect.business_kind, kindLabel: prospect.kind_label || "", googleMapsUrl: prospect.google_maps_url || "" };
+      }
+    } catch {
+      initial = null;
+    }
+  }
+  return <NewMerchantClient initial={initial} />;
 }

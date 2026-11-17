@@ -11,6 +11,7 @@ import { threadExists, threadTitleFor } from "../../../../../lib/sync/threads";
 import { merchantTitle } from "../../../../../lib/sync/slug";
 import { pinnedTitleFor } from "../../../../../lib/sync/threadPage";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AUDIT_FAILED = "Could not record this change in the audit log, so nothing was changed.";
 
 // Postgres says 23505 when an address is already taken. The checks below catch the
@@ -98,7 +99,29 @@ export async function POST(request) {
   }
   await closeAuditEntry(supabase, auditId, { applied: true, after: data });
 
+  // A business tagged from an audit prospect: link the two and close the prospect. The business already exists, so a problem
+  // here is only reported (prospectLinked false) and never undoes it.
+  let prospectLinked = null;
+  const prospectId = typeof parsed.data?.prospectId === "string" ? parsed.data.prospectId : "";
+  if (prospectId) {
+    prospectLinked = false;
+    if (UUID_RE.test(prospectId)) {
+      try {
+        const linked = await supabase
+          .from("sync_prospects")
+          .update({ merchant_id: data.id, status: "tagged", updated_by: authResult.userId, updated_at: new Date().toISOString() })
+          .eq("id", prospectId)
+          .is("merchant_id", null)
+          .select("id");
+        prospectLinked = !linked.error && Array.isArray(linked.data) && linked.data.length === 1;
+        if (linked.error) logDbError(context, linked.error);
+      } catch (error) {
+        logDbError(context, error);
+      }
+    }
+  }
+
   revalidatePath(`/discussions/${data.topic_slug}`);
   revalidatePath("/discussions");
-  return NextResponse.json({ merchant: data }, { status: 201 });
+  return NextResponse.json({ merchant: data, ...(prospectLinked === null ? {} : { prospectLinked }) }, { status: 201 });
 }
