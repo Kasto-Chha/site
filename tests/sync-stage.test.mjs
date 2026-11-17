@@ -292,7 +292,7 @@ test("the Businesses list shows each business's stage, no longer a tag-removed l
 test("the business page shows the stage panel to an admin to use and to an operator to read, and a failed read cannot break it", () => {
   const page = read("app/admin/sync/[id]/page.js");
   assert.match(page, /<StagePanel merchantId=\{merchant\.id\} info=\{stage\} isAdmin=\{isAdmin\} \/>/, "one panel, told whether the viewer is an admin");
-  assert.match(page, /<OverviewTab merchant=\{shown\} stage=\{stage\} isAdmin=\{access\.isAdmin\} \/>/, "the viewer's own role is what is passed, never a constant true");
+  assert.match(page, /<PlanTab merchant=\{shown\} stage=\{stage\} isAdmin=\{access\.isAdmin\} \/>/, "the viewer's own role is what is passed, never a constant true");
   assert.match(page, /catch \{\s*stage = \{ known: false \};/);
   assert.doesNotMatch(page, /isAdmin \/>/, "no panel is ever drawn with the buttons switched on unconditionally");
 });

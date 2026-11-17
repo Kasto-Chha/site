@@ -80,9 +80,9 @@ test("a chip's address keeps the search, and all with no search is the plain lis
 
 // ---------- the tabs ----------
 
-test("an admin has four tabs and an operator three, without the admin-only KastoChha tab", () => {
-  assert.deepEqual(T.tabsFor(true).map((t) => t.id), ["overview", "kastochha", "tasks", "setup"]);
-  assert.deepEqual(T.tabsFor(false).map((t) => t.id), ["overview", "tasks", "setup"]);
+test("an admin has five tabs and an operator four, without the admin-only KastoChha tab", () => {
+  assert.deepEqual(T.tabsFor(true).map((t) => t.id), ["overview", "plan", "kastochha", "tasks", "setup"]);
+  assert.deepEqual(T.tabsFor(false).map((t) => t.id), ["overview", "plan", "tasks", "setup"]);
 });
 
 test("an unknown tab, or one an operator may not open, shows Overview", () => {

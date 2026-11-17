@@ -15,6 +15,8 @@ import { readStage } from "../../../../lib/sync/stageStore";
 import { googleLink, resolveTab, tabHref, tabsFor } from "../../../../lib/sync/businessTabs";
 import { TASK_STATUS_LABELS, TASK_TYPE_LABELS, listTasks, nepalToday, sortTasks, isDueNow } from "../../../../lib/sync/tasks";
 import { kindDisplay } from "../../../../lib/sync/businessTypes";
+import { familyInfo, taskTypeLabel } from "../../../../lib/sync/families";
+import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { countLabel } from "../../../../lib/sync/text";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
@@ -96,7 +98,7 @@ export default async function MerchantPage({ params, searchParams }) {
                 {stage.known ? STAGE_LABELS[stage.stage] : "No stage"}
               </span>{" "}
               {stage.known && stage.stage === "wip" ? `Day ${stage.day} of ${stage.total} · ` : ""}
-              {countLabel(shown.posts, "experience", "experiences")} · {countLabel(shown.questions, "question", "questions")}{shown.hasOwner ? " · owner linked" : ""}
+              {kindDisplay(shown.business_kind, shown.kind_label)} · {countLabel(shown.posts, "experience", "experiences")} · {countLabel(shown.questions, "question", "questions")}{shown.hasOwner ? " · owner linked" : ""}
             </p>
           </div>
           <div className="admin-actions">
@@ -114,8 +116,9 @@ export default async function MerchantPage({ params, searchParams }) {
         </div>
       </div>
 
-      {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
-      {tab === "tasks" ? <TasksTab merchantId={merchant.id} /> : null}
+      {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} /> : null}
+      {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
+      {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
       {tab === "kastochha" && access.isAdmin ? <KastoChhaTab merchant={merchant} /> : null}
     </>
@@ -124,18 +127,25 @@ export default async function MerchantPage({ params, searchParams }) {
 
 // ---------- Overview ----------
 
-function OverviewTab({ merchant, stage, isAdmin }) {
+function OverviewTab({ merchant, stage }) {
+  const family = familyInfo(merchant.business_kind);
   return (
     <>
-      <div className="admin-page">
-        <StagePanel merchantId={merchant.id} info={stage} isAdmin={isAdmin} />
-      </div>
       <div className="admin-page">
         <div className="admin-panel">
           <h2>At a glance</h2>
           <dl className="sync-facts">
+            <div><dt>Page type</dt><dd>{family.pageLabel}</dd></div>
             <div><dt>Type</dt><dd>{kindDisplay(merchant.business_kind, merchant.kind_label)}</dd></div>
             <div><dt>Area</dt><dd>{merchant.area}</dd></div>
+            <div>
+              <dt>Stage</dt>
+              <dd>
+                {stage.known ? STAGE_LABELS[stage.stage] : "No stage"}
+                {stage.known && stage.stage === "wip" ? ` · day ${stage.day} of ${stage.total}` : ""}{" "}
+                <a href={tabHref(merchant.id, "plan")}>Open the plan</a>
+              </dd>
+            </div>
             <div><dt>Thread</dt><dd>/discussions/{merchant.topic_slug}</dd></div>
             <div><dt>Hub</dt><dd>/hub/{merchant.slug}</dd></div>
             <div><dt>Owner</dt><dd>{merchant.hasOwner ? "Linked" : "Not linked yet"}</dd></div>
@@ -143,13 +153,77 @@ function OverviewTab({ merchant, stage, isAdmin }) {
           </dl>
         </div>
       </div>
+      <div className="admin-page">
+        <div className="admin-panel">
+          <h2>What to set up on this {family.pageLabel.toLowerCase()}</h2>
+          <ul className="sync-steps">
+            {family.steps.map((step) => <li key={step}>{step}</li>)}
+          </ul>
+          <p className="admin-helper">The {family.itemsWord.toLowerCase()} and the other sections of this page arrive with the Google part of Sync.</p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---------- Plan ----------
+
+async function PlanTab({ merchant, stage, isAdmin }) {
+  // The history is for admins. A failed read is said, never shown as "nothing happened yet".
+  let history = [];
+  let failed = false;
+  if (isAdmin) {
+    try {
+      history = await readStageHistory(createServerSupabase(), merchant.id);
+      const names = new Map();
+      for (const id of new Set(history.map((row) => row.actorId))) {
+        try {
+          const user = describeClerkUser(await getClerkUser(id));
+          names.set(id, user?.name || user?.email || "An admin");
+        } catch {
+          names.set(id, "An admin");
+        }
+      }
+      history = history.map((row) => ({ ...row, who: names.get(row.actorId) || "An admin" }));
+    } catch (error) {
+      console.error("Sync stage history failed:", error?.message || error);
+      failed = true;
+    }
+  }
+  return (
+    <>
+      <div className="admin-page">
+        <StagePanel merchantId={merchant.id} info={stage} isAdmin={isAdmin} />
+      </div>
+      {isAdmin ? (
+        <div className="admin-page">
+          <div className="admin-panel">
+            <h2>History</h2>
+            {failed ? <div className="admin-banner" role="alert">Could not load the history.</div> : null}
+            {!failed && history.length === 0 ? <p className="admin-helper">No moves yet. The business is where it started.</p> : null}
+            {history.length ? (
+              <div className="admin-list">
+                {history.map((row) => (
+                  <div className="admin-row" key={row.id}>
+                    <div>
+                      <div className="admin-row-title">{row.text}</div>
+                      <div className="admin-row-meta">{row.when} · {row.who}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
 
 // ---------- Tasks ----------
 
-async function TasksTab({ merchantId }) {
+async function TasksTab({ merchant }) {
+  const merchantId = merchant.id;
   let tasks = [];
   let failed = false;
   try {
@@ -172,7 +246,7 @@ async function TasksTab({ merchantId }) {
                 <div>
                   <div className="admin-row-title">{task.title}</div>
                   <div className="admin-row-meta">
-                    {TASK_TYPE_LABELS[task.task_type] || "Other"}
+                    {taskTypeLabel(task.task_type, TASK_TYPE_LABELS, merchant.business_kind)}
                     {task.due_date ? ` · due ${task.due_date}` : ""}
                     {task.urgent ? " · urgent" : ""}
                   </div>
