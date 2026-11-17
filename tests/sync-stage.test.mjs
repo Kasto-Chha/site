@@ -291,12 +291,10 @@ test("the Businesses list shows each business's stage, no longer a tag-removed l
 
 test("the business page shows the stage panel to an admin to use and to an operator to read, and a failed read cannot break it", () => {
   const page = read("app/admin/sync/[id]/page.js");
-  assert.match(page, /<StagePanel merchantId=\{merchant\.id\} info=\{stage\} isAdmin=\{false\} \/>/, "the operator's is read-only");
-  assert.match(page, /<StagePanel merchantId=\{merchant\.id\} info=\{stage\} isAdmin \/>/);
+  assert.match(page, /<StagePanel merchantId=\{merchant\.id\} info=\{stage\} isAdmin=\{isAdmin\} \/>/, "one panel, told whether the viewer is an admin");
+  assert.match(page, /<OverviewTab merchant=\{shown\} stage=\{stage\} isAdmin=\{access\.isAdmin\} \/>/, "the viewer's own role is what is passed, never a constant true");
   assert.match(page, /catch \{\s*stage = \{ known: false \};/);
-  const operator = page.slice(page.indexOf("if (!access.isAdmin) {"), page.indexOf("// The business's QR codes"));
-  assert.match(operator, /isAdmin=\{false\}/);
-  assert.doesNotMatch(operator, /isAdmin \/>/, "an operator's version never gets the buttons");
+  assert.doesNotMatch(page, /isAdmin \/>/, "no panel is ever drawn with the buttons switched on unconditionally");
 });
 
 test("the stage panel sends moves to the stage route, holds Move to Free until the box is ticked, and shows the reason when refused", () => {

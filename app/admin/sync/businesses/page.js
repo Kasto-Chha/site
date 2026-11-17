@@ -7,6 +7,7 @@ import { listMerchantsForAdmin } from "../../../../lib/sync/merchants";
 import { readStages } from "../../../../lib/sync/stageStore";
 import { STAGE_LABELS, stageInfo, stageLine } from "../../../../lib/sync/stage";
 import { countLabel } from "../../../../lib/sync/text";
+import { FILTERS, FILTER_LABELS, filterBusinesses, listHref, parseListQuery, stageCounts } from "../../../../lib/sync/listFilter";
 
 export const metadata = {
   title: "Sync businesses - KastoChha Admin",
@@ -16,7 +17,7 @@ export const metadata = {
 // Always read fresh: an admin who has just tagged a business expects to see it.
 export const dynamic = "force-dynamic";
 
-export default async function SyncAdminPage() {
+export default async function SyncAdminPage({ searchParams }) {
   const access = await syncAccess();
   if (!access.ok) {
     return (
@@ -44,6 +45,10 @@ export default async function SyncAdminPage() {
   const error = scopeError || listed.error;
   // The stage of each business. If it cannot be read the list still shows, and says why.
   const stages = merchants.length ? await readStages(createServerSupabase(), merchants.map((m) => m.id)) : { rows: new Map(), failed: false };
+  // The filter and the search come from the address, so a view can be bookmarked or shared. Anything odd means "all".
+  const query = parseListQuery(searchParams);
+  const counts = stageCounts(merchants, stages.rows, query.q);
+  const shown = filterBusinesses(merchants, stages.rows, query);
 
   return (
     <div className="admin-page">
@@ -64,11 +69,31 @@ export default async function SyncAdminPage() {
 
       {error ? <div className="admin-banner">{error}</div> : null}
 
+      {merchants.length > 0 ? (
+        <div className="sync-filters">
+          <div className="sync-chips" role="group" aria-label="Filter by stage">
+            {FILTERS.map((key) => (
+              <a key={key} className={`sync-chip${query.stage === key ? " on" : ""}`} href={listHref(key, query.q)} aria-current={query.stage === key ? "true" : undefined}>
+                {FILTER_LABELS[key]} <span>{counts[key]}</span>
+              </a>
+            ))}
+          </div>
+          <form className="sync-search" method="get" action="/admin/sync/businesses" role="search">
+            {query.stage !== "all" ? <input type="hidden" name="stage" value={query.stage} /> : null}
+            <input className="admin-input" type="search" name="q" defaultValue={query.q} placeholder="Search by name or area" maxLength={80} aria-label="Search businesses" />
+            <button className="btn-outline" type="submit">Search</button>
+            {query.q ? <a className="btn-outline" href={listHref(query.stage, "")}>Clear</a> : null}
+          </form>
+        </div>
+      ) : null}
+
       {!error && merchants.length === 0 ? (
         <div className="admin-empty">{access.isAdmin ? "No business has been tagged yet. Tag the first one to start a pilot." : "No business has been assigned to you yet. An admin gives you one on the Team page."}</div>
+      ) : shown.length === 0 ? (
+        <div className="admin-empty">No business matches{query.q ? ` "${query.q}"` : ""}{query.stage !== "all" ? ` in ${FILTER_LABELS[query.stage]}` : ""}.</div>
       ) : (
         <div className="admin-list">
-          {merchants.map((m) => {
+          {shown.map((m) => {
             const stage = stageInfo(stages.rows.get(m.id));
             return (
             <div className="admin-row" key={m.id}>

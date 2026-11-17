@@ -9,7 +9,8 @@ import { countLabel } from "../../../../lib/sync/text";
 import { ABOUT_MAX } from "../../../../lib/sync/validate";
 
 // `operatorView` is an operator's version of the page: the details form, without the section that removes or restores the tag.
-export default function MerchantEditorClient({ merchant, operatorView = false }) {
+// `hideHeader` leaves out the title block when the page already shows its own (the tabbed business page).
+export default function MerchantEditorClient({ merchant, operatorView = false, hideHeader = false }) {
   const router = useRouter();
   const [businessName, setBusinessName] = useState(merchant.business_name);
   const [area, setArea] = useState(merchant.area);
@@ -72,6 +73,7 @@ export default function MerchantEditorClient({ merchant, operatorView = false })
 
   return (
     <div className="admin-page">
+      {hideHeader ? null : (
       <div className="admin-header">
         <div>
           <div className="page-kicker">SYNC</div>
@@ -86,6 +88,7 @@ export default function MerchantEditorClient({ merchant, operatorView = false })
           <a className="btn-outline" href={`/discussions/${merchant.topic_slug}`}>View thread</a>
         </div>
       </div>
+      )}
 
       {status ? <div className="admin-banner" role="status">{status}</div> : null}
 

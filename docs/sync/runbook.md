@@ -37,6 +37,14 @@ A business you tag starts as WIP for 90 days. A trial that reaches its end date 
 
 On a business's page, the **Stage** panel (admins only) has the moves: **Make Active**, **Move to Free**, **Start a trial again**, and **Change the end date** (which needs a reason). **Move to Free** cannot finish until you tick that KastoChha has been removed as a manager on the business's Google profile, which you do yourself in Google. Every move is recorded in the audit log with the stage and the dates, never the note's words. An Active business never goes back to a trial; to run another trial, move it to Free first.
 
+## The business page, its tabs, and deleting a business
+
+The **Businesses** list has stage chips (All, WIP, Active, Free) with a count on each, and a search box that finds a business by name or area. The choice is kept in the address, so a view can be bookmarked.
+
+One business's page has a header (its stage, thread, and **Open on Google** when it has a Google link) and tabs: **Overview** (stage and trial, details at a glance), **KastoChha** (QR cards, the owner's link, the website badge; admins only), **Tasks** (what the team has to do for it) and **Setup** (details, assigned operators, the business tag, delete). An operator sees Overview, Tasks and Setup (details only). More tabs arrive with the pieces that fill them.
+
+**Delete business** (Setup, admins only) is for something tagged by mistake that is not a business at all. You must type the business's name exactly. The thread and every post stay on KastoChha as ordinary posts; the QR cards, scan counts, private notes, owner replies, tasks and assignments are deleted, and it cannot be undone. It is recorded in the audit log. To only take the business header off the thread, use **Remove tag** instead.
+
 ## Operators and tasks
 
 An **operator** is a team member who works on the businesses an admin gives them and cannot change anything else. To add one: the person signs up on the site first; then, on **Team**, enter their email, press **Look up**, check it is the right account, and confirm. Give them businesses on the Team page or on a business's own page, under **Assigned operators**.

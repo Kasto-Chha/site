@@ -340,14 +340,14 @@ export class FakePostgrest {
       }
       return this.#select(res, req, url, rows);
     }
-    if (req.method === "DELETE") return this.#delete(res, table, url);
+    if (req.method === "DELETE") return this.#delete(res, req, table, url);
     if (req.method === "PATCH") return this.#update(res, req, table, url, body);
     return send(res, 405, { message: "not supported by the fake" });
   }
 
   // Delete by filter. chat_messages go with their topic, the way the
   // on-delete-cascade foreign key takes them in Postgres.
-  #delete(res, table, url) {
+  #delete(res, req, table, url) {
     if (this.failWritesTo === table) {
       return send(res, 500, { code: "XX000", message: "simulated write failure" });
     }
@@ -357,6 +357,8 @@ export class FakePostgrest {
       const ids = new Set(doomed.map((row) => row.id));
       this.tables.chat_messages = this.tables.chat_messages.filter((m) => !ids.has(m.topic_id));
     }
+    // Like PostgREST, answer with the deleted rows only when asked to (Prefer: return=representation).
+    if ((req.headers.prefer || "").includes("return=representation")) return sendRows(res, req, doomed, 200);
     return send(res, 204, null);
   }
 

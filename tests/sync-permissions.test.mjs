@@ -99,7 +99,10 @@ test("the operator pages show an operator only their own: the lists and the busi
   assert.match(read("app/admin/sync/businesses/page.js"), /catch \{\s*onlyIds = \[\];/, "unreadable assignments show none, never all");
   assert.match(read("app/admin/sync/[id]/page.js"), /access\.isAdmin \|\| \(await isAssigned\(/);
   assert.match(read("app/admin/sync/tasks/page.js"), /scopeFor\(supabase, access\)/);
-  assert.match(read("app/admin/sync/[id]/page.js"), /if \(!access\.isAdmin\) \{\s*return \(/, "an operator's version returns before any admin-only panel is read");
+  const page = read("app/admin/sync/[id]/page.js");
+  const setup = page.slice(page.indexOf("async function SetupTab"), page.indexOf("// ---------- KastoChha"));
+  assert.ok(setup.indexOf("if (!isAdmin) return <MerchantEditorClient") !== -1 && setup.indexOf("if (!isAdmin) return <MerchantEditorClient") < setup.indexOf("operatorsOfMerchant"), "an operator's Setup returns the details form before any admin-only data is read");
+  assert.match(page, /tab === "kastochha" && access\.isAdmin/, "the QR, owner and badge tab is only ever drawn for an admin");
 });
 
 // ---------- the routes, run: nobody is let in who should not be ----------

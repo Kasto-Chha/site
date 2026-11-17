@@ -8,9 +8,14 @@ import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
 import OwnerPanel from "./OwnerPanel";
 import AssignmentsPanel from "./AssignmentsPanel";
+import DeletePanel from "./DeletePanel";
 import StagePanel from "./StagePanel";
-import { stageInfo } from "../../../../lib/sync/stage";
+import { STAGE_LABELS, stageInfo, stageLine } from "../../../../lib/sync/stage";
 import { readStage } from "../../../../lib/sync/stageStore";
+import { googleLink, resolveTab, tabHref, tabsFor } from "../../../../lib/sync/businessTabs";
+import { TASK_STATUS_LABELS, TASK_TYPE_LABELS, listTasks, nepalToday, sortTasks, isDueNow } from "../../../../lib/sync/tasks";
+import { kindDisplay } from "../../../../lib/sync/businessTypes";
+import { countLabel } from "../../../../lib/sync/text";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
 import { createServerSupabase } from "../../../../lib/supabase/server";
@@ -23,7 +28,7 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function MerchantPage({ params }) {
+export default async function MerchantPage({ params, searchParams }) {
   const access = await syncAccess();
   if (!access.ok) {
     return (
@@ -47,6 +52,8 @@ export default async function MerchantPage({ params }) {
       </div>
     );
   }
+
+  const tab = resolveTab(searchParams?.tab, access.isAdmin);
 
   // Only what the screen needs. The owner's account stays on the server.
   const shown = {
@@ -75,20 +82,158 @@ export default async function MerchantPage({ params }) {
   } catch {
     stage = { known: false };
   }
+  const google = googleLink(shown);
 
-  // An operator gets the details form and their way to the tasks, and nothing from the admin-only panels below, which are not even read.
-  if (!access.isAdmin) {
-    return (
-      <>
-        <MerchantEditorClient merchant={shown} operatorView />
-        <div className="admin-page">
-          <StagePanel merchantId={merchant.id} info={stage} isAdmin={false} />
-          <a className="btn-outline" href="/admin/sync/tasks">Tasks</a>
+  return (
+    <>
+      <div className="admin-page">
+        <div className="admin-header">
+          <div>
+            <div className="page-kicker">SYNC</div>
+            <h1>{shown.business_name}, {shown.area}</h1>
+            <p className="admin-sub">
+              <span className={`sync-pill ${stage.stage === "wip" ? "waiting" : stage.stage === "active" ? "done" : ""}`} title={stageLine(stage)}>
+                {stage.known ? STAGE_LABELS[stage.stage] : "No stage"}
+              </span>{" "}
+              {stage.known && stage.stage === "wip" ? `Day ${stage.day} of ${stage.total} · ` : ""}
+              {countLabel(shown.posts, "experience", "experiences")} · {countLabel(shown.questions, "question", "questions")}{shown.hasOwner ? " · owner linked" : ""}
+            </p>
+          </div>
+          <div className="admin-actions">
+            <a className="btn-outline" href="/admin/sync/businesses">Back</a>
+            <a className="btn-outline" href={`/discussions/${shown.topic_slug}`}>View thread</a>
+            {google ? <a className="btn-outline" href={google} target="_blank" rel="noopener noreferrer">Open on Google</a> : null}
+          </div>
         </div>
-      </>
-    );
+        <div className="sync-tabs" role="navigation" aria-label="Business sections">
+          {tabsFor(access.isAdmin).map((item) => (
+            <a key={item.id} className={`sync-tab${tab === item.id ? " on" : ""}`} href={tabHref(merchant.id, item.id)} aria-current={tab === item.id ? "page" : undefined}>
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
+      {tab === "tasks" ? <TasksTab merchantId={merchant.id} /> : null}
+      {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
+      {tab === "kastochha" && access.isAdmin ? <KastoChhaTab merchant={merchant} /> : null}
+    </>
+  );
+}
+
+// ---------- Overview ----------
+
+function OverviewTab({ merchant, stage, isAdmin }) {
+  return (
+    <>
+      <div className="admin-page">
+        <StagePanel merchantId={merchant.id} info={stage} isAdmin={isAdmin} />
+      </div>
+      <div className="admin-page">
+        <div className="admin-panel">
+          <h2>At a glance</h2>
+          <dl className="sync-facts">
+            <div><dt>Type</dt><dd>{kindDisplay(merchant.business_kind, merchant.kind_label)}</dd></div>
+            <div><dt>Area</dt><dd>{merchant.area}</dd></div>
+            <div><dt>Thread</dt><dd>/discussions/{merchant.topic_slug}</dd></div>
+            <div><dt>Hub</dt><dd>/hub/{merchant.slug}</dd></div>
+            <div><dt>Owner</dt><dd>{merchant.hasOwner ? "Linked" : "Not linked yet"}</dd></div>
+            <div><dt>Business tag</dt><dd>{merchant.status === "active" ? "On" : "Removed"}</dd></div>
+          </dl>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---------- Tasks ----------
+
+async function TasksTab({ merchantId }) {
+  let tasks = [];
+  let failed = false;
+  try {
+    tasks = sortTasks(await listTasks(createServerSupabase(), { merchantIds: [merchantId] }));
+  } catch (error) {
+    console.error("Sync business tasks failed:", error?.message || error);
+    failed = true;
+  }
+  const today = nepalToday();
+  return (
+    <div className="admin-page">
+      <div className="admin-panel">
+        <h2>Tasks for this business</h2>
+        {failed ? <div className="admin-banner" role="alert">Could not load the tasks.</div> : null}
+        {!failed && tasks.length === 0 ? <p className="admin-helper">Nothing to do for this business right now.</p> : null}
+        {tasks.length ? (
+          <div className="admin-list">
+            {tasks.map((task) => (
+              <div className="admin-row" key={task.id}>
+                <div>
+                  <div className="admin-row-title">{task.title}</div>
+                  <div className="admin-row-meta">
+                    {TASK_TYPE_LABELS[task.task_type] || "Other"}
+                    {task.due_date ? ` · due ${task.due_date}` : ""}
+                    {task.urgent ? " · urgent" : ""}
+                  </div>
+                </div>
+                <div className="admin-row-actions">
+                  <span className={`sync-pill ${task.status === "done" ? "done" : isDueNow(task, today) ? "crit" : "waiting"}`}>{TASK_STATUS_LABELS[task.status] || task.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="admin-actions">
+          <a className="btn-outline" href="/admin/sync/tasks">Add or change tasks</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Setup ----------
+
+async function SetupTab({ merchant, isAdmin }) {
+  // An operator gets the details form and nothing from the admin-only panels below, which are not even read.
+  if (!isAdmin) return <MerchantEditorClient merchant={merchant} operatorView hideHeader />;
+
+  // The operators on this business, and the ones that could be added. Names are looked up now; only ids are stored.
+  let assigned = [];
+  let available = [];
+  try {
+    const supabase = createServerSupabase();
+    const [onThis, everyone] = await Promise.all([operatorsOfMerchant(supabase, merchant.id), listOperators(supabase)]);
+    const named = async (id) => {
+      try {
+        const user = describeClerkUser(await getClerkUser(id));
+        return { id, name: user?.name || user?.email || "An operator" };
+      } catch {
+        return { id, name: "An operator" };
+      }
+    };
+    assigned = await Promise.all(onThis.map(named));
+    available = await Promise.all(everyone.map((row) => row.operator_user_id).filter((id) => !onThis.includes(id)).map(named));
+  } catch (failure) {
+    console.error("Sync assignments read failed:", failure?.message || failure);
   }
 
+  return (
+    <>
+      <MerchantEditorClient merchant={merchant} hideHeader />
+      <div className="admin-page">
+        <AssignmentsPanel merchantId={merchant.id} assigned={assigned} available={available} />
+      </div>
+      <div className="admin-page">
+        <DeletePanel merchantId={merchant.id} businessName={merchant.business_name} />
+      </div>
+    </>
+  );
+}
+
+// ---------- KastoChha: QR codes, owner, badge ----------
+
+async function KastoChhaTab({ merchant }) {
   // The business's QR codes, with their scan counts. A failure is shown, never hidden as "none".
   let codes = [];
   let loadError = "";
@@ -120,32 +265,8 @@ export default async function MerchantPage({ params }) {
     }
   }
 
-  // The operators on this business, and the ones that could be added. Names are looked up now; only ids are stored.
-  let assigned = [];
-  let available = [];
-  try {
-    const supabase = createServerSupabase();
-    const [onThis, everyone] = await Promise.all([operatorsOfMerchant(supabase, merchant.id), listOperators(supabase)]);
-    const named = async (id) => {
-      try {
-        const user = describeClerkUser(await getClerkUser(id));
-        return { id, name: user?.name || user?.email || "An operator" };
-      } catch {
-        return { id, name: "An operator" };
-      }
-    };
-    assigned = await Promise.all(onThis.map(named));
-    available = await Promise.all(everyone.map((row) => row.operator_user_id).filter((id) => !onThis.includes(id)).map(named));
-  } catch (failure) {
-    console.error("Sync assignments read failed:", failure?.message || failure);
-  }
-
   return (
     <>
-      <MerchantEditorClient merchant={shown} />
-      <div className="admin-page">
-        <StagePanel merchantId={merchant.id} info={stage} isAdmin />
-      </div>
       <div className="admin-page">
         <QrCodesPanel
           merchantId={merchant.id}
@@ -157,9 +278,6 @@ export default async function MerchantPage({ params }) {
       </div>
       <div className="admin-page">
         <OwnerPanel merchantId={merchant.id} owner={owner} active={merchant.status !== "cancelled"} />
-      </div>
-      <div className="admin-page">
-        <AssignmentsPanel merchantId={merchant.id} assigned={assigned} available={available} />
       </div>
       <div className="admin-page">
         <BadgePanel
