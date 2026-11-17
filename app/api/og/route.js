@@ -2,7 +2,9 @@ import { ImageResponse } from "next/og";
 import { renderCard } from "../../../lib/ogResponse";
 import { finalizeImage, defaultCardResponse } from "../../../lib/ogFinalize";
 
-export const runtime = "edge";
+// Node, not edge: the Battle card shrinks its pictures with sharp (lib/ogImages.js),
+// which needs Node. Rendering full-size pictures on the edge was the card's main cost.
+export const runtime = "nodejs";
 
 const ACCENTS = {
   trending: "#C8102E",

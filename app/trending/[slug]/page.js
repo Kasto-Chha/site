@@ -9,7 +9,7 @@ import {
   getTrendingTopicBySlug,
   getUserVotes,
 } from "../../../lib/supabase/queries";
-import { shareMetadata, votesStat } from "../../../lib/share";
+import { shareMetadata, cardVotesStat } from "../../../lib/share";
 import { NOINDEX_FOLLOW } from "../../../lib/seo/indexable";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,8 @@ async function resolveTopic(param) {
 
 
 function voteStat(t) {
-  return votesStat((t.votes_yes || 0) + (t.votes_mid || 0) + (t.votes_no || 0));
+  // Rounded for the share card (lib/share.js): an exact count changed its address on every vote.
+  return cardVotesStat((t.votes_yes || 0) + (t.votes_mid || 0) + (t.votes_no || 0));
 }
 
 export async function generateMetadata({ params }) {

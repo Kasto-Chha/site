@@ -5,7 +5,7 @@ import SiteNav from "../../components/SiteNav";
 import BattleSplit from "../../components/BattleSplit";
 import SharePanel from "../../components/SharePanel";
 import { getBattleById, getBattleBySlug, getUserVotes } from "../../../lib/supabase/queries";
-import { shareMetadata, votesStat } from "../../../lib/share";
+import { shareMetadata, cardVotesStat, cardBattleSplit } from "../../../lib/share";
 import { NOINDEX_FOLLOW } from "../../../lib/seo/indexable";
 
 export const dynamic = "force-dynamic";
@@ -44,8 +44,9 @@ export async function generateMetadata({ params }) {
       title: `${battle.left_title} vs ${battle.right_title}`,
       description: `${battle.category} battle — vote and see what Nepal thinks.`,
       kicker: battle.category,
-      // The card's votes badge; the split itself is drawn from the two counts below.
-      stat: votesStat(total),
+      // The card's votes badge and split bar are rounded (lib/share.js) so the card's
+      // address, and so the drawing, doesn't change with every vote.
+      stat: cardVotesStat(total),
       // The two sides' real pictures, names and colours, drawn on the share card.
       battle: {
         a: battle.left_title,
@@ -54,8 +55,7 @@ export async function generateMetadata({ params }) {
         ib: battle.right_image,
         ca: battle.left_color,
         cb: battle.right_color,
-        va: battle.left_votes,
-        vb: battle.right_votes
+        ...cardBattleSplit(battle.left_votes, battle.right_votes)
       }
     }),
     robots: NOINDEX_FOLLOW
