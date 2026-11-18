@@ -37,7 +37,11 @@ export async function PUT(request, { params }) {
   // Already there: nothing to change and nothing to record (a double click, or two people at once).
   if (found.data.status === status) return NextResponse.json({ note: found.data });
 
+  // The business sees a note only once the team has passed it on (patch 14m): into a digest stamps it, back to new clears it, and
+  // resolving leaves it as it was, so a note resolved without ever being passed on stays hidden from the owner.
   const values = { status, handled_at: status === "resolved" ? new Date().toISOString() : null };
+  if (status === "in_digest") values.shared_with_owner_at = found.data.shared_with_owner_at || new Date().toISOString();
+  else if (status === "new") values.shared_with_owner_at = null;
   let auditId;
   try {
     auditId = await openAuditEntry(supabase, {

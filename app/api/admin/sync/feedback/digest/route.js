@@ -46,7 +46,7 @@ export async function POST(request) {
     return NextResponse.json({ error: AUDIT_FAILED }, { status: 500 });
   }
 
-  const { data, error } = await supabase.from("sync_feedback").update({ status: "in_digest", handled_at: null }).eq("merchant_id", merchantId).eq("status", "new").select("id");
+  const { data, error } = await supabase.from("sync_feedback").update({ status: "in_digest", handled_at: null, shared_with_owner_at: new Date().toISOString() }).eq("merchant_id", merchantId).eq("status", "new").select("id");
   if (error) {
     await closeAuditEntry(supabase, auditId, { applied: false });
     logDbError(context, error);

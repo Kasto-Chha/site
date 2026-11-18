@@ -9,6 +9,7 @@ Allow: /
 Allow: /api/og
 Disallow: /admin
 Disallow: /api
+Disallow: /owner
 Disallow: /hub/
 Disallow: /q/
 Disallow: /report/

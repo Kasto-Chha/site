@@ -36,6 +36,7 @@ The old website badge table can be dropped by hand once it is empty: `select cou
 15. `0032_sync_posts.sql`: the posts plan typed in by hand (one private table; deleting a business deletes its posts). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_posts;` says 0.
 16. `0033_sync_replies.sql`: the replies queue typed in by hand (one private table; deleting a business deletes its replies). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_replies;` says 0.
 17. `0034_sync_menu_items.sql`: the menu, rooms and rates, or services, typed in by hand (one private table; deleting a business deletes its list). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_menu_items;` says 0.
+18. `0035_sync_feedback_shared.sql`: records which customer notes the team has passed on to the business (one new column on `sync_feedback`; notes already marked "in digest" are stamped as passed on, resolved ones are not). Run it **before** pushing patch 14m: the digest buttons write this column. Safe to run twice. Check: `select count(*) from public.sync_feedback where shared_with_owner_at is not null;` equals the number of notes currently "in digest".
 
 ## The Audit (admins only)
 
@@ -70,6 +71,12 @@ On the Google tab, **Monthly report** opens one A4 page for the owner (admins on
 ### Menu, rooms and rates, services
 
 On the Google tab the next panel is named by the business type: **Menu** for cafés, restaurants, bakeries, bars and sweet shops, **Rooms and rates** for hotels and homestays, **Services** for the rest. Add each item with a name, an optional section, a price in whole rupees (or none), a unit such as "per cup" or "per night", and a short description. An item starts as a **Draft**. **Send for the owner** (or **Send all drafts for the owner**) puts it with the owner; once the owner has agreed, press **Owner confirmed** (or **Owner confirmed all waiting**). Changing what a confirmed item says (name, section, price, unit, description) turns it back into a draft, so a changed price is never shown as confirmed. **Copy confirmed items** gives plain text to paste; **Copy everything** includes drafts. Up and Down reorder inside a section. This is our own record: it is not posted to Google from here, because menus on Google for Nepal are not confirmed. Names and prices are never written to the audit log. A Free business is held, but its items can still be removed.
+
+## The owner dashboard
+
+Owners sign in at `/owner` with the account the team linked to their business (Setup tab, Owner). One business: they go straight to it; several: they pick; none linked: a message tells them to ask us. An owner sees only their own business: this month's Google figures beside last month, the profile checklist and what we are working on, what we did, the monthly report (print or save as PDF), and an **Inbox** of customer private notes. They never see the team's tasks, the team's private notes, the note typed with the Google figures, or the audit log. The page is kept out of search engines.
+
+**Inbox:** the owner sees a customer note only after the team has passed it on: **Mark sent in digest** (one note) or **Mark all sent** (a business's digest) is what releases it. Putting a note back to New hides it again. Resolving a note keeps it visible only if it was passed on first; a note resolved straight from New is never shown to the owner. Urgent notes show an Urgent mark until resolved. The inbox is read only: the owner follows up with the customer themselves. Approving menu items, posts and replies and answering the team's questions come in the next patch.
 
 ## Stages and the 90-day trial
 
