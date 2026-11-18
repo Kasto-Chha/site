@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 // Deleting a business from Sync for good. The button stays held until the business's name is typed exactly. The thread and
-// every post stay on KastoChha; the QR codes, scan counts, private notes, owner replies, tasks and assignments go.
+// every post stay on KastoChha; the QR codes, scan counts, private notes, owner replies, typed-in Google numbers, tasks and assignments go.
 export default function DeletePanel({ merchantId, businessName }) {
   const router = useRouter();
   const [typed, setTyped] = useState("");
@@ -38,7 +38,7 @@ export default function DeletePanel({ merchantId, businessName }) {
       <h2>Delete this business from Sync</h2>
       <p className="admin-helper">
         Use this for something that was tagged by mistake and is not a business at all. The thread and every post stay on KastoChha.
-        The QR codes, scan counts, private notes, owner replies, tasks and assignments are deleted, and this cannot be undone.
+        The QR codes, scan counts, private notes, owner replies, typed-in Google numbers, tasks and assignments are deleted, and this cannot be undone.
         To only take the business header off the thread, use Remove tag above instead.
       </p>
       {error ? <div className="admin-banner" role="alert">{error}</div> : null}

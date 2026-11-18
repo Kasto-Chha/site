@@ -3,6 +3,7 @@ import { syncAccess } from "../../../../lib/sync/access";
 import { isAssigned, listOperators, operatorsOfMerchant } from "../../../../lib/sync/team";
 import { getMerchantById } from "../../../../lib/sync/merchants";
 import { pinnedTitle } from "../../../../lib/sync/threadPage";
+import GoogleNumbers from "./GoogleNumbers";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
@@ -19,6 +20,8 @@ import { familyInfo, taskTypeLabel } from "../../../../lib/sync/families";
 import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { prospectOfMerchant } from "../../../../lib/sync/prospects";
 import { scoreFacts } from "../../../../lib/sync/audit";
+import { lastMonth, listNumbers, monthOptions } from "../../../../lib/sync/googleNumbers";
+import { nepalDay } from "../../../../lib/sync/time";
 import { countLabel } from "../../../../lib/sync/text";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
@@ -130,11 +133,41 @@ export default async function MerchantPage({ params, searchParams }) {
       </div>
 
       {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} audit={audit} /> : null}
+      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} /> : null}
       {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
       {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
       {tab === "kastochha" && access.isAdmin ? <KastoChhaTab merchant={merchant} /> : null}
     </>
+  );
+}
+
+// ---------- Google ----------
+
+// The Google half, typed in by hand until the Google connection exists. The monthly numbers come first; the other sections arrive
+// with their own patches. A Free business has no work done on its Google profile, so its form is held.
+async function GoogleTab({ merchant, stage }) {
+  let rows = [];
+  let failed = false;
+  try {
+    rows = await listNumbers(createServerSupabase(), merchant.id);
+  } catch (error) {
+    console.error("Sync google numbers failed:", error?.message || error);
+    failed = true;
+  }
+  const today = nepalDay(Date.now());
+  const free = stage.known && stage.stage === "free";
+  return (
+    <div className="admin-page">
+      {failed ? <div className="admin-banner" role="alert">Could not load the numbers. Has migration 0030 been run?</div> : null}
+      <GoogleNumbers
+        merchantId={merchant.id}
+        rows={rows}
+        months={monthOptions(today)}
+        defaultMonth={lastMonth(today)}
+        disabledReason={free ? "This business is on the Free plan: we do not work on its Google profile, so no numbers are entered. The months already typed in stay here." : ""}
+      />
+    </div>
   );
 }
 

@@ -80,9 +80,9 @@ test("a chip's address keeps the search, and all with no search is the plain lis
 
 // ---------- the tabs ----------
 
-test("an admin has five tabs and an operator four, without the admin-only KastoChha tab", () => {
-  assert.deepEqual(T.tabsFor(true).map((t) => t.id), ["overview", "plan", "kastochha", "tasks", "setup"]);
-  assert.deepEqual(T.tabsFor(false).map((t) => t.id), ["overview", "plan", "tasks", "setup"]);
+test("an admin has six tabs and an operator five, without the admin-only KastoChha tab", () => {
+  assert.deepEqual(T.tabsFor(true).map((t) => t.id), ["overview", "google", "plan", "kastochha", "tasks", "setup"]);
+  assert.deepEqual(T.tabsFor(false).map((t) => t.id), ["overview", "google", "plan", "tasks", "setup"]);
 });
 
 test("an unknown tab, or one an operator may not open, shows Overview", () => {
@@ -90,7 +90,7 @@ test("an unknown tab, or one an operator may not open, shows Overview", () => {
   assert.equal(T.resolveTab("SETUP", false), "setup");
   assert.equal(T.resolveTab("kastochha", true), "kastochha");
   assert.equal(T.resolveTab("kastochha", false), "overview", "an operator is not let into the QR, owner and badge tab");
-  for (const odd of [undefined, null, "", "google", "../x", ["tasks"].length, {}]) assert.equal(T.resolveTab(odd, true), "overview", String(odd));
+  for (const odd of [undefined, null, "", "replies", "../x", ["tasks"].length, {}]) assert.equal(T.resolveTab(odd, true), "overview", String(odd));
   assert.equal(T.resolveTab(["tasks", "setup"], true), "tasks");
 });
 
