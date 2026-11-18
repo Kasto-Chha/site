@@ -30,7 +30,9 @@ const OPERATOR_ROUTE_METHODS = new Set([
   "app/api/admin/sync/tasks/[id]/route.js:PATCH",
   "app/api/admin/sync/merchants/[id]/route.js:PUT",
   "app/api/admin/sync/merchants/[id]/numbers/route.js:PUT",
-  "app/api/admin/sync/merchants/[id]/numbers/route.js:DELETE"
+  "app/api/admin/sync/merchants/[id]/numbers/route.js:DELETE",
+  "app/api/admin/sync/merchants/[id]/health/route.js:PUT",
+  "app/api/admin/sync/merchants/[id]/health/route.js:POST"
 ]);
 const OPERATOR_PAGES = new Set(["app/admin/sync/tasks/page.js", "app/admin/sync/businesses/page.js", "app/admin/sync/[id]/page.js"]);
 
@@ -88,7 +90,7 @@ test("no file outside the known few lets an operator in", () => {
   for (const dir of ["app", "lib"]) for (const file of [...files(dir, "page.js"), ...files(dir, "route.js"), ...files(dir, "layout.js")]) if (/await syncAccess\(\)/.test(read(file))) found.push(file);
   assert.deepEqual(found.sort(), [
     "app/admin/sync/[id]/page.js", "app/admin/sync/businesses/page.js", "app/admin/sync/layout.js", "app/admin/sync/page.js", "app/admin/sync/tasks/page.js",
-    "app/api/admin/sync/merchants/[id]/numbers/route.js", "app/api/admin/sync/merchants/[id]/route.js", "app/api/admin/sync/tasks/[id]/route.js", "app/api/admin/sync/tasks/route.js"
+    "app/api/admin/sync/merchants/[id]/numbers/route.js", "app/api/admin/sync/merchants/[id]/health/route.js", "app/api/admin/sync/merchants/[id]/route.js", "app/api/admin/sync/tasks/[id]/route.js", "app/api/admin/sync/tasks/route.js"
   ].sort());
   assert.deepEqual(files("lib", "access.js"), ["lib/sync/access.js"], "and the check itself lives in one file");
   // The two places that ask for the operator role by name do so to check or change it, behind an admin gate.

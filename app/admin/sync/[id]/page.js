@@ -4,6 +4,7 @@ import { isAssigned, listOperators, operatorsOfMerchant } from "../../../../lib/
 import { getMerchantById } from "../../../../lib/sync/merchants";
 import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import GoogleNumbers from "./GoogleNumbers";
+import HealthPanel from "./HealthPanel";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
@@ -20,6 +21,7 @@ import { familyInfo, taskTypeLabel } from "../../../../lib/sync/families";
 import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { prospectOfMerchant } from "../../../../lib/sync/prospects";
 import { scoreFacts } from "../../../../lib/sync/audit";
+import { evaluate, listChecks } from "../../../../lib/sync/health";
 import { lastMonth, listNumbers, monthOptions } from "../../../../lib/sync/googleNumbers";
 import { nepalDay } from "../../../../lib/sync/time";
 import { countLabel } from "../../../../lib/sync/text";
@@ -133,7 +135,7 @@ export default async function MerchantPage({ params, searchParams }) {
       </div>
 
       {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} audit={audit} /> : null}
-      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} /> : null}
+      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={searchParams?.view === "health" ? "health" : "overview"} /> : null}
       {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
       {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
@@ -146,26 +148,88 @@ export default async function MerchantPage({ params, searchParams }) {
 
 // The Google half, typed in by hand until the Google connection exists. The monthly numbers come first; the other sections arrive
 // with their own patches. A Free business has no work done on its Google profile, so its form is held.
-async function GoogleTab({ merchant, stage }) {
+async function GoogleTab({ merchant, stage, isAdmin, view }) {
+  const supabase = createServerSupabase();
+  const today = nepalDay(Date.now());
+  const free = stage.known && stage.stage === "free";
+  const freeNote = "This business is on the Free plan: we do not work on its Google profile, so nothing is entered. What was typed in before stays here.";
+  const googleHref = tabHref(merchant.id, "google");
+
+  let checks = [];
+  let healthFailed = false;
+  try {
+    checks = await listChecks(supabase, merchant.id);
+  } catch (error) {
+    console.error("Sync health failed:", error?.message || error);
+    healthFailed = true;
+  }
+  const latest = checks[0] || null;
+  const result = evaluate(latest?.facts);
+
+  if (view === "health") {
+    // The free audit score is on another scale (13 weighted checks), so it is shown beside the history, never in it.
+    let auditLine = "";
+    if (isAdmin) {
+      try {
+        const prospect = await prospectOfMerchant(supabase, merchant.id);
+        const score = prospect ? scoreFacts(prospect.facts).score : null;
+        if (score !== null && score !== undefined) auditLine = `The free audit scored ${score}/100 on its own 13 weighted checks. That is a different scale, so it is not compared with this score.`;
+      } catch {
+        auditLine = "";
+      }
+    }
+    return (
+      <div className="admin-page">
+        <div className="admin-actions"><a className="btn-outline" href={googleHref}>Back to Google</a></div>
+        {healthFailed ? <div className="admin-banner" role="alert">Could not load the checks. Has migration 0031 been run?</div> : null}
+        <HealthPanel
+          merchantId={merchant.id}
+          evaluation={{ score: result.score, passing: result.passing, failing: result.failing, unknown: result.unknown, known: result.known, results: result.results.map((r) => ({ key: r.key, state: r.state })), groups: result.groups.map((g) => ({ key: g.key, label: g.label, passing: g.passing, total: g.total, checks: g.checks.map((c) => ({ key: c.key, label: c.label, state: c.state, fix: c.fix })) })) }}
+          facts={latest?.facts || {}}
+          history={checks.map((c) => ({ id: c.id, checked_on: c.checked_on, passing: c.passing, failing: c.failing, unknown: c.unknown, score: c.score }))}
+          disabledReason={free ? freeNote : ""}
+          auditLine={auditLine}
+        />
+      </div>
+    );
+  }
+
   let rows = [];
   let failed = false;
   try {
-    rows = await listNumbers(createServerSupabase(), merchant.id);
+    rows = await listNumbers(supabase, merchant.id);
   } catch (error) {
     console.error("Sync google numbers failed:", error?.message || error);
     failed = true;
   }
-  const today = nepalDay(Date.now());
-  const free = stage.known && stage.stage === "free";
   return (
     <div className="admin-page">
+      <div className="admin-panel">
+        <h2>Profile health</h2>
+        <p className="admin-helper">22 checks of what the public sees on Google. Typed in until the Google connection is approved.</p>
+        {healthFailed ? <div className="admin-banner" role="alert">Could not load the checks. Has migration 0031 been run?</div> : null}
+        {!latest ? (
+          <p>No check has been typed in yet.</p>
+        ) : (
+          <>
+            <p><strong>{result.score === null ? "No score" : `${result.score}/100`}</strong> · {result.passing} of {result.known} checked pass · checked {latest.checked_on}</p>
+            <ul className="sync-steps">
+              {result.groups.map((group) => (
+                <li key={group.key}>{group.label}: {group.passing} of {group.total} passing{group.checks.some((c) => c.state === "fix") ? ` · to fix: ${group.checks.filter((c) => c.state === "fix").map((c) => c.label).join("; ")}` : ""}</li>
+              ))}
+            </ul>
+            {checks.length > 1 ? <p className="admin-helper">History: {checks.slice().reverse().map((c) => `${c.checked_on} ${c.score === null ? "-" : c.score}`).join(" → ")}</p> : null}
+          </>
+        )}
+        <div className="admin-actions"><a className="btn-red" href={`${googleHref}${googleHref.includes("?") ? "&" : "?"}view=health`}>{latest ? "Open profile health" : "Check the profile"}</a></div>
+      </div>
       {failed ? <div className="admin-banner" role="alert">Could not load the numbers. Has migration 0030 been run?</div> : null}
       <GoogleNumbers
         merchantId={merchant.id}
         rows={rows}
         months={monthOptions(today)}
         defaultMonth={lastMonth(today)}
-        disabledReason={free ? "This business is on the Free plan: we do not work on its Google profile, so no numbers are entered. The months already typed in stay here." : ""}
+        disabledReason={free ? freeNote : ""}
       />
     </div>
   );

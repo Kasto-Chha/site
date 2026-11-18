@@ -32,6 +32,7 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 13. `0030_sync_google_numbers.sql`: the monthly Google numbers typed in by hand (one private table; deleting a business deletes its numbers). Run it **before** pushing the patch. Safe to run twice; it adds one table and changes nothing that exists. Check: `select count(*) from public.sync_google_numbers;` says 0.
 
 The old website badge table can be dropped by hand once it is empty: `select count(*) from public.badge_businesses;` and, if it says 0, `drop table public.badge_businesses;`.
+14. `0031_sync_health_checks.sql`: the profile-health checks typed in by hand (one private table; deleting a business deletes its checks). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_health_checks;` says 0.
 
 ## The Audit (admins only)
 
@@ -46,6 +47,10 @@ What the report says about price and how to reach you is set on **Audit, Report 
 ## The Google tab and the monthly numbers
 
 A business's **Google** tab (admins and the operators assigned to it) is the Google half, typed in by hand until the Google connection is approved. It starts with **Google numbers for a month**: open the business's Business Profile screen on Google, read the Performance figures for a month (calls, directions requests, profile views, average rating, total reviews) and type them in. A figure that is not shown can be left empty, but at least one is needed. Typing a month again replaces it; **Edit** puts a saved month back in the form, and **Remove** deletes one typed by mistake (it asks twice). The audit log records the business and the month, never the figures. A business on the Free plan has the form held, because we do not work on its Google profile; the months already typed stay visible. Deleting a business deletes its numbers with it. These figures will feed the monthly report.
+
+### Profile health
+
+On the Google tab, **Profile health** is 22 checks of what the public sees on Google, in six groups. Press **Check again** and type in what the public profile shows today; leave a question empty when you cannot tell (it is left out of the score, never counted against the business). The score is the share of the checks that could be judged which pass: fixed rules, not a ranking. Each check is saved, so the history shows the score over time. **Make a task** (or **Make tasks from all gaps**) turns a failed check into a task; pressing twice never doubles a task that is still open. The free audit has its own 13-check score on a different scale and is shown beside, never inside, this history. A Free business is held.
 
 ## Stages and the 90-day trial
 

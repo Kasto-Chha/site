@@ -161,7 +161,7 @@ test("the Google tab is the second tab for an admin and an operator, and the pag
   assert.equal(T.tabsFor(false)[1].id, "google");
   assert.equal(T.resolveTab("google", false), "google");
   const page = read("app/admin/sync/[id]/page.js");
-  assert.match(page, /tab === "google" \? <GoogleTab merchant=\{shown\} stage=\{stage\} \/>/);
+  assert.match(page, /tab === "google" \? <GoogleTab merchant=\{shown\} stage=\{stage\}/);
   assert.match(page, /stage\.known && stage\.stage === "free"/);
   assert.match(page, /Has migration 0030 been run\?/);
 });
@@ -185,7 +185,7 @@ test("the migration adds one private table, ties it to its business, and is safe
 });
 
 test("deleting a business says its typed-in numbers go too, and the runbook explains the tab", () => {
-  assert.match(read("app/admin/sync/[id]/DeletePanel.js"), /typed-in Google numbers/);
+  assert.match(read("app/admin/sync/[id]/DeletePanel.js"), /typed-in Google numbers, profile checks/);
   const book = read("docs/sync/runbook.md");
   assert.match(book, /0030_sync_google_numbers\.sql/);
   assert.match(book, /The Google tab and the monthly numbers/);
