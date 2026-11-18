@@ -11,7 +11,7 @@ const EMPTY = { reviewer: "", stars: "", review: "", review_on: "", draft: "", t
 
 // The replies queue for one business: add a review that needs an answer, write the draft, ask the owner for the facts, send the draft
 // for the owner's approval, copy it for Google, mark it posted. Typed in by hand until the Google connection is approved.
-export default function RepliesPanel({ merchantId, replies, disabledReason }) {
+export default function RepliesPanel({ merchantId, replies, disabledReason, ai = { enabled: false, ready: false, isAdmin: false } }) {
   const router = useRouter();
   const [form, setForm] = useState(EMPTY);
   const [editing, setEditing] = useState(null); // reply id, or "new"
@@ -21,6 +21,34 @@ export default function RepliesPanel({ merchantId, replies, disabledReason }) {
   const [removing, setRemoving] = useState("");
   const off = Boolean(disabledReason);
   const url = `/api/admin/sync/merchants/${merchantId}/replies`;
+  const [aiOn, setAiOn] = useState(Boolean(ai.enabled));
+  const [drafting, setDrafting] = useState(false);
+  const [replaceAsk, setReplaceAsk] = useState(false);
+
+  // AI first draft of the reply: fills the box for the team to read and edit. Nothing is saved or posted.
+  async function draftWithAi() {
+    if (busy || drafting) return;
+    if (form.draft.trim() && !replaceAsk) { setReplaceAsk(true); return; }
+    setReplaceAsk(false); setDrafting(true); setError(""); setMessage("");
+    try {
+      const current = replies.find((r) => r.id === editing);
+      const facts = [current?.owner_answer ? `The owner says: ${current.owner_answer}` : "", current?.owner_note ? `The owner asked for this change: ${current.owner_note}` : ""].filter(Boolean).join("\n").slice(0, 1000);
+      const res = await fetch(`${url}/draft`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stars: form.stars, review: form.review, facts }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "That did not work.");
+      setForm((f) => ({ ...f, draft: data.draft }));
+      setMessage("A first draft is in the box. Read it, fix anything, then save.");
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setDrafting(false);
+    }
+  }
+  async function toggleAi() {
+    if (busy) return;
+    const ok = await call("PUT", "/api/admin/sync/ai-settings", { repliesEnabled: !aiOn }, aiOn ? "AI drafts are off." : "AI drafts are on.");
+    if (ok) setAiOn(!aiOn);
+  }
 
   async function call(method, target, body, done) {
     if (busy) return false;
@@ -72,6 +100,12 @@ export default function RepliesPanel({ merchantId, replies, disabledReason }) {
         {off ? <div className="admin-banner" role="status">{disabledReason}</div> : null}
         {error ? <div className="admin-banner" role="alert">{error}</div> : null}
         {message ? <div className="admin-banner" role="status">{message}</div> : null}
+        {ai.isAdmin ? (
+          <p className="admin-helper">
+            AI drafts of replies: <strong>{aiOn ? "On" : "Off"}</strong>. {aiOn ? "The team sees a Draft a reply button when editing. It only writes a first draft; nothing is posted." : "Switch on to give the team a Draft a reply button. The review text is sent to Gemini."}{!ai.ready ? " The Gemini key is not set, so it will not work yet." : ""}{" "}
+            <button type="button" className="btn-outline" disabled={busy} onClick={toggleAi}>{aiOn ? "Turn off" : "Turn on"}</button>
+          </p>
+        ) : null}
         <div className="admin-actions">
           <button type="button" className="btn-red" disabled={off || busy} onClick={() => { if (editing === "new") setEditing(null); else { setForm(EMPTY); setEditing("new"); } }}>{editing === "new" ? "Close the form" : "Add a review"}</button>
         </div>
@@ -84,7 +118,13 @@ export default function RepliesPanel({ merchantId, replies, disabledReason }) {
           <div className="admin-field"><label className="admin-label" htmlFor="r-stars">Stars</label><select id="r-stars" className="admin-select" value={form.stars} onChange={set("stars")}><option value="">Not known</option>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
           <div className="admin-field"><label className="admin-label" htmlFor="r-day">Day of the review</label><input id="r-day" type="date" className="admin-input" value={form.review_on} onChange={set("review_on")} /></div>
           <div className="admin-field"><label className="admin-label" htmlFor="r-review">The review</label><textarea id="r-review" className="admin-input" rows={4} value={form.review} onChange={set("review")} maxLength={REVIEW_MAX} /></div>
-          <div className="admin-field"><label className="admin-label" htmlFor="r-draft">Our reply</label><textarea id="r-draft" className="admin-input" rows={5} value={form.draft} onChange={set("draft")} maxLength={DRAFT_MAX} /><div className="admin-helper">{form.draft.length} of {DRAFT_MAX} characters. Thank them, be specific, never argue, never promise what the owner has not agreed to.</div></div>
+          <div className="admin-field"><label className="admin-label" htmlFor="r-draft">Our reply</label><textarea id="r-draft" className="admin-input" rows={5} value={form.draft} onChange={(event) => { setReplaceAsk(false); set("draft")(event); }} maxLength={DRAFT_MAX} /><div className="admin-helper">{form.draft.length} of {DRAFT_MAX} characters. Thank them, be specific, never argue, never promise what the owner has not agreed to.</div></div>
+          {aiOn && ai.ready ? (
+            <div className="admin-field">
+              <button type="button" className="btn-outline" disabled={busy || drafting || !form.review.trim()} onClick={draftWithAi}>{drafting ? "Writing a draft…" : replaceAsk ? "Really replace my reply" : "Draft a reply"}</button>
+              <div className="admin-helper">A first draft from AI, for you to read and fix. It does not know anything beyond the review{editing && editing !== "new" ? " and what the owner told us" : ""}, and nothing is posted.</div>
+            </div>
+          ) : null}
           <div className="admin-field"><label className="admin-label" htmlFor="r-q">Question for the owner (only if we need a fact first)</label><textarea id="r-q" className="admin-input" rows={3} value={form.team_question} onChange={set("team_question")} maxLength={QUESTION_MAX} /><div className="admin-helper">{form.team_question.length} of {QUESTION_MAX} characters. The owner sees this and the review, nothing else.</div></div>
           <div className="admin-actions">
             <button type="submit" className="btn-red" disabled={busy}>{busy ? "Saving…" : "Save"}</button>

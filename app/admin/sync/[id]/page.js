@@ -26,6 +26,8 @@ import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { prospectOfMerchant } from "../../../../lib/sync/prospects";
 import { scoreFacts } from "../../../../lib/sync/audit";
 import { listReplies } from "../../../../lib/sync/replies";
+import { readAiSettings } from "../../../../lib/sync/aiReply";
+import { geminiConfigured } from "../../../../lib/gemini";
 import { listItems } from "../../../../lib/sync/menu";
 import { STATUS_LABELS as POST_STATUS_LABELS, listPosts } from "../../../../lib/sync/posts";
 import { evaluate, listChecks } from "../../../../lib/sync/health";
@@ -202,11 +204,12 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
       console.error("Sync replies failed:", error?.message || error);
       repliesFailed = true;
     }
+    const aiSettings = await readAiSettings(supabase);
     return (
       <div className="admin-page">
         <div className="admin-actions"><a className="btn-outline" href={googleHref}>Back to Google</a></div>
         {repliesFailed ? <div className="admin-banner" role="alert">Could not load the replies. Has migration 0033 been run?</div> : null}
-        <RepliesPanel merchantId={merchant.id} replies={replies} disabledReason={free ? freeNote : ""} />
+        <RepliesPanel merchantId={merchant.id} replies={replies} disabledReason={free ? freeNote : ""} ai={{ enabled: aiSettings.enabled, ready: geminiConfigured(), isAdmin }} />
       </div>
     );
   }
