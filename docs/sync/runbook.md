@@ -34,6 +34,7 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 The old website badge table can be dropped by hand once it is empty: `select count(*) from public.badge_businesses;` and, if it says 0, `drop table public.badge_businesses;`.
 14. `0031_sync_health_checks.sql`: the profile-health checks typed in by hand (one private table; deleting a business deletes its checks). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_health_checks;` says 0.
 15. `0032_sync_posts.sql`: the posts plan typed in by hand (one private table; deleting a business deletes its posts). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_posts;` says 0.
+16. `0033_sync_replies.sql`: the replies queue typed in by hand (one private table; deleting a business deletes its replies). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_replies;` says 0.
 
 ## The Audit (admins only)
 
@@ -56,6 +57,10 @@ On the Google tab, **Profile health** is 22 checks of what the public sees on Go
 ### Posts
 
 On the Google tab, **Posts** is the plan for what goes on the business's Google profile. **Add a post** (or press a festival name for a head start; festival dates move every year, so check the date). A post moves Idea, Drafted, Waiting for owner, Approved, Published. A post cannot be sent to the owner, approved or marked posted while it has no words. **Copy for Google** copies the text to paste into Google; then press **Mark as posted** (this records the day). Posts are kept after posting. Remove asks twice. A Free business is held, but its posts can still be removed.
+
+### Replies
+
+On the Google tab, **Replies** is the queue of reviews that need an answer. **Add a review** (paste the reviewer's name, the stars and the words, and the day), write our reply, and move it along: New review, Drafted, Waiting for owner, Approved, Posted. **Ask the owner** parks a review while we need a fact from the owner before we can write (what really happened, whether a refund is agreed). **Send for the owner** is the draft going to the owner for a yes. A reply cannot be sent to the owner, approved or marked posted while it has no words. **Copy for Google** copies the reply to paste into Google; then press **Mark as posted** (this records the day). Reviewer names are personal data: they stay in this table and are never written to the audit log. Remove asks twice. A Free business is held, but its replies can still be removed.
 
 ## Stages and the 90-day trial
 

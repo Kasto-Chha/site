@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 // Deleting a business from Sync for good. The button stays held until the business's name is typed exactly. The thread and
-// every post stay on KastoChha; the QR codes, scan counts, private notes, owner replies, typed-in Google numbers, profile checks, posts, tasks and assignments go.
+// every post stay on KastoChha; the QR codes, scan counts, private notes, owner replies, typed-in Google numbers, profile checks, posts, review-reply drafts, tasks and assignments go.
 export default function DeletePanel({ merchantId, businessName }) {
   const router = useRouter();
   const [typed, setTyped] = useState("");

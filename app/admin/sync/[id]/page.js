@@ -6,6 +6,7 @@ import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import GoogleNumbers from "./GoogleNumbers";
 import HealthPanel from "./HealthPanel";
 import PostsPanel from "./PostsPanel";
+import RepliesPanel from "./RepliesPanel";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
@@ -22,6 +23,7 @@ import { familyInfo, taskTypeLabel } from "../../../../lib/sync/families";
 import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { prospectOfMerchant } from "../../../../lib/sync/prospects";
 import { scoreFacts } from "../../../../lib/sync/audit";
+import { listReplies } from "../../../../lib/sync/replies";
 import { STATUS_LABELS as POST_STATUS_LABELS, listPosts } from "../../../../lib/sync/posts";
 import { evaluate, listChecks } from "../../../../lib/sync/health";
 import { lastMonth, listNumbers, monthOptions } from "../../../../lib/sync/googleNumbers";
@@ -137,7 +139,7 @@ export default async function MerchantPage({ params, searchParams }) {
       </div>
 
       {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} audit={audit} /> : null}
-      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={["health", "posts"].includes(searchParams?.view) ? searchParams.view : "overview"} /> : null}
+      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={["health", "posts", "replies"].includes(searchParams?.view) ? searchParams.view : "overview"} /> : null}
       {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
       {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
@@ -167,6 +169,24 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
   }
   const latest = checks[0] || null;
   const result = evaluate(latest?.facts);
+
+  if (view === "replies") {
+    let replies = [];
+    let repliesFailed = false;
+    try {
+      replies = await listReplies(supabase, merchant.id);
+    } catch (error) {
+      console.error("Sync replies failed:", error?.message || error);
+      repliesFailed = true;
+    }
+    return (
+      <div className="admin-page">
+        <div className="admin-actions"><a className="btn-outline" href={googleHref}>Back to Google</a></div>
+        {repliesFailed ? <div className="admin-banner" role="alert">Could not load the replies. Has migration 0033 been run?</div> : null}
+        <RepliesPanel merchantId={merchant.id} replies={replies} disabledReason={free ? freeNote : ""} />
+      </div>
+    );
+  }
 
   if (view === "posts") {
     let posts = [];
@@ -230,10 +250,26 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
     console.error("Sync posts failed:", error?.message || error);
     postsFailedSummary = true;
   }
+  let replyRows = [];
+  let repliesFailedSummary = false;
+  try {
+    replyRows = await listReplies(supabase, merchant.id);
+  } catch (error) {
+    console.error("Sync replies failed:", error?.message || error);
+    repliesFailedSummary = true;
+  }
+  const unanswered = replyRows.filter((r) => r.status !== "posted");
+  const oldestReply = unanswered.find((r) => r.review_on);
   const postCounts = Object.keys(POST_STATUS_LABELS).map((key) => [key, postRows.filter((p) => p.status === key).length]).filter(([, n]) => n > 0);
   const nextPost = postRows.find((p) => p.status !== "published" && p.planned_on);
   return (
     <div className="admin-page">
+      <div className="admin-panel">
+        <h2>Replies</h2>
+        {repliesFailedSummary ? <div className="admin-banner" role="alert">Could not load the replies. Has migration 0033 been run?</div> : null}
+        {replyRows.length === 0 ? <p>No reviews waiting for an answer.</p> : <p>{unanswered.length === 0 ? "Every review has a reply." : `${unanswered.length} ${unanswered.length === 1 ? "review" : "reviews"} to answer${oldestReply ? ` · oldest is from ${oldestReply.review_on}` : ""}`}{replyRows.some((r) => r.status === "asking") ? ` · ${replyRows.filter((r) => r.status === "asking").length} asking the owner` : ""}{replyRows.some((r) => r.status === "waiting") ? ` · ${replyRows.filter((r) => r.status === "waiting").length} waiting for the owner` : ""}</p>}
+        <div className="admin-actions"><a className="btn-red" href={`${googleHref}${googleHref.includes("?") ? "&" : "?"}view=replies`}>{replyRows.length ? "Open replies" : "Add a review"}</a></div>
+      </div>
       <div className="admin-panel">
         <h2>Posts</h2>
         {postsFailedSummary ? <div className="admin-banner" role="alert">Could not load the posts. Has migration 0032 been run?</div> : null}
