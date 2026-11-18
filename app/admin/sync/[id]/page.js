@@ -265,6 +265,11 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
   return (
     <div className="admin-page">
       <div className="admin-panel">
+        <h2>Monthly report</h2>
+        <p className="admin-helper">One printable page for the owner: last month’s Google figures beside the month before, and what we did. Type the month’s figures below first.</p>
+        {isAdmin ? <div className="admin-actions"><a className="btn-red" href={`/admin/sync/${merchant.id}/monthly`}>Open last month’s report</a></div> : <p className="admin-helper">An admin prints this report.</p>}
+      </div>
+      <div className="admin-panel">
         <h2>Replies</h2>
         {repliesFailedSummary ? <div className="admin-banner" role="alert">Could not load the replies. Has migration 0033 been run?</div> : null}
         {replyRows.length === 0 ? <p>No reviews waiting for an answer.</p> : <p>{unanswered.length === 0 ? "Every review has a reply." : `${unanswered.length} ${unanswered.length === 1 ? "review" : "reviews"} to answer${oldestReply ? ` · oldest is from ${oldestReply.review_on}` : ""}`}{replyRows.some((r) => r.status === "asking") ? ` · ${replyRows.filter((r) => r.status === "asking").length} asking the owner` : ""}{replyRows.some((r) => r.status === "waiting") ? ` · ${replyRows.filter((r) => r.status === "waiting").length} waiting for the owner` : ""}</p>}

@@ -62,6 +62,10 @@ On the Google tab, **Posts** is the plan for what goes on the business's Google 
 
 On the Google tab, **Replies** is the queue of reviews that need an answer. **Add a review** (paste the reviewer's name, the stars and the words, and the day), write our reply, and move it along: New review, Drafted, Waiting for owner, Approved, Posted. **Ask the owner** parks a review while we need a fact from the owner before we can write (what really happened, whether a refund is agreed). **Send for the owner** is the draft going to the owner for a yes. A reply cannot be sent to the owner, approved or marked posted while it has no words. **Copy for Google** copies the reply to paste into Google; then press **Mark as posted** (this records the day). Reviewer names are personal data: they stay in this table and are never written to the audit log. Remove asks twice. A Free business is held, but its replies can still be removed.
 
+### The monthly report
+
+On the Google tab, **Monthly report** opens one A4 page for the owner (admins only). It puts the month's Google calls, direction requests and profile views beside the month before, with the star rating and review count, then lists what we did that month (posts posted, reviews answered, jobs finished, by type), the profile checklist score, and what is still to fix. Use it like this: type the month's figures from the Business Profile screen on the Google tab (replace them if they were wrong), open the report, read it, press **Print or save as PDF**, and send the PDF. The report is made fresh each time you open it; nothing is stored or sent from the page. If a figure was not typed in it says so instead of guessing. The note typed with the figures is printed, so keep it fit for the owner. The report never says the work caused the change.
+
 ## Stages and the 90-day trial
 
 Every business has a stage. **WIP** is the trial, with onboarding inside it: the whole service runs until the decision day. **Active** means they pay. **Free** means they chose not to pay: the business keeps its page, label, QR cards and badge on KastoChha, and we do nothing on its Google side.
