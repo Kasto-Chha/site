@@ -12,6 +12,7 @@ import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
 import OwnerPanel from "./OwnerPanel";
+import OwnerMessagePanel from "./OwnerMessagePanel";
 import AssignmentsPanel from "./AssignmentsPanel";
 import DeletePanel from "./DeletePanel";
 import StagePanel from "./StagePanel";
@@ -30,6 +31,7 @@ import { STATUS_LABELS as POST_STATUS_LABELS, listPosts } from "../../../../lib/
 import { evaluate, listChecks } from "../../../../lib/sync/health";
 import { lastMonth, listNumbers, monthOptions } from "../../../../lib/sync/googleNumbers";
 import { nepalDay } from "../../../../lib/sync/time";
+import { buildMessage, readOwnerContact, summarizeWaiting, whatsappLink } from "../../../../lib/sync/ownerMessage";
 import { countLabel } from "../../../../lib/sync/text";
 import { describeClerkUser, getClerkUser } from "../../../../lib/auth/clerk";
 import { badgeSnippet, badgeStats } from "../../../../lib/sync/badge";
@@ -288,12 +290,18 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
     console.error("Sync replies failed:", error?.message || error);
     repliesFailedSummary = true;
   }
+  // The message for the owner: what is waiting, and the owner's own link. Counts only. A Free business has no work, so no card.
+  const waiting = summarizeWaiting({ menu: menuRows, posts: postRows, replies: replyRows });
+  const ownerLink = `${(process.env.NEXT_PUBLIC_SITE_URL || "https://www.kastochhanepal.com").replace(/\/+$/, "")}/owner/${merchant.id}/needs-you`;
+  const ownerText = buildMessage({ businessName: merchant.business_name, counts: waiting.counts, total: waiting.total }, ownerLink);
+  const contact = free ? null : await readOwnerContact(supabase, merchant.id);
   const unanswered = replyRows.filter((r) => r.status !== "posted");
   const oldestReply = unanswered.find((r) => r.review_on);
   const postCounts = Object.keys(POST_STATUS_LABELS).map((key) => [key, postRows.filter((p) => p.status === key).length]).filter(([, n]) => n > 0);
   const nextPost = postRows.find((p) => p.status !== "published" && p.planned_on);
   return (
     <div className="admin-page">
+      {contact ? <OwnerMessagePanel merchantId={merchant.id} message={ownerText} total={waiting.total} whatsapp={contact.whatsapp} messagedAt={contact.messagedAt} hasOwner={merchant.hasOwner} readFailed={contact.failed} link={whatsappLink(contact.whatsapp, ownerText)} /> : null}
       <div className="admin-panel">
         <h2>Monthly report</h2>
         <p className="admin-helper">One printable page for the owner: last month’s Google figures beside the month before, and what we did. Type the month’s figures below first.</p>
