@@ -185,7 +185,7 @@ test("the migration adds one private table, ties it to its business, and is safe
 });
 
 test("deleting a business says its typed-in numbers go too, and the runbook explains the tab", () => {
-  assert.match(read("app/admin/sync/[id]/DeletePanel.js"), /typed-in Google numbers, profile checks, posts, review-reply drafts/);
+  assert.match(read("app/admin/sync/[id]/DeletePanel.js"), /typed-in Google numbers, profile checks, posts, review-reply drafts, the menu or rates list/);
   const book = read("docs/sync/runbook.md");
   assert.match(book, /0030_sync_google_numbers\.sql/);
   assert.match(book, /The Google tab and the monthly numbers/);

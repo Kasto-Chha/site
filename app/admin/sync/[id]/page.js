@@ -7,6 +7,7 @@ import GoogleNumbers from "./GoogleNumbers";
 import HealthPanel from "./HealthPanel";
 import PostsPanel from "./PostsPanel";
 import RepliesPanel from "./RepliesPanel";
+import MenuPanel from "./MenuPanel";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
@@ -24,6 +25,7 @@ import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { prospectOfMerchant } from "../../../../lib/sync/prospects";
 import { scoreFacts } from "../../../../lib/sync/audit";
 import { listReplies } from "../../../../lib/sync/replies";
+import { listItems } from "../../../../lib/sync/menu";
 import { STATUS_LABELS as POST_STATUS_LABELS, listPosts } from "../../../../lib/sync/posts";
 import { evaluate, listChecks } from "../../../../lib/sync/health";
 import { lastMonth, listNumbers, monthOptions } from "../../../../lib/sync/googleNumbers";
@@ -139,7 +141,7 @@ export default async function MerchantPage({ params, searchParams }) {
       </div>
 
       {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} audit={audit} /> : null}
-      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={["health", "posts", "replies"].includes(searchParams?.view) ? searchParams.view : "overview"} /> : null}
+      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={["health", "posts", "replies", "menu"].includes(searchParams?.view) ? searchParams.view : "overview"} /> : null}
       {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
       {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
@@ -169,6 +171,25 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
   }
   const latest = checks[0] || null;
   const result = evaluate(latest?.facts);
+
+  const words = familyInfo(merchant.business_kind);
+  if (view === "menu") {
+    let items = [];
+    let menuFailed = false;
+    try {
+      items = await listItems(supabase, merchant.id);
+    } catch (error) {
+      console.error("Sync menu failed:", error?.message || error);
+      menuFailed = true;
+    }
+    return (
+      <div className="admin-page">
+        <div className="admin-actions"><a className="btn-outline" href={googleHref}>Back to Google</a></div>
+        {menuFailed ? <div className="admin-banner" role="alert">Could not load the list. Has migration 0034 been run?</div> : null}
+        <MenuPanel merchantId={merchant.id} items={items} words={{ itemsWord: words.itemsWord, itemWord: words.itemWord, sectionHint: words.sectionHint, unitHint: words.unitHint, addWord: words.addWord }} disabledReason={free ? freeNote : ""} />
+      </div>
+    );
+  }
 
   if (view === "replies") {
     let replies = [];
@@ -250,6 +271,15 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
     console.error("Sync posts failed:", error?.message || error);
     postsFailedSummary = true;
   }
+  let menuRows = [];
+  let menuFailedSummary = false;
+  try {
+    menuRows = await listItems(supabase, merchant.id);
+  } catch (error) {
+    console.error("Sync menu failed:", error?.message || error);
+    menuFailedSummary = true;
+  }
+  const menuCount = (status) => menuRows.filter((i) => i.status === status).length;
   let replyRows = [];
   let repliesFailedSummary = false;
   try {
@@ -268,6 +298,12 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
         <h2>Monthly report</h2>
         <p className="admin-helper">One printable page for the owner: last month’s Google figures beside the month before, and what we did. Type the month’s figures below first.</p>
         {isAdmin ? <div className="admin-actions"><a className="btn-red" href={`/admin/sync/${merchant.id}/monthly`}>Open last month’s report</a></div> : <p className="admin-helper">An admin prints this report.</p>}
+      </div>
+      <div className="admin-panel">
+        <h2>{words.itemsWord}</h2>
+        {menuFailedSummary ? <div className="admin-banner" role="alert">Could not load the list. Has migration 0034 been run?</div> : null}
+        {menuRows.length === 0 ? <p>Nothing listed yet.</p> : <p>{menuRows.length} {menuRows.length === 1 ? "item" : "items"} · {menuCount("confirmed")} confirmed · {menuCount("waiting")} waiting for the owner · {menuCount("draft")} draft</p>}
+        <div className="admin-actions"><a className="btn-red" href={`${googleHref}${googleHref.includes("?") ? "&" : "?"}view=menu`}>{menuRows.length ? `Open ${words.itemsWord.toLowerCase()}` : words.addWord}</a></div>
       </div>
       <div className="admin-panel">
         <h2>Replies</h2>

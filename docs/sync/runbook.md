@@ -35,6 +35,7 @@ The old website badge table can be dropped by hand once it is empty: `select cou
 14. `0031_sync_health_checks.sql`: the profile-health checks typed in by hand (one private table; deleting a business deletes its checks). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_health_checks;` says 0.
 15. `0032_sync_posts.sql`: the posts plan typed in by hand (one private table; deleting a business deletes its posts). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_posts;` says 0.
 16. `0033_sync_replies.sql`: the replies queue typed in by hand (one private table; deleting a business deletes its replies). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_replies;` says 0.
+17. `0034_sync_menu_items.sql`: the menu, rooms and rates, or services, typed in by hand (one private table; deleting a business deletes its list). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_menu_items;` says 0.
 
 ## The Audit (admins only)
 
@@ -65,6 +66,10 @@ On the Google tab, **Replies** is the queue of reviews that need an answer. **Ad
 ### The monthly report
 
 On the Google tab, **Monthly report** opens one A4 page for the owner (admins only). It puts the month's Google calls, direction requests and profile views beside the month before, with the star rating and review count, then lists what we did that month (posts posted, reviews answered, jobs finished, by type), the profile checklist score, and what is still to fix. Use it like this: type the month's figures from the Business Profile screen on the Google tab (replace them if they were wrong), open the report, read it, press **Print or save as PDF**, and send the PDF. The report is made fresh each time you open it; nothing is stored or sent from the page. If a figure was not typed in it says so instead of guessing. The note typed with the figures is printed, so keep it fit for the owner. The report never says the work caused the change.
+
+### Menu, rooms and rates, services
+
+On the Google tab the next panel is named by the business type: **Menu** for cafés, restaurants, bakeries, bars and sweet shops, **Rooms and rates** for hotels and homestays, **Services** for the rest. Add each item with a name, an optional section, a price in whole rupees (or none), a unit such as "per cup" or "per night", and a short description. An item starts as a **Draft**. **Send for the owner** (or **Send all drafts for the owner**) puts it with the owner; once the owner has agreed, press **Owner confirmed** (or **Owner confirmed all waiting**). Changing what a confirmed item says (name, section, price, unit, description) turns it back into a draft, so a changed price is never shown as confirmed. **Copy confirmed items** gives plain text to paste; **Copy everything** includes drafts. Up and Down reorder inside a section. This is our own record: it is not posted to Google from here, because menus on Google for Nepal are not confirmed. Names and prices are never written to the audit log. A Free business is held, but its items can still be removed.
 
 ## Stages and the 90-day trial
 
