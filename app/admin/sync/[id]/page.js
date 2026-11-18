@@ -5,6 +5,7 @@ import { getMerchantById } from "../../../../lib/sync/merchants";
 import { pinnedTitle } from "../../../../lib/sync/threadPage";
 import GoogleNumbers from "./GoogleNumbers";
 import HealthPanel from "./HealthPanel";
+import PostsPanel from "./PostsPanel";
 import MerchantEditorClient from "./MerchantEditorClient";
 import BadgePanel from "./BadgePanel";
 import QrCodesPanel from "./QrCodesPanel";
@@ -21,6 +22,7 @@ import { familyInfo, taskTypeLabel } from "../../../../lib/sync/families";
 import { readStageHistory } from "../../../../lib/sync/stageHistory";
 import { prospectOfMerchant } from "../../../../lib/sync/prospects";
 import { scoreFacts } from "../../../../lib/sync/audit";
+import { STATUS_LABELS as POST_STATUS_LABELS, listPosts } from "../../../../lib/sync/posts";
 import { evaluate, listChecks } from "../../../../lib/sync/health";
 import { lastMonth, listNumbers, monthOptions } from "../../../../lib/sync/googleNumbers";
 import { nepalDay } from "../../../../lib/sync/time";
@@ -135,7 +137,7 @@ export default async function MerchantPage({ params, searchParams }) {
       </div>
 
       {tab === "overview" ? <OverviewTab merchant={shown} stage={stage} audit={audit} /> : null}
-      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={searchParams?.view === "health" ? "health" : "overview"} /> : null}
+      {tab === "google" ? <GoogleTab merchant={shown} stage={stage} isAdmin={access.isAdmin} view={["health", "posts"].includes(searchParams?.view) ? searchParams.view : "overview"} /> : null}
       {tab === "plan" ? <PlanTab merchant={shown} stage={stage} isAdmin={access.isAdmin} /> : null}
       {tab === "tasks" ? <TasksTab merchant={shown} /> : null}
       {tab === "setup" ? <SetupTab merchant={shown} isAdmin={access.isAdmin} /> : null}
@@ -165,6 +167,24 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
   }
   const latest = checks[0] || null;
   const result = evaluate(latest?.facts);
+
+  if (view === "posts") {
+    let posts = [];
+    let postsFailed = false;
+    try {
+      posts = await listPosts(supabase, merchant.id);
+    } catch (error) {
+      console.error("Sync posts failed:", error?.message || error);
+      postsFailed = true;
+    }
+    return (
+      <div className="admin-page">
+        <div className="admin-actions"><a className="btn-outline" href={googleHref}>Back to Google</a></div>
+        {postsFailed ? <div className="admin-banner" role="alert">Could not load the posts. Has migration 0032 been run?</div> : null}
+        <PostsPanel merchantId={merchant.id} posts={posts} disabledReason={free ? freeNote : ""} />
+      </div>
+    );
+  }
 
   if (view === "health") {
     // The free audit score is on another scale (13 weighted checks), so it is shown beside the history, never in it.
@@ -202,8 +222,24 @@ async function GoogleTab({ merchant, stage, isAdmin, view }) {
     console.error("Sync google numbers failed:", error?.message || error);
     failed = true;
   }
+  let postRows = [];
+  let postsFailedSummary = false;
+  try {
+    postRows = await listPosts(supabase, merchant.id);
+  } catch (error) {
+    console.error("Sync posts failed:", error?.message || error);
+    postsFailedSummary = true;
+  }
+  const postCounts = Object.keys(POST_STATUS_LABELS).map((key) => [key, postRows.filter((p) => p.status === key).length]).filter(([, n]) => n > 0);
+  const nextPost = postRows.find((p) => p.status !== "published" && p.planned_on);
   return (
     <div className="admin-page">
+      <div className="admin-panel">
+        <h2>Posts</h2>
+        {postsFailedSummary ? <div className="admin-banner" role="alert">Could not load the posts. Has migration 0032 been run?</div> : null}
+        {postRows.length === 0 ? <p>No posts planned yet.</p> : <p>{postCounts.map(([key, n]) => `${n} ${POST_STATUS_LABELS[key].toLowerCase()}`).join(" · ")}{nextPost ? ` · next planned ${nextPost.planned_on}: ${nextPost.title}` : ""}</p>}
+        <div className="admin-actions"><a className="btn-red" href={`${googleHref}${googleHref.includes("?") ? "&" : "?"}view=posts`}>{postRows.length ? "Open posts" : "Plan a post"}</a></div>
+      </div>
       <div className="admin-panel">
         <h2>Profile health</h2>
         <p className="admin-helper">22 checks of what the public sees on Google. Typed in until the Google connection is approved.</p>

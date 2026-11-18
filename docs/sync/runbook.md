@@ -33,6 +33,7 @@ How the pieces work is in `stage-a.md`; this is how to run them.
 
 The old website badge table can be dropped by hand once it is empty: `select count(*) from public.badge_businesses;` and, if it says 0, `drop table public.badge_businesses;`.
 14. `0031_sync_health_checks.sql`: the profile-health checks typed in by hand (one private table; deleting a business deletes its checks). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_health_checks;` says 0.
+15. `0032_sync_posts.sql`: the posts plan typed in by hand (one private table; deleting a business deletes its posts). Run it **before** pushing the patch. Safe to run twice. Check: `select count(*) from public.sync_posts;` says 0.
 
 ## The Audit (admins only)
 
@@ -51,6 +52,10 @@ A business's **Google** tab (admins and the operators assigned to it) is the Goo
 ### Profile health
 
 On the Google tab, **Profile health** is 22 checks of what the public sees on Google, in six groups. Press **Check again** and type in what the public profile shows today; leave a question empty when you cannot tell (it is left out of the score, never counted against the business). The score is the share of the checks that could be judged which pass: fixed rules, not a ranking. Each check is saved, so the history shows the score over time. **Make a task** (or **Make tasks from all gaps**) turns a failed check into a task; pressing twice never doubles a task that is still open. The free audit has its own 13-check score on a different scale and is shown beside, never inside, this history. A Free business is held.
+
+### Posts
+
+On the Google tab, **Posts** is the plan for what goes on the business's Google profile. **Add a post** (or press a festival name for a head start; festival dates move every year, so check the date). A post moves Idea, Drafted, Waiting for owner, Approved, Published. A post cannot be sent to the owner, approved or marked posted while it has no words. **Copy for Google** copies the text to paste into Google; then press **Mark as posted** (this records the day). Posts are kept after posting. Remove asks twice. A Free business is held, but its posts can still be removed.
 
 ## Stages and the 90-day trial
 
