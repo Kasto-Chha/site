@@ -34,7 +34,7 @@ test("an edit changes only what it names, and an empty edit is refused", () => {
 
 test("a reply going to the owner, approved or posted must have words; asking the owner needs none", () => {
   for (const status of ["waiting", "approved", "posted"]) { assert.ok(R.checkFinal({ status, draft: "" })); assert.ok(R.checkFinal({ status, draft: "  " })); assert.equal(R.checkFinal({ status, draft: "Thanks" }), null); }
-  for (const status of ["new", "asking", "drafted"]) assert.equal(R.checkFinal({ status, draft: "" }), null);
+  for (const status of ["new", "drafted"]) assert.equal(R.checkFinal({ status, draft: "" }), null);
 });
 
 test("the queue shows the oldest unanswered review first, undated last, and posted ones at the end", () => {
@@ -78,7 +78,7 @@ test("an admin adds a review; it starts as New and records who added it", async 
 
 test("a reply moves along, asking the owner needs no words, posting records the day, and moving back clears it", async () => {
   const { body } = await create();
-  assert.equal((await patch({ replyId: body.id, status: "asking" })).status, 200);
+  assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, 200);
   assert.equal((await patch({ replyId: body.id, status: "drafted", draft: "Sorry about the coffee, Sita." })).status, 200);
   for (const status of ["waiting", "approved"]) assert.equal((await patch({ replyId: body.id, status })).status, 200);
   assert.equal(rows()[0].posted_on ?? null, null);
@@ -107,7 +107,7 @@ test("an edit keeps the other fields", async () => {
 test("a reply of another business is never touched", async () => {
   seed(OTHER);
   const { body } = await create(undefined, OTHER);
-  assert.equal((await patch({ replyId: body.id, status: "asking" })).status, 404);
+  assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, 404);
   assert.equal((await del(body.id)).status, 404);
   assert.equal(rows().length, 1);
   assert.equal(rows()[0].status, "new");
@@ -124,7 +124,7 @@ test("the audit log keeps ids and status, never a reviewer's name, the review or
 
 test("a bad request changes nothing and writes no log entry", async () => {
   for (const bad of [{ reviewer: "" }, { reviewer: "a", stars: "9" }, { reviewer: "a", review_on: "nope" }, { reviewer: "a", status: "x" }]) assert.equal((await create(bad)).status, 400, JSON.stringify(bad));
-  assert.equal((await patch({ replyId: "nope", status: "asking" })).status, 400);
+  assert.equal((await patch({ replyId: "nope", status: "asking", team_question: "Which table?" })).status, 400);
   assert.equal((await del("nope")).status, 400);
   assert.equal(rows().length, 0);
   assert.equal(fake.tables.admin_audit_log.length, 0);
@@ -139,7 +139,7 @@ test("if the audit log cannot be written, nothing is saved, changed or removed",
   assert.equal(rows().length, 0);
   const { body } = await create();
   fake.failWritesTo = "admin_audit_log";
-  assert.equal((await patch({ replyId: body.id, status: "asking" })).status, 500);
+  assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, 500);
   assert.equal((await del(body.id)).status, 500);
   fake.failWritesTo = null;
   assert.equal(rows().length, 1);
@@ -151,7 +151,7 @@ test("signed out and ordinary users are refused", async () => {
   for (const [who, role, status] of [[null, null, 401], ["user_c", "user", 403]]) {
     as(who, role);
     assert.equal((await create()).status, status);
-    assert.equal((await patch({ replyId: body.id, status: "asking" })).status, status);
+    assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, status);
     assert.equal((await del(body.id)).status, status);
   }
   assert.equal(rows().length, 1);
@@ -161,11 +161,11 @@ test("an operator works only on an assigned business; an unassigned one looks li
   const { body } = await create();
   as("user_op", "operator");
   assert.equal((await create()).status, 404);
-  assert.equal((await patch({ replyId: body.id, status: "asking" })).status, 404);
+  assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, 404);
   assert.equal((await del(body.id)).status, 404);
   fake.tables.sync_operator_assignments.push({ operator_user_id: "user_op", merchant_id: ID });
   assert.equal((await create()).status, 200);
-  assert.equal((await patch({ replyId: body.id, status: "asking" })).status, 200);
+  assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, 200);
   assert.equal((await del(body.id)).status, 200);
 });
 
@@ -175,7 +175,7 @@ test("a Free business cannot get new reviews or changes, but its replies can be 
   const r = await create();
   assert.equal(r.status, 409);
   assert.match(r.body.error, /Free plan/);
-  assert.equal((await patch({ replyId: body.id, status: "asking" })).status, 409);
+  assert.equal((await patch({ replyId: body.id, status: "asking", team_question: "Which table?" })).status, 409);
   assert.equal(rows().length, 1);
   assert.equal((await del(body.id)).status, 200);
   assert.equal(rows().length, 0);

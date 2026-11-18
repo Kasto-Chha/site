@@ -112,6 +112,7 @@ export default function MenuPanel({ merchantId, items, words, disabledReason }) 
                 <div>
                   <div className="admin-row-title">{i.name}{formatPrice(i.price, i.unit) ? ` · ${formatPrice(i.price, i.unit)}` : ""}</div>
                   {i.description ? <div className="admin-row-meta">{i.description}</div> : null}
+                  {i.owner_note && i.status === "draft" ? <div className="admin-row-meta"><strong>Owner asked for a change:</strong> {i.owner_note}</div> : null}
                   <div className="admin-row-meta"><span className={`sync-pill ${STATUS_CLASS[i.status]}`}>{STATUS_LABELS[i.status]}</span></div>
                 </div>
                 <div className="admin-row-actions">

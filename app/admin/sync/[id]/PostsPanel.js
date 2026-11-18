@@ -108,6 +108,7 @@ export default function PostsPanel({ merchantId, posts, disabledReason }) {
                   <div>
                     <div className="admin-row-title">{post.title}</div>
                     <div className="admin-row-meta">{KIND_LABELS[post.kind]}{post.planned_on ? ` · planned ${post.planned_on}` : " · no day yet"}{post.published_on ? ` · posted ${post.published_on}` : ""}</div>
+                    {post.owner_note && post.status === "drafted" ? <div className="admin-row-meta"><strong>Owner asked for a change:</strong> {post.owner_note}</div> : null}
                     {post.body ? <div className="admin-row-meta">{post.body.length > 140 ? `${post.body.slice(0, 140)}…` : post.body}</div> : null}
                   </div>
                   <div className="admin-row-actions">

@@ -30,3 +30,13 @@
 .ow-fine { font-size: 12px; color: #6b665a; margin-top: 16px; }
 @media print { .ow-wrap { max-width: none; padding: 0; } }
 .ow-up { color: #2c6b3f; } .ow-down { color: #8a1c1c; }
+.ow-h2 { font-size: 16px; margin: 18px 0 8px; }
+.ow-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.ow-primary { background: #d6282d; color: #fff; border: 0; font-weight: 700; font-size: 15px; padding: 12px 16px; border-radius: 10px; cursor: pointer; min-height: 44px; }
+.ow-secondary { background: #fff; color: #1a4d8f; border: 1px solid #1a4d8f; font-weight: 600; font-size: 15px; padding: 12px 16px; border-radius: 10px; cursor: pointer; min-height: 44px; }
+.ow-primary:disabled, .ow-secondary:disabled { opacity: .5; cursor: default; }
+.ow-area { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 10px; border: 1px solid #bdb6a3; border-radius: 10px; resize: vertical; }
+.ow-label { display: block; font-size: 14px; font-weight: 700; margin: 10px 0 4px; }
+.ow-error { color: #8a1c1c; font-size: 14px; }
+.ow-ok { color: #2c6b3f; font-size: 14px; }
+.ow-btn-solid { background: #d6282d; border-color: #d6282d; color: #fff; }

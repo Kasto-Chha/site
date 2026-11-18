@@ -105,6 +105,8 @@ export async function PATCH(request, { params }) {
   if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
   const problem = checkFinal({ ...existing, ...values });
   if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+  if (values.status === "waiting") values.owner_note = null;
+  if (values.status === "asking" && existing.status !== "asking") { values.owner_answer = null; values.owner_answered_at = null; }
   const status = values.status || existing.status;
   if (status === "posted" && existing.status !== "posted") values.posted_on = nepalDay(Date.now());
   if (status !== "posted" && existing.status === "posted") values.posted_on = null;

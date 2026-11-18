@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { DRAFT_MAX, REVIEW_MAX, STATUSES, STATUS_LABELS } from "../../../../lib/sync/replies";
+import { DRAFT_MAX, QUESTION_MAX, REVIEW_MAX, STATUSES, STATUS_LABELS } from "../../../../lib/sync/replies";
 
 const NEXT = { new: ["drafted", "Mark drafted"], asking: ["drafted", "Owner answered: mark drafted"], drafted: ["waiting", "Send for the owner"], waiting: ["approved", "Owner approved"], approved: ["posted", "Mark as posted"] };
 const CAN_ASK = new Set(["new", "drafted"]);
-const EMPTY = { reviewer: "", stars: "", review: "", review_on: "", draft: "" };
+const EMPTY = { reviewer: "", stars: "", review: "", review_on: "", draft: "", team_question: "" };
 
 // The replies queue for one business: add a review that needs an answer, write the draft, ask the owner for the facts, send the draft
 // for the owner's approval, copy it for Google, mark it posted. Typed in by hand until the Google connection is approved.
@@ -40,7 +40,8 @@ export default function RepliesPanel({ merchantId, replies, disabledReason }) {
     }
   }
 
-  const startEdit = (r) => { setForm({ reviewer: r.reviewer, stars: r.stars ? String(r.stars) : "", review: r.review || "", review_on: r.review_on || "", draft: r.draft || "" }); setEditing(r.id); };
+  const startEdit = (r) => { setForm({ reviewer: r.reviewer, stars: r.stars ? String(r.stars) : "", review: r.review || "", review_on: r.review_on || "", draft: r.draft || "", team_question: r.team_question || "" }); setEditing(r.id); };
+  const ask = (r) => (r.team_question ? move(r, "asking") : (startEdit(r), setMessage("Type the question for the owner, then save and press Ask the owner.")));
   const set = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.value }));
 
   async function save(event) {
@@ -84,6 +85,7 @@ export default function RepliesPanel({ merchantId, replies, disabledReason }) {
           <div className="admin-field"><label className="admin-label" htmlFor="r-day">Day of the review</label><input id="r-day" type="date" className="admin-input" value={form.review_on} onChange={set("review_on")} /></div>
           <div className="admin-field"><label className="admin-label" htmlFor="r-review">The review</label><textarea id="r-review" className="admin-input" rows={4} value={form.review} onChange={set("review")} maxLength={REVIEW_MAX} /></div>
           <div className="admin-field"><label className="admin-label" htmlFor="r-draft">Our reply</label><textarea id="r-draft" className="admin-input" rows={5} value={form.draft} onChange={set("draft")} maxLength={DRAFT_MAX} /><div className="admin-helper">{form.draft.length} of {DRAFT_MAX} characters. Thank them, be specific, never argue, never promise what the owner has not agreed to.</div></div>
+          <div className="admin-field"><label className="admin-label" htmlFor="r-q">Question for the owner (only if we need a fact first)</label><textarea id="r-q" className="admin-input" rows={3} value={form.team_question} onChange={set("team_question")} maxLength={QUESTION_MAX} /><div className="admin-helper">{form.team_question.length} of {QUESTION_MAX} characters. The owner sees this and the review, nothing else.</div></div>
           <div className="admin-actions">
             <button type="submit" className="btn-red" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
             <button type="button" className="btn-outline" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
@@ -105,11 +107,14 @@ export default function RepliesPanel({ merchantId, replies, disabledReason }) {
                     <div className="admin-row-title">{r.reviewer}{r.stars ? ` · ${r.stars} ${r.stars === 1 ? "star" : "stars"}` : ""}</div>
                     <div className="admin-row-meta">{r.review_on ? `Review of ${r.review_on}` : "No review day"}{r.posted_on ? ` · replied ${r.posted_on}` : ""}</div>
                     {r.review ? <div className="admin-row-meta">“{r.review.length > 160 ? `${r.review.slice(0, 160)}…` : r.review}”</div> : null}
+                    {r.owner_note && (r.status === "drafted" || r.status === "new") ? <div className="admin-row-meta"><strong>Owner asked for a change:</strong> {r.owner_note}</div> : null}
+                    {r.status === "asking" && r.team_question ? <div className="admin-row-meta"><strong>We asked:</strong> {r.team_question}</div> : null}
+                    {r.status === "asking" ? <div className="admin-row-meta">{r.owner_answer ? <><strong>Owner answered:</strong> {r.owner_answer}</> : "Not answered yet."}</div> : null}
                     {r.draft ? <div className="admin-row-meta">Reply: {r.draft.length > 160 ? `${r.draft.slice(0, 160)}…` : r.draft}</div> : null}
                   </div>
                   <div className="admin-row-actions">
                     {NEXT[r.status] ? <button type="button" className="btn-red" disabled={off || busy} onClick={() => move(r, NEXT[r.status][0])}>{NEXT[r.status][1]}</button> : null}
-                    {CAN_ASK.has(r.status) ? <button type="button" className="btn-outline" disabled={off || busy} onClick={() => move(r, "asking")}>Ask the owner</button> : null}
+                    {CAN_ASK.has(r.status) ? <button type="button" className="btn-outline" disabled={off || busy} onClick={() => ask(r)}>Ask the owner</button> : null}
                     {r.draft ? <button type="button" className="btn-outline" disabled={busy} onClick={() => copy(r)}>Copy for Google</button> : null}
                     <button type="button" className="btn-outline" disabled={off || busy} onClick={() => startEdit(r)}>Edit</button>
                     {r.status !== "new" ? <button type="button" className="btn-outline" disabled={off || busy} onClick={() => move(r, "new")}>Back to new</button> : null}

@@ -125,6 +125,7 @@ export async function PATCH(request, { params }) {
   const { values, error } = cleanItem(fields, { partial: true });
   if (error) return NextResponse.json({ error }, { status: 400 });
   if (!("status" in values) && existing.status !== "draft" && changesContent(values, existing)) values.status = "draft";
+  if (values.status === "waiting") values.owner_note = null;
   const status = values.status || existing.status;
   const done = await logged(g.supabase, g.authResult, "sync.menu.update", params.id, { itemId, status }, () => updateItem(g.supabase, params.id, itemId, values, nowIso()));
   if (done.response) return done.response;

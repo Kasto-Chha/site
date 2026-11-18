@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../lib/supabase/server";
-import { ownerHome } from "../../../lib/sync/owner";
+import { ownerHome, ownerNeeds } from "../../../lib/sync/owner";
 import { monthLabel } from "../../../lib/sync/googleNumbers";
 import { nepalDay } from "../../../lib/sync/time";
 
@@ -36,6 +36,12 @@ export default async function OwnerBusinessPage({ params, searchParams }) {
     return <div className="ow-card"><p role="alert">Could not load your page. Please try again in a moment.</p></div>;
   }
   if (!home) notFound();
+  let needs = null;
+  try {
+    needs = await ownerNeeds(createServerSupabase(), userId, params.id);
+  } catch (error) {
+    console.error("Owner needs failed:", error?.message || error);
+  }
   const { business, report: r, months, notes, free } = home;
   const work = [];
   if (r.work.posts.total > 0) work.push(`${plural(r.work.posts.total, "post", "posts")} published on Google`);
@@ -47,6 +53,14 @@ export default async function OwnerBusinessPage({ params, searchParams }) {
       <p className="ow-kicker">Your business</p>
       <h1 className="ow-title">{business.name}</h1>
       <p className="ow-sub">{business.area} · {free ? "Free plan: we are not working on your Google profile" : "We are looking after your Google profile"}</p>
+
+      {needs && needs.total > 0 ? (
+        <div className="ow-card ow-notice">
+          <h2>{needs.total === 1 ? "1 thing needs you" : `${needs.total} things need you`}</h2>
+          <p>{[needs.menu.length ? plural(needs.menu.length, "menu item to check", "menu items to check") : "", needs.posts.length ? plural(needs.posts.length, "post to check", "posts to check") : "", needs.replies.length ? plural(needs.replies.length, "reply to check", "replies to check") : "", needs.questions.filter((q) => !q.answer).length ? plural(needs.questions.filter((q) => !q.answer).length, "question from us", "questions from us") : ""].filter(Boolean).join(" · ")}</p>
+          <a className="ow-btn ow-btn-solid" href={`/owner/${business.id}/needs-you`}>Review now</a>
+        </div>
+      ) : null}
 
       <a className="ow-card ow-card-link" href={`/owner/${business.id}/inbox`}>
         <span><strong>Inbox</strong><br /><span className="ow-sub">Private notes from your customers</span></span>
