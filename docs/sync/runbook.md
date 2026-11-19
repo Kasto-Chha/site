@@ -40,6 +40,7 @@ The old website badge table can be dropped by hand once it is empty: `select cou
 19. `0036_sync_owner_feedback.sql`: the owner's comment on menu items, posts and replies, and the team's question and the owner's answer on replies (new columns only, nothing is removed). Run it **before** pushing patch 14n. Safe to run twice. Check: `select count(*) from public.sync_replies where owner_answer is not null;` says 0.
 20. `0037_sync_owner_whatsapp.sql`: the owner's WhatsApp number and when the team last messaged them (two new columns on `sync_merchants`; nothing is removed). Run it **before** pushing patch 14o. Safe to run twice. Check: `select count(*) from public.sync_merchants where owner_whatsapp is not null or owner_messaged_at is not null;` says 0.
 21. `0038_sync_ai_drafts.sql`: the optional AI reply drafts: a one-row settings table (starts OFF) and a small per-day usage table (two new private tables; deleting a business deletes its usage). Run it **before** pushing patch 14p. Safe to run twice. Check: `select replies_enabled from public.sync_ai_settings;` says `false`.
+22. `0039_sync_billing.sql`: billing recorded by hand: a one-row money settings table, a payments table, and an optional agreed price per business (two new private tables and one new column on `sync_merchants`; deleting a business deletes its payments). Run it **before** pushing patch 14q. Safe to run twice. Check: `select count(*) from public.sync_payments;` says 0.
 
 ## The Audit (admins only)
 
@@ -96,6 +97,26 @@ An optional helper, **off until an admin turns it on**. On a business's Replies 
 Nothing is saved or posted by the button: the team reads the draft, fixes it and saves, the owner approves it, and the team posts it on Google by hand, as before. The draft follows fixed rules: thank them, apologise for a bad experience without arguing, no invented facts, offers, refunds or contact details, short, and in the language of the review. It cannot know anything beyond the review and what the owner told us, so a review that needs a fact still goes through **Ask the owner** first. If a reply is already in the box, the button asks "Really replace my reply".
 
 Each business gets 20 drafts a day (Nepal day), so the free Gemini allowance, which the site's chat also uses, cannot run out. It needs the same `GEMINI_API_KEY` the chat uses; without it the button does not appear. Operators can use it on their assigned businesses; only admins can switch it on or off. Free businesses are held. The audit log records who used it and who changed the switch, never the review or the draft.
+
+## Billing
+
+Businesses pay you outside the site (cash, bank transfer, eSewa, Khalti). The team records each payment by hand, so you always know who is paid up, due or late, and can hand over a receipt. Billing is for **admins only**: an operator never sees money.
+
+**First, set the money settings** on the **Billing** page (sidebar): the standard monthly price in rupees, **How to pay** (your eSewa or Khalti number and bank account, which goes into every reminder), and the line printed at the bottom of receipts (your business name, address, PAN if you have one).
+
+**Who is billed.** Only an **Active** business pays. A trial (WIP) is not billed; a Free business is not billed at all. An Active business owes from the later of the day its trial ended and the day it was made Active. Each payment covers whole months, and the next period starts the day after the last covered day. The business's **Plan** tab shows where it stands: Paid up to a date, Due in N days (the last 7 days), Due today, or Overdue by N days.
+
+**Recording a payment** (Plan tab, Payments): the amount received, how many months it pays for, how it was paid, the day it was received, and an optional reference (the transaction number) and note. Leave **First day it covers** blank to continue from where the last payment ended; for a business's first payment that is the day its trial ended. Each payment gets a receipt number (KC-00001, running across all businesses). A payment can be recorded during the trial, as a payment in advance; it is not allowed for a Free business.
+
+**A mistake is cancelled, never deleted.** **Cancel payment** asks for a reason (press **Really cancel**); the payment stays in the history, struck out with the reason, and no longer counts towards the paid-up date or the receipt.
+
+**An agreed price** for one business goes in **Price for this business** on its Plan tab; blank means the standard price. A price of 0 is allowed for a free-of-charge deal.
+
+**Who owes what.** The **Billing** page lists every Active business, the ones to chase at the top, with a **Remind on WhatsApp** button: it opens WhatsApp with the reminder typed in (the amount, the date, and how to pay), straight to the owner if their WhatsApp number is saved on the Google tab. Your own phone sends it; nothing is sent automatically.
+
+**Receipts** open from the history (**Receipt**): a printable page, Print then Save as PDF. It says the payment was received and is **not a tax invoice**: if you must issue PAN or VAT bills, ask your accountant and keep doing that separately.
+
+The audit log records who recorded, cancelled or changed what, never the amounts, references, notes or reasons.
 
 ## Stages and the 90-day trial
 

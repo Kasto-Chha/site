@@ -16,6 +16,8 @@ import OwnerMessagePanel from "./OwnerMessagePanel";
 import AssignmentsPanel from "./AssignmentsPanel";
 import DeletePanel from "./DeletePanel";
 import StagePanel from "./StagePanel";
+import BillingPanel from "./BillingPanel";
+import { billingStatus, listPayments, readBillingSettings, statusLine as billingLine } from "../../../../lib/sync/billing";
 import { STAGE_LABELS, stageInfo, stageLine } from "../../../../lib/sync/stage";
 import { readStage } from "../../../../lib/sync/stageStore";
 import { googleLink, resolveTab, tabHref, tabsFor } from "../../../../lib/sync/businessTabs";
@@ -425,11 +427,37 @@ async function PlanTab({ merchant, stage, isAdmin }) {
       failed = true;
     }
   }
+  // Payments, for admins only. A failed read says so and never breaks the page.
+  let billing = null;
+  if (isAdmin) {
+    const supabase = createServerSupabase();
+    const settings = await readBillingSettings(supabase);
+    let payments = [];
+    let readFailed = settings.failed;
+    let stageRow = null;
+    let monthlyPrice = null;
+    try {
+      payments = await listPayments(supabase, merchant.id);
+      stageRow = await readStage(supabase, merchant.id);
+      const own = await supabase.from("sync_merchants").select("monthly_price").eq("id", merchant.id).maybeSingle();
+      if (own.error) throw new Error("price");
+      monthlyPrice = Number.isInteger(own.data?.monthly_price) ? own.data.monthly_price : null;
+    } catch {
+      readFailed = true;
+    }
+    const status = billingStatus({ stageRow, payments, standardMonthly: settings.standardMonthly, monthlyPrice });
+    billing = { status, payments, readFailed, standardMonthly: settings.standardMonthly };
+  }
   return (
     <>
       <div className="admin-page">
         <StagePanel merchantId={merchant.id} info={stage} isAdmin={isAdmin} />
       </div>
+      {billing ? (
+        <div className="admin-page">
+          <BillingPanel merchantId={merchant.id} statusText={billingLine(billing.status)} state={billing.status.state} price={billing.status.price} custom={billing.status.custom} standardMonthly={billing.standardMonthly} nextFrom={billing.status.nextFrom || billing.status.endsOn || ""} today={billing.status.today} payments={billing.payments} readFailed={billing.readFailed} disabledReason={billing.status.state === "free" ? "This business is on the Free plan: it is not billed, so no payment can be recorded." : ""} />
+        </div>
+      ) : null}
       {isAdmin ? (
         <div className="admin-page">
           <div className="admin-panel">

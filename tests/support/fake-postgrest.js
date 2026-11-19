@@ -94,6 +94,8 @@ export class FakePostgrest {
       sync_menu_items: [],
       sync_ai_settings: [],
       sync_ai_usage: [],
+      sync_billing_settings: [],
+      sync_payments: [],
       sync_qr_codes: [],
       sync_tasks: [],
       trending_search_rules: [],
