@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { ownerHome, ownerNeeds } from "../../../lib/sync/owner";
+import { ownerPlan } from "../../../lib/sync/ownerBilling";
 import { monthLabel } from "../../../lib/sync/googleNumbers";
 import { nepalDay } from "../../../lib/sync/time";
 
@@ -36,6 +37,12 @@ export default async function OwnerBusinessPage({ params, searchParams }) {
     return <div className="ow-card"><p role="alert">Could not load your page. Please try again in a moment.</p></div>;
   }
   if (!home) notFound();
+  let plan = null;
+  try {
+    plan = await ownerPlan(createServerSupabase(), userId, params.id);
+  } catch (error) {
+    console.error("Owner plan failed:", error?.message || error);
+  }
   let needs = null;
   try {
     needs = await ownerNeeds(createServerSupabase(), userId, params.id);
@@ -66,6 +73,13 @@ export default async function OwnerBusinessPage({ params, searchParams }) {
         <span><strong>Inbox</strong><br /><span className="ow-sub">Private notes from your customers</span></span>
         {notes.all > 0 ? <span className="ow-pill">{notes.urgent > 0 ? `${notes.urgent} urgent` : plural(notes.all, "note", "notes")}</span> : <span className="ow-sub">None yet</span>}
       </a>
+
+      {plan && plan.state !== "unknown" ? (
+        <a className={`ow-card ow-card-link${plan.state === "overdue" ? " ow-notice" : ""}`} href={`/owner/${business.id}/plan`}>
+          <span><strong>Your plan</strong><br /><span className="ow-sub">{plan.state === "free" ? "Free plan" : plan.state === "trial" ? `Free trial until ${plan.trialEnds}` : plan.line}</span></span>
+          <span className="ow-sub">Open</span>
+        </a>
+      ) : null}
 
       <div className="ow-card">
         <h2>{r.label} <span className="ow-sub">compared with {r.previousLabel}</span></h2>

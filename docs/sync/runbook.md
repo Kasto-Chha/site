@@ -118,6 +118,8 @@ Businesses pay you outside the site (cash, bank transfer, eSewa, Khalti). The te
 
 The audit log records who recorded, cancelled or changed what, never the amounts, references, notes or reasons.
 
+**What the owner sees (Your plan).** On their dashboard the owner has a **Your plan** card, leading to a read-only page: for an Active business, the monthly price, where they stand (Paid up to a date, payment coming up, or payment due), when the next period starts, how to pay (the **How to pay** text from your settings, shown only while a payment is due or coming up), and their **Receipts**, each of which opens as a printable page. A trial shows when it ends and the price after it; a Free business sees that there is nothing to pay. They never see a cancelled payment, your notes, who recorded a payment, or the standard price when theirs is different. Nothing is sent to the owner automatically: when a payment is due, use **Remind on WhatsApp** on the Billing page.
+
 ## Stages and the 90-day trial
 
 Every business has a stage. **WIP** is the trial, with onboarding inside it: the whole service runs until the decision day. **Active** means they pay. **Free** means they chose not to pay: the business keeps its page, label, QR cards and badge on KastoChha, and we do nothing on its Google side.
