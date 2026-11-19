@@ -122,7 +122,7 @@ test("the status line and the reminder say what is owed; the reminder holds no p
   const s = B.billingStatus({ stageRow: ACTIVE, standardMonthly: 1500, now: at("2026-04-11") });
   assert.match(B.statusLine(s), /Overdue by 10 days/);
   const m = B.buildReminder({ businessName: "Himal Brew House", status: s, instructions: "eSewa 9841000000" });
-  assert.match(m, /Rs 1,500/); assert.match(m, /Himal Brew House/); assert.match(m, /was due on 2026-04-01/); assert.match(m, /eSewa 9841000000/);
+  assert.match(m, /The price is Rs 1,500 a month/); assert.ok(!/monthly payment/i.test(m), "a yearly payer is not told it is a monthly payment"); assert.match(m, /Himal Brew House/); assert.match(m, /was due on 2026-04-01/); assert.match(m, /eSewa 9841000000/);
   assert.match(B.buildReminder({ businessName: "x", status: { ...s, state: "due_soon", nextFrom: "2026-05-01" }, instructions: "" }), /is due on 2026-05-01/);
   assert.ok(!B.buildReminder({ businessName: "x", status: { ...s, price: null }, instructions: "" }).includes("Rs"));
   assert.match(B.statusLine({ state: "overdue", daysLate: 0, nextFrom: "2026-04-01" }), /Due today/);
